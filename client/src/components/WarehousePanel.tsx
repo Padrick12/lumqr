@@ -278,9 +278,18 @@ export const WarehousePanel: React.FC<WarehousePanelProps> = ({ onDataChange }) 
                 <input 
                   type="number" 
                   min={1} 
-                  max={100}
+                  max={10000}
+                  placeholder="Ej. 10, 50, 100, 500..."
                   value={quantityToAssign}
-                  onChange={(e) => setQuantityToAssign(Number(e.target.value))}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '') {
+                      setQuantityToAssign('' as any);
+                    } else {
+                      const parsed = parseInt(val, 10);
+                      setQuantityToAssign(isNaN(parsed) ? '' as any : parsed);
+                    }
+                  }}
                 />
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                   Se seleccionarán automáticamente las primeras piezas libres del lote seleccionado.

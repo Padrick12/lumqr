@@ -513,10 +513,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
                   <label>Cantidad de Lámparas</label>
                   <input 
                     type="number" 
-                    min={1} 
-                    max={500}
+                    min={1}
+                    max={10000}
+                    placeholder="Ej. 50, 100, 500, 1000..."
                     value={batchQty} 
-                    onChange={(e) => setBatchQty(Number(e.target.value))} 
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '') {
+                        setBatchQty('' as any);
+                      } else {
+                        const parsed = parseInt(val, 10);
+                        setBatchQty(isNaN(parsed) ? '' as any : parsed);
+                      }
+                    }} 
                   />
                 </div>
                 <div className="form-group">
