@@ -170,22 +170,9 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
             <>
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--neon-rose)', boxShadow: '0 0 8px var(--neon-rose)', animation: 'pulse 2s infinite' }}></div>
               <CloudOff size={16} color="var(--neon-rose)" />
-              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)' }}>Offline</span>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)' }}>Sin Conexión (Offline)</span>
             </>
           )}
-        </div>
-
-        {/* Toggle switch for simulated offline testing */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Simular:</span>
-          <label className="toggle-switch">
-            <input 
-              type="checkbox" 
-              checked={isSimulatedOffline} 
-              onChange={(e) => setIsSimulatedOffline(e.target.checked)}
-            />
-            <span className="toggle-slider"></span>
-          </label>
         </div>
       </div>
 
