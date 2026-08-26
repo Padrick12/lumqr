@@ -175,8 +175,6 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
     handleLookup(decodedText);
   };
 
-  const onScanFailure = () => {};
-
   const handleLookupClick = (e: React.FormEvent) => {
     e.preventDefault();
     if (!fixtureCode.trim()) return;
