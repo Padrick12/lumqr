@@ -440,4 +440,38 @@
   filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
 }
 
+@media (max-width: 1024px) {
+  .map-dashboard-container {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    height: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .map-filters {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .filters-group {
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 8px;
+  }
+  .filter-select {
+    flex: 1;
+    min-width: 110px;
+    font-size: 12px;
+  }
+  .map-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .leaflet-container {
+    height: 400px !important;
+    border-radius: 12px;
+  }
+}
+
 
