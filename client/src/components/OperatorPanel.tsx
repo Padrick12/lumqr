@@ -1,7 +1,7 @@
 import { API_BASE_URL } from '../config';
 import React, { useState, useEffect, useRef } from 'react';
 import { Camera, Search, Calendar, History, ShieldCheck, AlertCircle, Save, WifiOff } from 'lucide-react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 import { addToQueue } from '../utils/offlineStore';
 import './shared-panels.css';
 
@@ -57,7 +57,7 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
   const [poleSubmitMsg, setPoleSubmitMsg] = useState({ text: '', isError: false });
   const [loadingPole, setLoadingPole] = useState(false);
 
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
   const [isScannerActive, setIsScannerActive] = useState(false);
 
   const handleRegisterPole = async (e: React.FormEvent) => {
@@ -72,15 +72,16 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
           enableHighAccuracy: true,
-          timeout: 10000
+          timeout: 10000,
+          maximumAge: 0
         });
       });
       lat = position.coords.latitude;
       lng = position.coords.longitude;
-    } catch (err) {
-      setPoleSubmitMsg({ text: 'Error al obtener su ubicación GPS. Asegúrese de activar el GPS.', isError: true });
-      setLoadingPole(false);
-      return;
+    } catch (err: any) {
+      console.warn("Geolocation error, fallback center:", err);
+      lat = 25.539;
+      lng = -103.524;
     }
 
     try {
@@ -112,29 +113,60 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
     }
   };
 
-
-
-  useEffect(() => {
-    if (isScannerActive) {
-      scannerRef.current = new Html5QrcodeScanner(
-        "qr-reader-target",
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        false
-      );
-
-      scannerRef.current.render(onScanSuccess, onScanFailure);
-    } else {
-      if (scannerRef.current) {
-        scannerRef.current.clear().catch(err => console.error("Error clearing scanner:", err));
-        scannerRef.current = null;
+  const stopScannerSafely = () => {
+    if (scannerRef.current) {
+      const instance = scannerRef.current;
+      scannerRef.current = null;
+      if (instance.isScanning) {
+        instance.stop().then(() => instance.clear()).catch(() => {});
+      } else {
+        instance.clear();
       }
     }
+  };
 
-    return () => {
-      if (scannerRef.current) {
-        scannerRef.current.clear().catch(err => console.error("Error clearing scanner:", err));
-      }
-    };
+  useEffect(() => {
+    let html5Qrcode: Html5Qrcode | null = null;
+
+    if (isScannerActive) {
+      const timer = setTimeout(() => {
+        try {
+          html5Qrcode = new Html5Qrcode("qr-reader-target");
+          scannerRef.current = html5Qrcode;
+
+          const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+          // Prefer rear/environment camera automatically for mobile field scanning
+          html5Qrcode.start(
+            { facingMode: "environment" },
+            config,
+            (decodedText) => {
+              onScanSuccess(decodedText);
+            },
+            () => {}
+          ).catch(err => {
+            console.warn("Rear camera not available, falling back to front/user camera:", err);
+            html5Qrcode?.start(
+              { facingMode: "user" },
+              config,
+              (decodedText) => {
+                onScanSuccess(decodedText);
+              },
+              () => {}
+            ).catch(e => console.error("Error starting fallback camera:", e));
+          });
+        } catch (e) {
+          console.error("Scanner initialization error:", e);
+        }
+      }, 150);
+
+      return () => {
+        clearTimeout(timer);
+        stopScannerSafely();
+      };
+    } else {
+      stopScannerSafely();
+    }
   }, [isScannerActive]);
 
   const onScanSuccess = (decodedText: string) => {
