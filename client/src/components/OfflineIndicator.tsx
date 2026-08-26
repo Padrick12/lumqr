@@ -4,14 +4,13 @@ import { Wifi, RefreshCw, AlertTriangle, CloudOff } from 'lucide-react';
 import { getQueue } from '../utils/offlineStore';
 
 interface OfflineIndicatorProps {
-  isSimulatedOffline: boolean;
-  setIsSimulatedOffline: (sim: boolean) => void;
+  isSimulatedOffline?: boolean;
+  setIsSimulatedOffline?: (sim: boolean) => void;
   onSyncComplete: () => void;
 }
 
 export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
-  isSimulatedOffline,
-  setIsSimulatedOffline,
+  isSimulatedOffline = false,
   onSyncComplete
 }) => {
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
