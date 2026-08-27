@@ -1,8 +1,9 @@
 import { API_BASE_URL } from '../config';
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Search, Calendar, History, ShieldCheck, AlertCircle, Save, WifiOff, UserCheck, MessageCircle, Image as ImageIcon } from 'lucide-react';
+import { Camera, Search, Calendar, History, ShieldCheck, AlertCircle, Save, WifiOff, UserCheck, MessageCircle, Image as ImageIcon, Navigation, RefreshCw } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { addToQueue } from '../utils/offlineStore';
+import { formatFixtureCode } from '../utils/codeFormatter';
 import './shared-panels.css';
 
 interface FixtureHistory {
@@ -42,6 +43,10 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
 }) => {
   const [panelMode, setPanelMode] = useState<'qr' | 'census'>('qr');
   
+  // GPS Accuracy State
+  const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
+  const [isFetchingGps, setIsFetchingGps] = useState<boolean>(false);
+
   // Operator Shift State
   const [operatorName, setOperatorName] = useState<string>(() => {
     return localStorage.getItem('lumqr_operator_name') || '';
@@ -50,6 +55,10 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
   // Photo Evidence State
   const [photoBefore, setPhotoBefore] = useState<string | null>(null);
   const [photoAfter, setPhotoAfter] = useState<string | null>(null);
+
+  // Submission Locks
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmittingPole, setIsSubmittingPole] = useState(false);
 
   // Success State for WhatsApp Share
   const [lastSuccessData, setLastSuccessData] = useState<{
@@ -184,10 +193,45 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
     window.open(whatsappUrl, '_blank');
   };
 
+  const refreshGpsAccuracy = () => {
+    setIsFetchingGps(true);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setGpsAccuracy(Math.round(pos.coords.accuracy));
+          setIsFetchingGps(false);
+        },
+        (err) => {
+          console.warn("GPS Accuracy Error:", err);
+          setIsFetchingGps(false);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    } else {
+      setIsFetchingGps(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshGpsAccuracy();
+  }, []);
+
   const handleRegisterPole = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingPole || loadingPole) return;
+
+    // VALIDACIÓN DE JUSTIFICACIÓN OBLIGATORIA
+    if ((operatingStatus === 'No Funciona / Apagada' || lampType === 'Sin Lámpara') && poleNotes.trim().length < 5) {
+      setPoleSubmitMsg({
+        text: '⚠️ Justificación obligatoria: Por favor detalle la causa en "Observaciones" (ej. Cable cortado, sin brazo, vandalismo).',
+        isError: true
+      });
+      return;
+    }
+
+    setIsSubmittingPole(true);
     setLoadingPole(true);
-    setPoleSubmitMsg({ text: 'Obteniendo coordenadas GPS...', isError: false });
+    setPoleSubmitMsg({ text: 'Obteniendo coordenadas GPS de alta precisión...', isError: false });
 
     let lat: number;
     let lng: number;
@@ -202,6 +246,7 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
       });
       lat = position.coords.latitude;
       lng = position.coords.longitude;
+      setGpsAccuracy(Math.round(position.coords.accuracy));
     } catch (err: any) {
       console.warn("Geolocation error, fallback center:", err);
       lat = 25.539;
@@ -249,6 +294,7 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
       setPoleSubmitMsg({ text: 'Error de conexión con el servidor.', isError: true });
     } finally {
       setLoadingPole(false);
+      setIsSubmittingPole(false);
     }
   };
 
@@ -317,10 +363,13 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
   const handleLookupClick = (e: React.FormEvent) => {
     e.preventDefault();
     if (!fixtureCode.trim()) return;
-    handleLookup(fixtureCode.trim().toUpperCase());
+    const formatted = formatFixtureCode(fixtureCode);
+    setFixtureCode(formatted);
+    handleLookup(formatted);
   };
 
-  const handleLookup = async (code: string) => {
+  const handleLookup = async (rawCode: string) => {
+    const code = formatFixtureCode(rawCode);
     setLoadingSearch(true);
     setSearchError(null);
     setFixtureDetails(null);
@@ -366,12 +415,24 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
 
   const handleRegisterInstallation = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     if (!fixtureDetails) {
       setSubmitMsg({ text: 'Por favor cargue una luminaria.', isError: true });
       return;
     }
 
-    setSubmitMsg({ text: 'Obteniendo geolocalización...', isError: false });
+    // VALIDACIÓN OBLIGATORIA DE NOTAS PARA ROBO
+    if (newStatus === 'Robo' && installNotes.trim().length < 5) {
+      setSubmitMsg({
+        text: '⚠️ Justificación obligatoria: Por favor detalle la causa del reporte de Robo en "Notas de Campo" (ej. Cable cortado, falta de brazo).',
+        isError: true
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitMsg({ text: 'Obteniendo geolocalización GPS de alta precisión...', isError: false });
 
     let lat: number;
     let lng: number;
@@ -385,9 +446,11 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
       });
       lat = position.coords.latitude;
       lng = position.coords.longitude;
+      setGpsAccuracy(Math.round(position.coords.accuracy));
     } catch (err) {
       console.error('Geolocation error:', err);
       setSubmitMsg({ text: 'Error al obtener su ubicación GPS. Asegúrese de tener el GPS activado y los permisos concedidos en el navegador.', isError: true });
+      setIsSubmitting(false);
       return;
     }
 
@@ -483,6 +546,7 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
       }
     }
 
+    setIsSubmitting(false);
     setTimeout(() => setSubmitMsg({ text: '', isError: false }), 7000);
   };
 
@@ -498,33 +562,54 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* TARJETA DE RESPONSABLE EN TURNO */}
-      <div className="glass-panel" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '14px', border: '1px solid rgba(5, 243, 162, 0.3)', background: 'rgba(5, 243, 162, 0.04)' }}>
-        <UserCheck color="var(--neon-green)" size={22} />
-        <div style={{ flex: 1 }}>
-          <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>
-            Responsable en Turno / Operador ({crewName}):
-          </label>
-          <input 
-            type="text" 
-            placeholder="Ej. Juan Pérez (Jefe) / Carlos Gómez (Interino)..."
-            value={operatorName}
-            onChange={(e) => {
-              setOperatorName(e.target.value);
-              localStorage.setItem('lumqr_operator_name', e.target.value);
-            }}
-            style={{ 
-              background: 'transparent', 
-              border: 'none', 
-              borderBottom: '1px solid rgba(255, 255, 255, 0.2)', 
-              color: '#fff', 
-              width: '100%', 
-              fontSize: '14px', 
-              fontWeight: 600, 
-              padding: '4px 0',
-              outline: 'none'
-            }}
-          />
+      {/* TARJETA DE RESPONSABLE EN TURNO Y SEMÁFORO GPS */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '12px', alignItems: 'center' }}>
+        <div className="glass-panel" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '14px', border: '1px solid rgba(5, 243, 162, 0.3)', background: 'rgba(5, 243, 162, 0.04)' }}>
+          <UserCheck color="var(--neon-green)" size={22} />
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>
+              Responsable en Turno / Operador ({crewName}):
+            </label>
+            <input 
+              type="text" 
+              placeholder="Ej. Juan Pérez (Jefe) / Carlos Gómez (Interino)..."
+              value={operatorName}
+              onChange={(e) => {
+                setOperatorName(e.target.value);
+                localStorage.setItem('lumqr_operator_name', e.target.value);
+              }}
+              style={{ 
+                background: 'transparent', 
+                border: 'none', 
+                borderBottom: '1px solid rgba(255, 255, 255, 0.2)', 
+                color: '#fff', 
+                width: '100%', 
+                fontSize: '14px', 
+                fontWeight: 600, 
+                padding: '4px 0',
+                outline: 'none'
+              }}
+            />
+          </div>
+        </div>
+
+        {/* SEMÁFORO DE PRECISIÓN GPS */}
+        <div className="glass-panel" style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center', minWidth: '160px', border: gpsAccuracy === null ? '1px solid var(--border-color)' : gpsAccuracy <= 15 ? '1px solid var(--neon-green)' : gpsAccuracy <= 50 ? '1px solid var(--neon-amber)' : '1px solid var(--neon-rose)', background: gpsAccuracy === null ? 'rgba(0,0,0,0.2)' : gpsAccuracy <= 15 ? 'rgba(5,243,162,0.08)' : gpsAccuracy <= 50 ? 'rgba(245,158,11,0.08)' : 'rgba(244,63,94,0.08)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 800 }}>
+            <Navigation size={14} color={gpsAccuracy === null ? 'var(--text-muted)' : gpsAccuracy <= 15 ? 'var(--neon-green)' : gpsAccuracy <= 50 ? 'var(--neon-amber)' : 'var(--neon-rose)'} />
+            <span>GPS: {gpsAccuracy === null ? 'Midiendo...' : `± ${gpsAccuracy} m`}</span>
+          </div>
+          <span style={{ fontSize: '10px', color: gpsAccuracy === null ? 'var(--text-muted)' : gpsAccuracy <= 15 ? 'var(--neon-green)' : gpsAccuracy <= 50 ? 'var(--neon-amber)' : 'var(--neon-rose)', fontWeight: 600 }}>
+            {gpsAccuracy === null ? 'Lectura satelital' : gpsAccuracy <= 15 ? '🟢 Precisión Óptima' : gpsAccuracy <= 50 ? '🟡 Precisión Aceptable' : '🔴 GPS Desplazado (>50m)'}
+          </span>
+          <button 
+            onClick={refreshGpsAccuracy}
+            disabled={isFetchingGps}
+            style={{ border: 'none', background: 'transparent', color: 'var(--neon-blue)', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}
+          >
+            <RefreshCw size={10} style={isFetchingGps ? { animation: 'spin 1s linear infinite' } : {}} />
+            {isFetchingGps ? 'Leyendo...' : 'Re-obtener GPS'}
+          </button>
         </div>
       </div>
 

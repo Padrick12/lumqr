@@ -209,6 +209,62 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
           )}
         </div>
       )}
+
+      {/* BANNER FLOTANTE PERMANENTE INFERIOR AL HABER PENDIENTES OFFLINE */}
+      {queueCount > 0 && (
+        <div style={{
+          position: 'fixed',
+          bottom: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 9999,
+          background: 'rgba(15, 23, 42, 0.95)',
+          border: '1px solid var(--neon-amber)',
+          boxShadow: '0 8px 30px rgba(245, 158, 11, 0.3)',
+          borderRadius: '16px',
+          padding: '12px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '14px',
+          backdropFilter: 'blur(12px)',
+          maxWidth: '90vw',
+          width: '520px',
+          animation: 'pulse 2s infinite'
+        }}>
+          <AlertTriangle color="var(--neon-amber)" size={24} style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--neon-amber)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              ⚠️ {queueCount} REGISTROS GUARDADOS EN MEMORIA DEL CELULAR
+            </div>
+            <p style={{ fontSize: '11px', color: '#cbd5e1', margin: '2px 0 0 0' }}>
+              Se sincronizarán automáticamente al detectar señal 4G/WiFi. <strong style={{ color: '#fff' }}>No cierres el navegador.</strong>
+            </p>
+          </div>
+          {effectiveOnline && (
+            <button
+              onClick={triggerSync}
+              disabled={isSyncing}
+              style={{
+                background: 'var(--neon-amber)',
+                color: '#000',
+                fontWeight: 800,
+                fontSize: '12px',
+                padding: '8px 14px',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: isSyncing ? 'not-allowed' : 'pointer',
+                whiteSpace: 'nowrap',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <RefreshCw size={14} style={isSyncing ? { animation: 'spin 1s linear infinite' } : {}} />
+              {isSyncing ? 'Enviando...' : 'Sincronizar'}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };

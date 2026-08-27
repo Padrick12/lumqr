@@ -2,6 +2,7 @@ import { API_BASE_URL } from '../config';
 import React, { useState, useEffect } from 'react';
 import { Truck, CheckCircle2, QrCode, Printer, Download, Search, AlertCircle, Archive } from 'lucide-react';
 import { generateLabelDataURL } from '../utils/qr';
+import { formatFixtureCode } from '../utils/codeFormatter';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import './shared-panels.css';
@@ -144,7 +145,8 @@ export const WarehousePanel: React.FC<WarehousePanelProps> = ({ onDataChange }) 
   };
 
   const filteredFixtures = fixturesForQr.filter(f => {
-    const matchesSearch = f.code.toLowerCase().includes(searchTerm.toLowerCase());
+    const formattedTerm = formatFixtureCode(searchTerm);
+    const matchesSearch = f.code.toLowerCase().includes(searchTerm.toLowerCase()) || (formattedTerm.length > 0 && f.code.includes(formattedTerm));
     
     let matchesCrew = true;
     if (selectedCrewFilter === 'asignadas') {
