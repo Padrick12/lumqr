@@ -35,10 +35,18 @@ interface SummaryStats {
     'Trayectos Seguros': number;
   };
 }
+interface CrewPerformance {
+  id: number;
+  crew_name: string;
+  active_operator: string | null;
+  total_installations: number;
+  total_poles: number;
+}
 
 export const ReportsPanel: React.FC = () => {
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [summary, setSummary] = useState<SummaryStats | null>(null);
+  const [crewPerformance, setCrewPerformance] = useState<CrewPerformance[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -56,8 +64,9 @@ export const ReportsPanel: React.FC = () => {
       const res = await fetch(`${API_BASE_URL}/api/reports`);
       if (res.ok) {
         const data = await res.json();
-        setFixtures(data.fixtures);
         setSummary(data.summary);
+        setFixtures(data.fixtures);
+        setCrewPerformance(data.crew_performance || []);
 
         const crewsSet = new Set<string>();
         data.fixtures.forEach((f: Fixture) => {
@@ -363,6 +372,52 @@ export const ReportsPanel: React.FC = () => {
                   {summary.poles_by_zone?.['Trayectos Seguros'] || 0} Postes
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* DESEMPEÑO Y RENDIMIENTO POR CUADRILLAS */}
+          <div className="glass-panel" style={{ padding: '20px' }}>
+            <h3 className="panel-header" style={{ margin: '0 0 16px 0', fontSize: '15px', color: 'var(--neon-green)' }}>
+              🏆 Desempeño y Rendimiento por Cuadrilla (Luminarias QR + Censo)
+            </h3>
+            <div className="reports-table-container">
+              <table className="reports-table">
+                <thead>
+                  <tr>
+                    <th>Cuadrilla</th>
+                    <th>Responsable en Turno (Admin)</th>
+                    <th>Luminarias QR Instaladas</th>
+                    <th>Postes Censados</th>
+                    <th>Avance Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {crewPerformance.map(cp => {
+                    const totalWork = cp.total_installations + cp.total_poles;
+                    return (
+                      <tr key={cp.id}>
+                        <td style={{ fontWeight: 'bold', color: '#fff' }}>{cp.crew_name}</td>
+                        <td style={{ color: 'var(--neon-green)', fontWeight: 600 }}>{cp.active_operator || 'Sin asignar en Admin'}</td>
+                        <td style={{ color: 'var(--neon-blue)', fontWeight: 'bold' }}>{cp.total_installations}</td>
+                        <td style={{ color: 'var(--neon-purple)', fontWeight: 'bold' }}>{cp.total_poles}</td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontWeight: 'bold', color: 'var(--neon-amber)' }}>{totalWork} ops</span>
+                            <div style={{ flex: 1, background: 'rgba(255,255,255,0.1)', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
+                              <div style={{ width: `${Math.min(totalWork * 5, 100)}%`, background: 'linear-gradient(90deg, var(--neon-green), var(--neon-blue))', height: '100%' }} />
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {crewPerformance.length === 0 && (
+                    <tr>
+                      <td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No hay datos de avance registrados aún.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </>

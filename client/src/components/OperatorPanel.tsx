@@ -87,6 +87,20 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
     setPhotoAfter(null);
   };
 
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/crews`)
+      .then(res => res.json())
+      .then(crews => {
+        const currentCrew = Array.isArray(crews) ? crews.find((c: any) => c.id === crewId) : null;
+        if (currentCrew && currentCrew.active_operator) {
+          setOperatorName(currentCrew.active_operator);
+        }
+      })
+      .catch(err => console.error("Error loading crew active operator:", err));
+  }, [crewId]);
+
+  const isSinLamp = lampType === 'Sin Lámpara';
+
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const [isScannerActive, setIsScannerActive] = useState(false);
 
@@ -682,19 +696,26 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
             </div>
 
             {/* ESTADO OPERATIVO ACTUAL & POTENCIA WATTS */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px', opacity: isSinLamp ? 0.4 : 1 }}>
               <div>
                 <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
                   Estado Operativo Actual:
                 </label>
                 <select
-                  value={operatingStatus}
+                  disabled={isSinLamp}
+                  value={isSinLamp ? 'Sin Lámpara (No Aplica)' : operatingStatus}
                   onChange={(e: any) => setOperatingStatus(e.target.value)}
-                  style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', color: '#fff', fontSize: '13px' }}
+                  style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', color: '#fff', fontSize: '13px', cursor: isSinLamp ? 'not-allowed' : 'pointer' }}
                 >
-                  <option value="Funcionando">🟢 Funcionando Normal</option>
-                  <option value="Prendida 24/7">⚡ Prendida 24/7 (Fallo Fotocelda)</option>
-                  <option value="No Funciona / Apagada">🔴 No Funciona / Apagada</option>
+                  {isSinLamp ? (
+                    <option value="Sin Lámpara (No Aplica)">❌ No Aplica (Sin Lámpara / Vacío)</option>
+                  ) : (
+                    <>
+                      <option value="Funcionando">🟢 Funcionando Normal</option>
+                      <option value="Prendida 24/7">⚡ Prendida 24/7 (Fallo Fotocelda)</option>
+                      <option value="No Funciona / Apagada">🔴 No Funciona / Apagada</option>
+                    </>
+                  )}
                 </select>
               </div>
 
@@ -704,10 +725,11 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
                 </label>
                 <input 
                   type="number"
-                  placeholder="Ej. 50, 70, 100, 150, 200..."
-                  value={wattage}
+                  disabled={isSinLamp}
+                  placeholder={isSinLamp ? '0 Watts' : 'Ej. 50, 70, 100, 150, 200...'}
+                  value={isSinLamp ? '0' : wattage}
                   onChange={(e) => setWattage(e.target.value)}
-                  style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', color: '#fff', fontSize: '13px' }}
+                  style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', color: '#fff', fontSize: '13px', cursor: isSinLamp ? 'not-allowed' : 'text' }}
                 />
               </div>
             </div>

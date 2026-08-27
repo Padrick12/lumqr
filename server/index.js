@@ -133,16 +133,16 @@ app.get('/api/crews', async (req, res) => {
 });
 
 app.post('/api/crews', async (req, res) => {
-  const { name, username, password, members } = req.body;
+  const { name, username, password, members, active_operator } = req.body;
   if (!name || !username || !password || !members || !Array.isArray(members)) {
     return res.status(400).json({ error: 'Faltan campos obligatorios o formato incorrecto.' });
   }
   try {
     const result = await db.run(
-      'INSERT INTO crews (name, username, password, members) VALUES (?, ?, ?, ?)',
-      [name, username, password, JSON.stringify(members)]
+      'INSERT INTO crews (name, username, password, members, active_operator) VALUES (?, ?, ?, ?, ?)',
+      [name, username, password, JSON.stringify(members), active_operator || null]
     );
-    res.status(201).json({ id: result.lastID, name, username, members });
+    res.status(201).json({ id: result.lastID, name, username, members, active_operator: active_operator || null });
   } catch (error) {
     if (error.message.includes('UNIQUE constraint failed')) {
       return res.status(400).json({ error: 'Ya existe una cuadrilla con este nombre o usuario.' });
@@ -153,19 +153,19 @@ app.post('/api/crews', async (req, res) => {
 
 app.put('/api/crews/:id', async (req, res) => {
   const { id } = req.params;
-  const { name, username, password, members } = req.body;
+  const { name, username, password, members, active_operator } = req.body;
   if (!name || !username || !password || !members || !Array.isArray(members)) {
     return res.status(400).json({ error: 'Campos requeridos vacíos o incorrectos.' });
   }
   try {
     const result = await db.run(
-      'UPDATE crews SET name = ?, username = ?, password = ?, members = ? WHERE id = ?',
-      [name, username, password, JSON.stringify(members), id]
+      'UPDATE crews SET name = ?, username = ?, password = ?, members = ?, active_operator = ? WHERE id = ?',
+      [name, username, password, JSON.stringify(members), active_operator || null, id]
     );
     if (result.changes === 0) {
       return res.status(404).json({ error: 'Cuadrilla no encontrada.' });
     }
-    res.json({ id: Number(id), name, username, members });
+    res.json({ id: Number(id), name, username, members, active_operator: active_operator || null });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -505,6 +505,18 @@ app.get('/api/reports', async (req, res) => {
     const polesByLamp = await db.all('SELECT lamp_type, COUNT(*) as count FROM poles GROUP BY lamp_type');
     const polesByZone = await db.all('SELECT zone_type, COUNT(*) as count FROM poles GROUP BY zone_type');
 
+    // Crew Performance Metrics
+    const crewPerformance = await db.all(`
+      SELECT 
+        c.id, 
+        c.name as crew_name, 
+        c.active_operator,
+        (SELECT COUNT(*) FROM installations i WHERE i.crew_id = c.id) as total_installations,
+        (SELECT COUNT(*) FROM poles p WHERE p.crew_id = c.id) as total_poles
+      FROM crews c
+      ORDER BY (total_installations + total_poles) DESC
+    `);
+
     res.json({
       summary: {
         total: totalCount.count,
@@ -525,6 +537,7 @@ app.get('/api/reports', async (req, res) => {
           return acc;
         }, { Urbana: 0, Rural: 0, 'Trayectos Seguros': 0 })
       },
+      crew_performance: crewPerformance,
       fixtures: allFixtures
     });
   } catch (error) {

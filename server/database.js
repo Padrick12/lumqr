@@ -35,6 +35,7 @@ async function initializeDatabase() {
       username TEXT NOT NULL UNIQUE,
       password TEXT NOT NULL,
       members TEXT NOT NULL,
+      active_operator TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -117,6 +118,9 @@ async function initializeDatabase() {
   } catch (e) {}
   try {
     await db.run('ALTER TABLE poles ADD COLUMN operating_status TEXT');
+  } catch (e) {}
+  try {
+    await db.run('ALTER TABLE crews ADD COLUMN active_operator TEXT');
   } catch (e) {}
 
   // Seed default data if database is empty

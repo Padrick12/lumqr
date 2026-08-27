@@ -39,6 +39,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
   const [crewUsername, setCrewUsername] = useState('');
   const [crewPassword, setCrewPassword] = useState('');
   const [crewMembers, setCrewMembers] = useState(''); 
+  const [crewActiveOperator, setCrewActiveOperator] = useState('');
   const [editingCrewId, setEditingCrewId] = useState<number | null>(null);
 
   const [batchPrefix, setBatchPrefix] = useState('LUM-LERDO');
@@ -70,10 +71,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
   const fetchCrews = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/crews`);
-      if (res.ok) {
-        const data = await res.json();
-        setCrews(data);
-      }
+      if (res.ok) setCrews(await res.json());
     } catch (err) {
       console.error('Error fetching crews:', err);
     }
@@ -82,10 +80,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
   const fetchBatches = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/batches`);
-      if (res.ok) {
-        const data = await res.json();
-        setBatches(data);
-      }
+      if (res.ok) setBatches(await res.json());
     } catch (err) {
       console.error('Error fetching batches:', err);
     }
@@ -94,7 +89,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
   const handleAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adminUsername.trim() || !adminPassword.trim()) {
-      setAdminMsg({ text: 'Todos los campos son requeridos.', isError: true });
+      setAdminMsg({ text: 'Por favor complete todos los campos de administrador.', isError: true });
       return;
     }
     
@@ -169,7 +164,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: crewName, username: crewUsername, password: crewPassword, members: membersArray })
+        body: JSON.stringify({ 
+          name: crewName, 
+          username: crewUsername, 
+          password: crewPassword, 
+          members: membersArray,
+          active_operator: crewActiveOperator.trim() || null
+        })
       });
 
       const data = await res.json();
@@ -184,6 +185,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
         setCrewUsername('');
         setCrewPassword('');
         setCrewMembers('');
+        setCrewActiveOperator('');
         setEditingCrewId(null);
         fetchCrews();
         onDataChange();
@@ -198,8 +200,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
     setEditingCrewId(crew.id);
     setCrewName(crew.name);
     setCrewUsername(crew.username);
-    setCrewPassword(crew.password);
-    setCrewMembers(crew.members.join(', '));
+    setCrewPassword('');
+    setCrewMembers(Array.isArray(crew.members) ? crew.members.join(', ') : crew.members);
+    setCrewActiveOperator(crew.active_operator || '');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -407,13 +410,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
                 </div>
               </div>
               <div className="form-group">
-                <label>Integrantes (separados por comas)</label>
+                <label>Integrantes de la Cuadrilla (separados por comas)</label>
                 <textarea 
-                  rows={3}
+                  rows={2}
                   placeholder="Ej. Juan Pérez, Luis Gómez, María Solís" 
                   value={crewMembers} 
                   onChange={(e) => setCrewMembers(e.target.value)}
                 />
+              </div>
+
+              <div className="form-group" style={{ background: 'rgba(5, 243, 162, 0.05)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(5, 243, 162, 0.2)' }}>
+                <label style={{ color: 'var(--neon-green)', fontWeight: 'bold' }}>👤 Responsable en Turno / Operador Designado hoy:</label>
+                <input 
+                  type="text" 
+                  placeholder="Ej. Juan Pérez (Jefe de Cuadrilla) / Roberto Morales (Encargado hoy)" 
+                  value={crewActiveOperator} 
+                  onChange={(e) => setCrewActiveOperator(e.target.value)}
+                  style={{ width: '100%', marginTop: '4px' }}
+                />
+                <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Este nombre aparecerá automáticamente bloqueado en los registros que haga la cuadrilla.</span>
               </div>
               
               {crewMsg.text && (
