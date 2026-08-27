@@ -9,6 +9,11 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+app.use((req, res, next) => {
+  res.setHeader('ngrok-skip-browser-warning', 'true');
+  next();
+});
+
 // Serve static frontend assets if built
 const clientDistPath = path.join(__dirname, '../client/dist');
 app.use(express.static(clientDistPath));
