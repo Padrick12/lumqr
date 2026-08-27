@@ -314,7 +314,7 @@ app.post('/api/batches/assign', async (req, res) => {
 
 // 4. Register Installation / Change Status (Despliegue & Mantenimiento)
 app.post('/api/installations', async (req, res) => {
-  const { code, crew_id, lat, lng, notes, status, installed_at } = req.body;
+  const { code, crew_id, operator_name, lat, lng, notes, status, installed_at, photo_before, photo_after } = req.body;
 
   if (!code || !lat || !lng || !status) {
     return res.status(400).json({ error: 'Faltan parámetros (code, lat, lng, status).' });
@@ -343,9 +343,9 @@ app.post('/api/installations', async (req, res) => {
     // Insert installation log
     const dateStr = installed_at || new Date().toISOString();
     await db.run(
-      `INSERT INTO installations (fixture_code, crew_id, lat, lng, installed_at, status_at_install, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [code, finalCrewId, lat, lng, dateStr, status, notes || '']
+      `INSERT INTO installations (fixture_code, crew_id, operator_name, lat, lng, installed_at, status_at_install, notes, photo_before, photo_after)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [code, finalCrewId, operator_name || null, lat, lng, dateStr, status, notes || '', photo_before || null, photo_after || null]
     );
 
     // Update fixture state and ensure it links to the installing crew if it wasn't
@@ -359,10 +359,13 @@ app.post('/api/installations', async (req, res) => {
       message: 'Instalación/Registro actualizado con éxito.',
       code,
       crew_id: finalCrewId,
+      operator_name: operator_name || null,
       status,
       lat,
       lng,
-      installed_at: dateStr
+      installed_at: dateStr,
+      photo_before: photo_before || null,
+      photo_after: photo_after || null
     });
   } catch (error) {
     await db.run('ROLLBACK;');
@@ -395,9 +398,9 @@ app.post('/api/installations/sync', async (req, res) => {
 
       const dateStr = item.installed_at || new Date().toISOString().slice(0, 19).replace('T', ' ');
       await db.run(
-        `INSERT INTO installations (fixture_code, crew_id, lat, lng, installed_at, status_at_install, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [item.code, finalCrewId, item.lat, item.lng, dateStr, item.status, item.notes || 'Sincronizado Offline']
+        `INSERT INTO installations (fixture_code, crew_id, operator_name, lat, lng, installed_at, status_at_install, notes, photo_before, photo_after)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [item.code, finalCrewId, item.operator_name || null, item.lat, item.lng, dateStr, item.status, item.notes || 'Sincronizado Offline', item.photo_before || null, item.photo_after || null]
       );
 
       await db.run(

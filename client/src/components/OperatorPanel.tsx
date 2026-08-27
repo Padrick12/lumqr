@@ -1,6 +1,6 @@
 import { API_BASE_URL } from '../config';
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Search, Calendar, History, ShieldCheck, AlertCircle, Save, WifiOff } from 'lucide-react';
+import { Camera, Search, Calendar, History, ShieldCheck, AlertCircle, Save, WifiOff, UserCheck, MessageCircle, Image as ImageIcon } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { addToQueue } from '../utils/offlineStore';
 import './shared-panels.css';
@@ -9,11 +9,14 @@ interface FixtureHistory {
   id: number;
   fixture_code: string;
   crew_name: string;
+  operator_name?: string;
   lat: number;
   lng: number;
   installed_at: string;
   status_at_install: string;
   notes: string;
+  photo_before?: string;
+  photo_after?: string;
 }
 
 interface FixtureDetails {
@@ -39,6 +42,25 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
 }) => {
   const [panelMode, setPanelMode] = useState<'qr' | 'census'>('qr');
   
+  // Operator Shift State
+  const [operatorName, setOperatorName] = useState<string>(() => {
+    return localStorage.getItem('lumqr_operator_name') || '';
+  });
+
+  // Photo Evidence State
+  const [photoBefore, setPhotoBefore] = useState<string | null>(null);
+  const [photoAfter, setPhotoAfter] = useState<string | null>(null);
+
+  // Success State for WhatsApp Share
+  const [lastSuccessData, setLastSuccessData] = useState<{
+    type: 'installation' | 'pole';
+    code: string;
+    status: string;
+    lat: number;
+    lng: number;
+    date: string;
+  } | null>(null);
+
   const [fixtureCode, setFixtureCode] = useState('');
   const [fixtureDetails, setFixtureDetails] = useState<FixtureDetails | null>(null);
   const [historyLog, setHistoryLog] = useState<FixtureHistory[]>([]);
@@ -59,6 +81,86 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const [isScannerActive, setIsScannerActive] = useState(false);
+
+  // Compression helper to keep photos < 150KB for fast uploads
+  const compressImageFile = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > MAX_WIDTH) {
+            height = Math.round((height * MAX_WIDTH) / width);
+            width = MAX_WIDTH;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', 0.7));
+          } else {
+            resolve(e.target?.result as string);
+          }
+        };
+        img.onerror = reject;
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handlePhotoBeforeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      try {
+        const base64 = await compressImageFile(e.target.files[0]);
+        setPhotoBefore(base64);
+      } catch (err) {
+        console.error("Error processing Photo Before:", err);
+      }
+    }
+  };
+
+  const handlePhotoAfterUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      try {
+        const base64 = await compressImageFile(e.target.files[0]);
+        setPhotoAfter(base64);
+      } catch (err) {
+        console.error("Error processing Photo After:", err);
+      }
+    }
+  };
+
+  const shareOnWhatsApp = () => {
+    if (!lastSuccessData) return;
+    const isPole = lastSuccessData.type === 'pole';
+    const formattedDate = new Date(lastSuccessData.date).toLocaleString('es-MX', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+
+    const text = `💡 *REPORTE DE ALUMBRADO PÚBLICO - LERDO, DGO.*
+----------------------------------------------
+🆔 *${isPole ? 'Poste Censado' : 'Luminaria QR'}:* ${lastSuccessData.code}
+👷‍♂️ *Cuadrilla:* ${crewName}
+👤 *Responsable en Turno:* ${operatorName.trim() || 'No especificado'}
+🌐 *Estado / Tipo:* ${lastSuccessData.status}
+📅 *Fecha/Hora:* ${formattedDate}
+📍 *Ubicación GPS:* https://maps.google.com/?q=${lastSuccessData.lat},${lastSuccessData.lng}
+
+📸 *Evidencia fotográfica respaldada en sistema LUMQR*`;
+
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    window.open(whatsappUrl, '_blank');
+  };
 
   const handleRegisterPole = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,12 +192,15 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           crew_id: crewId,
+          operator_name: operatorName.trim() || null,
           lat,
           lng,
           pole_type: poleType,
           lamp_type: lampType,
           zone_type: zoneType,
-          notes: poleNotes
+          notes: poleNotes,
+          photo_before: photoBefore,
+          photo_after: photoAfter
         })
       });
       const data = await res.json();
@@ -103,7 +208,17 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
         setPoleSubmitMsg({ text: data.error || 'Error al censar poste.', isError: true });
       } else {
         setPoleSubmitMsg({ text: `¡Poste ${data.pole_code} censado con éxito en ${zoneType}!`, isError: false });
+        setLastSuccessData({
+          type: 'pole',
+          code: data.pole_code,
+          status: `${lampType} (${zoneType})`,
+          lat,
+          lng,
+          date: new Date().toISOString()
+        });
         setPoleNotes('');
+        setPhotoBefore(null);
+        setPhotoAfter(null);
         onSyncComplete();
       }
     } catch (err) {
@@ -255,10 +370,13 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
     const payload = {
       code: fixtureDetails.code,
       crew_id: crewId,
+      operator_name: operatorName.trim() || null,
       lat,
       lng,
       status: newStatus,
       notes: installNotes,
+      photo_before: photoBefore,
+      photo_after: photoAfter,
       installed_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
     };
 
@@ -271,9 +389,19 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
           text: `Lectura guardada localmente en IndexedDB. Se sincronizará silenciosamente cuando haya señal celular.`,
           isError: false
         });
+        setLastSuccessData({
+          type: 'installation',
+          code: payload.code,
+          status: newStatus,
+          lat,
+          lng,
+          date: new Date().toISOString()
+        });
         setFixtureDetails(null);
         setFixtureCode('');
         setInstallNotes('');
+        setPhotoBefore(null);
+        setPhotoAfter(null);
       } catch (err) {
         setSubmitMsg({ text: 'Error al guardar la lectura localmente.', isError: true });
       }
@@ -290,9 +418,19 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
           setSubmitMsg({ text: data.error || 'Error al registrar instalación.', isError: true });
         } else {
           setSubmitMsg({ text: `Instalación registrada con éxito. Luminaria ${payload.code} actualizada a ${newStatus}.`, isError: false });
+          setLastSuccessData({
+            type: 'installation',
+            code: payload.code,
+            status: newStatus,
+            lat,
+            lng,
+            date: new Date().toISOString()
+          });
           setFixtureDetails(null);
           setFixtureCode('');
           setInstallNotes('');
+          setPhotoBefore(null);
+          setPhotoAfter(null);
           onSyncComplete(); 
         }
       } catch (err) {
@@ -302,6 +440,19 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
             text: 'Fallo de conexión. Lectura respaldada localmente en IndexedDB.',
             isError: false
           });
+          setLastSuccessData({
+            type: 'installation',
+            code: payload.code,
+            status: newStatus,
+            lat,
+            lng,
+            date: new Date().toISOString()
+          });
+          setFixtureDetails(null);
+          setFixtureCode('');
+          setInstallNotes('');
+          setPhotoBefore(null);
+          setPhotoAfter(null);
         } catch (localErr) {
           setSubmitMsg({ text: 'Error de red y fallo al guardar de forma local.', isError: true });
         }
@@ -322,7 +473,68 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* TARJETA DE RESPONSABLE EN TURNO */}
+      <div className="glass-panel" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '14px', border: '1px solid rgba(5, 243, 162, 0.3)', background: 'rgba(5, 243, 162, 0.04)' }}>
+        <UserCheck color="var(--neon-green)" size={22} />
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>
+            Responsable en Turno / Operador ({crewName}):
+          </label>
+          <input 
+            type="text" 
+            placeholder="Ej. Juan Pérez (Jefe) / Carlos Gómez (Interino)..."
+            value={operatorName}
+            onChange={(e) => {
+              setOperatorName(e.target.value);
+              localStorage.setItem('lumqr_operator_name', e.target.value);
+            }}
+            style={{ 
+              background: 'transparent', 
+              border: 'none', 
+              borderBottom: '1px solid rgba(255, 255, 255, 0.2)', 
+              color: '#fff', 
+              width: '100%', 
+              fontSize: '14px', 
+              fontWeight: 600, 
+              padding: '4px 0',
+              outline: 'none'
+            }}
+          />
+        </div>
+      </div>
+
+      {/* TARJETA DE WHATSAPP AL COMPLETAR REGISTRO */}
+      {lastSuccessData && (
+        <div style={{ background: 'rgba(37, 211, 102, 0.1)', border: '1px solid rgba(37, 211, 102, 0.4)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', animation: 'fadeIn 0.3s ease' }}>
+          <span style={{ fontSize: '13px', fontWeight: 700, color: '#25D366', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <ShieldCheck size={18} /> ¡Registro guardado exitosamente en sistema!
+          </span>
+          <button
+            onClick={shareOnWhatsApp}
+            style={{
+              background: '#25D366',
+              color: '#000',
+              fontWeight: 800,
+              fontSize: '14px',
+              padding: '12px 20px',
+              borderRadius: '10px',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              width: '100%',
+              justifyContent: 'center',
+              boxShadow: '0 4px 15px rgba(37, 211, 102, 0.3)'
+            }}
+          >
+            <MessageCircle size={20} />
+            <span>Compartir Evidencia por WhatsApp (1 Clic)</span>
+          </button>
+        </div>
+      )}
+
       {/* Selector de Modo: Registro QR vs Censo de Postes */}
       <div style={{ display: 'flex', gap: '12px', background: 'rgba(13, 20, 38, 0.8)', padding: '6px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
         <button
@@ -505,6 +717,47 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
               />
             </div>
 
+            {/* SECCIÓN EVIDENCIA FOTOGRÁFICA (Doble Captura Opcional) */}
+            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '12px', marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--neon-blue)', display: 'flex', alignItems: 'center', gap: '6px', textTransform: 'uppercase' }}>
+                <ImageIcon size={14} /> Evidencia Fotográfica en Campo
+              </span>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
+                    📸 1. Estado / Poste
+                  </label>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    capture="environment"
+                    onChange={handlePhotoBeforeUpload}
+                    style={{ fontSize: '11px', width: '100%' }}
+                  />
+                  {photoBefore && (
+                    <img src={photoBefore} alt="Antes" style={{ width: '100%', height: '70px', objectFit: 'cover', borderRadius: '6px', marginTop: '4px', border: '1px solid var(--neon-blue)' }} />
+                  )}
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
+                    📸 2. Lámpara Encendida
+                  </label>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    capture="environment"
+                    onChange={handlePhotoAfterUpload}
+                    style={{ fontSize: '11px', width: '100%' }}
+                  />
+                  {photoAfter && (
+                    <img src={photoAfter} alt="Después" style={{ width: '100%', height: '70px', objectFit: 'cover', borderRadius: '6px', marginTop: '4px', border: '1px solid var(--neon-green)' }} />
+                  )}
+                </div>
+              </div>
+            </div>
+
             {poleSubmitMsg.text && (
               <div style={{ padding: '12px', background: poleSubmitMsg.isError ? 'rgba(244,63,94,0.1)' : 'rgba(5,243,162,0.1)', color: poleSubmitMsg.isError ? 'var(--neon-rose)' : 'var(--neon-green)', borderRadius: '8px', fontSize: '13px', marginTop: '8px' }}>
                 {poleSubmitMsg.text}
@@ -645,6 +898,47 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
                   value={installNotes}
                   onChange={(e) => setInstallNotes(e.target.value)}
                 />
+              </div>
+
+              {/* SECCIÓN EVIDENCIA FOTOGRÁFICA (Doble Captura Opcional) */}
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--neon-green)', display: 'flex', alignItems: 'center', gap: '6px', textTransform: 'uppercase' }}>
+                  <ImageIcon size={14} /> Evidencia Fotográfica en Campo
+                </span>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
+                      📸 1. Estado / Poste / Código
+                    </label>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      capture="environment"
+                      onChange={handlePhotoBeforeUpload}
+                      style={{ fontSize: '11px', width: '100%' }}
+                    />
+                    {photoBefore && (
+                      <img src={photoBefore} alt="Antes" style={{ width: '100%', height: '70px', objectFit: 'cover', borderRadius: '6px', marginTop: '4px', border: '1px solid var(--neon-blue)' }} />
+                    )}
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
+                      📸 2. Lámpara Encendida
+                    </label>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      capture="environment"
+                      onChange={handlePhotoAfterUpload}
+                      style={{ fontSize: '11px', width: '100%' }}
+                    />
+                    {photoAfter && (
+                      <img src={photoAfter} alt="Después" style={{ width: '100%', height: '70px', objectFit: 'cover', borderRadius: '6px', marginTop: '4px', border: '1px solid var(--neon-green)' }} />
+                    )}
+                  </div>
+                </div>
               </div>
 
               {submitMsg.text && (

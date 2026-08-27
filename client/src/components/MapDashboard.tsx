@@ -12,11 +12,14 @@ interface Installation {
   fixture_code: string;
   crew_id: number;
   crew_name: string;
+  operator_name?: string;
   lat: number;
   lng: number;
   installed_at: string;
   status_at_install: string;
   notes: string;
+  photo_before?: string;
+  photo_after?: string;
   current_status: 'Nueva' | 'Reparada' | 'Rehabilitada' | 'Robo';
   arrival_date: string;
 }
@@ -36,6 +39,9 @@ interface CensusPole {
   zone_type: 'Urbana' | 'Rural' | 'Trayectos Seguros';
   notes: string;
   crew_name: string;
+  operator_name?: string;
+  photo_before?: string;
+  photo_after?: string;
   created_at: string;
 }
 
@@ -393,17 +399,26 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
           </div>
         ` : '';
 
+        const photoHTML = (inst.photo_before || inst.photo_after) ? `
+          <div style="display: flex; gap: 6px; margin-top: 8px;">
+            ${inst.photo_before ? `<div style="flex: 1;"><span style="font-size: 8px; color: #94a3b8; display: block; margin-bottom: 2px;">Foto Antes / Poste:</span><img src="${inst.photo_before}" style="width: 100%; height: 65px; object-fit: cover; border-radius: 4px; border: 1px solid #38bdf8;" /></div>` : ''}
+            ${inst.photo_after ? `<div style="flex: 1;"><span style="font-size: 8px; color: #94a3b8; display: block; margin-bottom: 2px;">Foto Encendida:</span><img src="${inst.photo_after}" style="width: 100%; height: 65px; object-fit: cover; border-radius: 4px; border: 1px solid #34d399;" /></div>` : ''}
+          </div>
+        ` : '';
+
         const popupHTML = `
-          <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px; color: #f1f5f9; min-width: 200px; padding: 4px;">
+          <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px; color: #f1f5f9; min-width: 210px; padding: 4px;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 6px; margin-bottom: 6px;">
               <span style="font-family: monospace; font-weight: bold; font-size: 13px; color: #fff;">${inst.fixture_code}</span>
               <span style="padding: 2px 6px; border-radius: 4px; font-weight: 600; font-size: 10px; ${badgeClassStyle}">${inst.current_status}</span>
             </div>
             <div style="display: flex; flex-direction: column; gap: 4px;">
               <p style="margin: 2px 0;"><strong>Cuadrilla:</strong> ${inst.crew_name}</p>
+              ${inst.operator_name ? `<p style="margin: 2px 0; color: #34d399;"><strong>Responsable en Turno:</strong> ${inst.operator_name}</p>` : ''}
               <p style="margin: 2px 0;"><strong>Ubicación:</strong> ${getColoniaName(inst.lat, inst.lng)}</p>
               <p style="margin: 2px 0;"><strong>Instalada:</strong> ${formatLocalDateTime(inst.installed_at)}</p>
               ${inst.notes ? `<p style="margin: 6px 0 0 0; font-style: italic; background: rgba(255,255,255,0.04); padding: 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.04);">"${inst.notes}"</p>` : ''}
+              ${photoHTML}
               ${usageHTML}
               ${alertHTML}
               <div style="display: flex; gap: 6px; margin-top: 10px; border-top: 1px solid #334155; padding-top: 8px;">
@@ -438,6 +453,13 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
         const icon = createPoleIcon(p.lamp_type);
         const marker = L.marker([p.lat, p.lng], { icon });
 
+        const polePhotoHTML = (p.photo_before || p.photo_after) ? `
+          <div style="display: flex; gap: 6px; margin-top: 8px;">
+            ${p.photo_before ? `<div style="flex: 1;"><span style="font-size: 8px; color: #94a3b8; display: block; margin-bottom: 2px;">Foto Antes / Poste:</span><img src="${p.photo_before}" style="width: 100%; height: 65px; object-fit: cover; border-radius: 4px; border: 1px solid #38bdf8;" /></div>` : ''}
+            ${p.photo_after ? `<div style="flex: 1;"><span style="font-size: 8px; color: #94a3b8; display: block; margin-bottom: 2px;">Foto Encendida:</span><img src="${p.photo_after}" style="width: 100%; height: 65px; object-fit: cover; border-radius: 4px; border: 1px solid #34d399;" /></div>` : ''}
+          </div>
+        ` : '';
+
         const polePopupHTML = `
           <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px; color: #f1f5f9; min-width: 210px; padding: 4px;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 6px; margin-bottom: 6px;">
@@ -446,11 +468,13 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
             </div>
             <div style="display: flex; flex-direction: column; gap: 4px;">
               <p style="margin: 2px 0;"><strong>Cuadrilla Censadora:</strong> ${p.crew_name || 'Almacén / Sistema'}</p>
+              ${p.operator_name ? `<p style="margin: 2px 0; color: #38bdf8;"><strong>Responsable en Turno:</strong> ${p.operator_name}</p>` : ''}
               <p style="margin: 2px 0;"><strong>Estructura:</strong> ${p.pole_type}</p>
               <p style="margin: 2px 0;"><strong>Tecnología Lámpara:</strong> ${p.lamp_type}</p>
               <p style="margin: 2px 0;"><strong>Clasificación Zona:</strong> ${p.zone_type}</p>
               <p style="margin: 2px 0;"><strong>Fecha Censo:</strong> ${formatLocalDateTime(p.created_at)}</p>
               ${p.notes ? `<p style="margin: 6px 0 0 0; font-style: italic; background: rgba(255,255,255,0.04); padding: 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.04);">"${p.notes}"</p>` : ''}
+              ${polePhotoHTML}
               <div style="display: flex; gap: 6px; margin-top: 10px; border-top: 1px solid #334155; padding-top: 8px;">
                 <a href="https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}" target="_blank" rel="noopener noreferrer" style="flex: 1; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 4px; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); padding: 5px 8px; border-radius: 6px; font-weight: 600; font-size: 10px;">
                   📍 Google Maps
