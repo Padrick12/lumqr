@@ -1007,6 +1007,27 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
               </div>
             </div>
 
+            {/* ALERTA DE REGISTRO DUPLICADO EN LAS ÚLTIMAS 12 HORAS */}
+            {(() => {
+              const recentInstall = historyLog.find(h => {
+                const diffMs = Date.now() - new Date(h.installed_at).getTime();
+                return diffMs > 0 && diffMs <= 12 * 60 * 60 * 1000;
+              });
+              if (!recentInstall) return null;
+              const timeFormatted = new Date(recentInstall.installed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              return (
+                <div style={{ background: 'rgba(245, 158, 11, 0.12)', border: '1px solid var(--neon-amber)', borderRadius: '10px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--neon-amber)', fontSize: '12px', fontWeight: 600, animation: 'pulse 2s infinite' }}>
+                  <AlertCircle size={22} style={{ flexShrink: 0 }} />
+                  <div>
+                    <strong>⚠️ ALERTA DE REGISTRO DUPLICADO RECIENTE:</strong>
+                    <div style={{ fontSize: '11px', marginTop: '2px', color: '#fef08a', fontWeight: 500 }}>
+                      Esta luminaria ya fue registrada hoy a las <strong>{timeFormatted}</strong> por la <strong>{recentInstall.crew_name}</strong> {recentInstall.operator_name ? `(Responsable: ${recentInstall.operator_name})` : ''}.
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             <form onSubmit={handleRegisterInstallation} className="form-group">
               <div className="form-row">
                 <div className="form-group">
