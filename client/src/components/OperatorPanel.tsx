@@ -75,9 +75,17 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
   const [poleType, setPoleType] = useState<'Concreto' | 'Metálico' | 'Madera' | 'Brazo en Fachada'>('Concreto');
   const [lampType, setLampType] = useState<'Vapor de Sodio' | 'LED Antiguo' | 'LED Nueva (Sin QR)' | 'Sin Lámpara'>('Vapor de Sodio');
   const [zoneType, setZoneType] = useState<'Urbana' | 'Rural' | 'Trayectos Seguros'>('Urbana');
+  const [operatingStatus, setOperatingStatus] = useState<'Funcionando' | 'Prendida 24/7' | 'No Funciona / Apagada'>('Funcionando');
+  const [wattage, setWattage] = useState<string>('100');
   const [poleNotes, setPoleNotes] = useState('');
   const [poleSubmitMsg, setPoleSubmitMsg] = useState({ text: '', isError: false });
   const [loadingPole, setLoadingPole] = useState(false);
+
+  const handleModeChange = (mode: 'qr' | 'census') => {
+    setPanelMode(mode);
+    setPhotoBefore(null);
+    setPhotoAfter(null);
+  };
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const [isScannerActive, setIsScannerActive] = useState(false);
@@ -198,6 +206,8 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
           pole_type: poleType,
           lamp_type: lampType,
           zone_type: zoneType,
+          wattage: wattage ? Number(wattage) : null,
+          operating_status: operatingStatus,
           notes: poleNotes,
           photo_before: photoBefore,
           photo_after: photoAfter
@@ -211,7 +221,7 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
         setLastSuccessData({
           type: 'pole',
           code: data.pole_code,
-          status: `${lampType} (${zoneType})`,
+          status: `${lampType} | ${wattage || '?'}W | ${operatingStatus}`,
           lat,
           lng,
           date: new Date().toISOString()
@@ -538,7 +548,7 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
       {/* Selector de Modo: Registro QR vs Censo de Postes */}
       <div style={{ display: 'flex', gap: '12px', background: 'rgba(13, 20, 38, 0.8)', padding: '6px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
         <button
-          onClick={() => setPanelMode('qr')}
+          onClick={() => handleModeChange('qr')}
           style={{
             flex: 1,
             padding: '12px',
@@ -561,7 +571,7 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
         </button>
 
         <button
-          onClick={() => setPanelMode('census')}
+          onClick={() => handleModeChange('census')}
           style={{
             flex: 1,
             padding: '12px',
@@ -592,13 +602,13 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
             <span>Levantamiento de Censo de Poste</span>
           </h2>
           <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '20px' }}>
-            Registre cualquier poste de la red municipal indicando el tipo de tecnología actual en campo.
+            Registre cualquier poste de la red municipal indicando tecnología, potencia y estado operativo actual.
           </p>
 
           <form onSubmit={handleRegisterPole} className="form-group">
             <div>
               <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
-                tecnología de lámpara actual en poste:
+                TECNOLOGÍA DE LÁMPARA EN POSTE:
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <button
@@ -668,6 +678,37 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
                 >
                   ❌ Sin Lámpara / Vacío
                 </button>
+              </div>
+            </div>
+
+            {/* ESTADO OPERATIVO ACTUAL & POTENCIA WATTS */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                  Estado Operativo Actual:
+                </label>
+                <select
+                  value={operatingStatus}
+                  onChange={(e: any) => setOperatingStatus(e.target.value)}
+                  style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', color: '#fff', fontSize: '13px' }}
+                >
+                  <option value="Funcionando">🟢 Funcionando Normal</option>
+                  <option value="Prendida 24/7">⚡ Prendida 24/7 (Fallo Fotocelda)</option>
+                  <option value="No Funciona / Apagada">🔴 No Funciona / Apagada</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                  Potencia / Watts (W):
+                </label>
+                <input 
+                  type="number"
+                  placeholder="Ej. 50, 70, 100, 150, 200..."
+                  value={wattage}
+                  onChange={(e) => setWattage(e.target.value)}
+                  style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', color: '#fff', fontSize: '13px' }}
+                />
               </div>
             </div>
 

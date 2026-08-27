@@ -37,6 +37,8 @@ interface CensusPole {
   pole_type: string;
   lamp_type: 'Vapor de Sodio' | 'LED Antiguo' | 'LED Nueva (Sin QR)' | 'Sin Lámpara';
   zone_type: 'Urbana' | 'Rural' | 'Trayectos Seguros';
+  wattage?: number;
+  operating_status?: string;
   notes: string;
   crew_name: string;
   operator_name?: string;
@@ -471,6 +473,8 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
               ${p.operator_name ? `<p style="margin: 2px 0; color: #38bdf8;"><strong>Responsable en Turno:</strong> ${p.operator_name}</p>` : ''}
               <p style="margin: 2px 0;"><strong>Estructura:</strong> ${p.pole_type}</p>
               <p style="margin: 2px 0;"><strong>Tecnología Lámpara:</strong> ${p.lamp_type}</p>
+              ${p.wattage ? `<p style="margin: 2px 0;"><strong>Potencia:</strong> ${p.wattage} Watts</p>` : ''}
+              ${p.operating_status ? `<p style="margin: 2px 0; color: #f59e0b;"><strong>Estado Operativo:</strong> ${p.operating_status}</p>` : ''}
               <p style="margin: 2px 0;"><strong>Clasificación Zona:</strong> ${p.zone_type}</p>
               <p style="margin: 2px 0;"><strong>Fecha Censo:</strong> ${formatLocalDateTime(p.created_at)}</p>
               ${p.notes ? `<p style="margin: 6px 0 0 0; font-style: italic; background: rgba(255,255,255,0.04); padding: 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.04);">"${p.notes}"</p>` : ''}

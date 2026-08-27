@@ -82,6 +82,8 @@ async function initializeDatabase() {
       pole_type TEXT DEFAULT 'Concreto',
       lamp_type TEXT CHECK(lamp_type IN ('Vapor de Sodio', 'LED Antiguo', 'LED Nueva (Sin QR)', 'Sin Lámpara')) NOT NULL,
       zone_type TEXT CHECK(zone_type IN ('Urbana', 'Rural', 'Trayectos Seguros')) DEFAULT 'Urbana',
+      wattage INTEGER,
+      operating_status TEXT DEFAULT 'Funcionando',
       notes TEXT,
       photo_before TEXT,
       photo_after TEXT,
@@ -109,6 +111,12 @@ async function initializeDatabase() {
   } catch (e) {}
   try {
     await db.run('ALTER TABLE poles ADD COLUMN photo_after TEXT');
+  } catch (e) {}
+  try {
+    await db.run('ALTER TABLE poles ADD COLUMN wattage INTEGER');
+  } catch (e) {}
+  try {
+    await db.run('ALTER TABLE poles ADD COLUMN operating_status TEXT');
   } catch (e) {}
 
   // Seed default data if database is empty

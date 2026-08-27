@@ -548,7 +548,7 @@ app.get('/api/poles', async (req, res) => {
 });
 
 app.post('/api/poles', async (req, res) => {
-  const { crew_id, lat, lng, pole_type, lamp_type, zone_type, notes } = req.body;
+  const { crew_id, operator_name, lat, lng, pole_type, lamp_type, zone_type, wattage, operating_status, notes, photo_before, photo_after } = req.body;
 
   if (!lat || !lng || !lamp_type) {
     return res.status(400).json({ error: 'Faltan parámetros requeridos (lat, lng, lamp_type).' });
@@ -560,17 +560,22 @@ app.post('/api/poles', async (req, res) => {
     const isoDate = new Date().toISOString();
 
     const result = await db.run(`
-      INSERT INTO poles (pole_code, crew_id, lat, lng, pole_type, lamp_type, zone_type, notes, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO poles (pole_code, crew_id, operator_name, lat, lng, pole_type, lamp_type, zone_type, wattage, operating_status, notes, photo_before, photo_after, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       poleCode,
       crew_id || null,
+      operator_name || null,
       lat,
       lng,
       pole_type || 'Concreto',
       lamp_type,
       zone_type || 'Urbana',
+      wattage ? Number(wattage) : null,
+      operating_status || 'Funcionando',
       notes || '',
+      photo_before || null,
+      photo_after || null,
       isoDate
     ]);
 
@@ -578,10 +583,15 @@ app.post('/api/poles', async (req, res) => {
       message: 'Poste censado correctamente.',
       id: result.lastID,
       pole_code: poleCode,
+      operator_name: operator_name || null,
       lat,
       lng,
       lamp_type,
       zone_type: zone_type || 'Urbana',
+      wattage: wattage ? Number(wattage) : null,
+      operating_status: operating_status || 'Funcionando',
+      photo_before: photo_before || null,
+      photo_after: photo_after || null,
       created_at: isoDate
     });
   } catch (error) {
