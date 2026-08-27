@@ -1,8 +1,15 @@
+const fs = require('fs');
 const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 const path = require('path');
 
-const dbPath = path.join(__dirname, 'lumqr.db');
+const dbPath = process.env.DATABASE_PATH || path.join(__dirname, 'lumqr.db');
+
+// Ensure directory exists if custom path is provided
+const dbDir = path.dirname(dbPath);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
 
 async function initializeDatabase() {
   const db = await open({
