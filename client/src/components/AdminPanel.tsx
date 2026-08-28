@@ -9,6 +9,7 @@ interface Crew {
   name: string;
   username?: string;
   members: string[];
+  active_operator?: string | null;
   created_at: string;
 }
 
@@ -192,6 +193,34 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
       }
     } catch (err) {
       setCrewMsg({ text: 'Error de conexión con el servidor.', isError: true });
+    }
+    setTimeout(() => setCrewMsg({ text: '', isError: false }), 4000);
+  };
+
+  const handleQuickOperatorChange = async (crew: any, newOperator: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/crews/${crew.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: crew.name,
+          username: crew.username,
+          password: crew.password,
+          members: crew.members,
+          active_operator: newOperator || null
+        })
+      });
+
+      if (res.ok) {
+        setCrewMsg({ text: `🟢 Responsable de "${crew.name}" actualizado a ${newOperator || 'Sin Asignar'}.`, isError: false });
+        fetchCrews();
+        onDataChange();
+      } else {
+        const data = await res.json();
+        setCrewMsg({ text: data.error || 'Error al actualizar responsable.', isError: true });
+      }
+    } catch (err) {
+      setCrewMsg({ text: 'Error de red al actualizar responsable.', isError: true });
     }
     setTimeout(() => setCrewMsg({ text: '', isError: false }), 4000);
   };
@@ -472,27 +501,57 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
                 <p className="empty-state">No hay cuadrillas registradas.</p>
               ) : (
                 crews.map(crew => (
-                  <div key={crew.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                    <div>
-                      <h4 style={{ fontSize: '14px', fontWeight: 700, margin: 0 }}>{crew.name}</h4>
-                      <p style={{ fontSize: '11px', color: 'var(--neon-green)', marginTop: '4px', marginBottom: '2px', fontFamily: 'monospace' }}>
-                        Usuario: {crew.username}
-                      </p>
-                      <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>
-                        Integrantes: {crew.members.join(', ')}
-                      </p>
+                  <div key={crew.id} style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '14px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div>
+                        <h4 style={{ fontSize: '14px', fontWeight: 700, margin: 0 }}>{crew.name}</h4>
+                        <p style={{ fontSize: '11px', color: 'var(--neon-green)', marginTop: '2px', marginBottom: 0, fontFamily: 'monospace' }}>
+                          Usuario: {crew.username}
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        <button 
+                          onClick={() => handleEditCrew(crew)} 
+                          className="icon-btn"
+                          title="Editar cuadrilla"
+                        >
+                          <Edit3 size={16} />
+                        </button>
+                        <button onClick={() => setConfirmDialog({ isOpen: true, message: '¿Está seguro de eliminar esta cuadrilla? Las luminarias asociadas quedarán sin cuadrilla.', onConfirm: () => handleDeleteCrew(crew.id) })} className="icon-btn" style={{ color: 'var(--neon-rose)' }} title="Eliminar cuadrilla">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '4px' }}>
-                      <button 
-                        onClick={() => handleEditCrew(crew)} 
-                        className="icon-btn"
-                        title="Editar cuadrilla"
+
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                      Integrantes: <span style={{ color: '#fff' }}>{crew.members.join(', ')}</span>
+                    </div>
+
+                    {/* SELECTOR RÁPIDO DE RESPONSABLE EN TURNO */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(5, 243, 162, 0.05)', padding: '8px 10px', borderRadius: '8px', border: '1px solid rgba(5, 243, 162, 0.2)' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--neon-green)', whiteSpace: 'nowrap' }}>
+                        👤 Responsable Hoy:
+                      </span>
+                      <select
+                        value={crew.active_operator || ''}
+                        onChange={(e) => handleQuickOperatorChange(crew, e.target.value)}
+                        style={{
+                          flex: 1,
+                          padding: '6px 8px',
+                          background: 'rgba(0,0,0,0.4)',
+                          border: '1px solid var(--border-color)',
+                          borderRadius: '6px',
+                          color: '#fff',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
                       >
-                        <Edit3 size={16} />
-                      </button>
-                      <button onClick={() => setConfirmDialog({ isOpen: true, message: '¿Está seguro de eliminar esta cuadrilla? Las luminarias asociadas quedarán sin cuadrilla.', onConfirm: () => handleDeleteCrew(crew.id) })} className="icon-btn" style={{ color: 'var(--neon-rose)' }} title="Eliminar cuadrilla">
-                        <Trash2 size={16} />
-                      </button>
+                        <option value="">-- Sin Asignar (Seleccionar Integrante) --</option>
+                        {crew.members.map((mem: string, idx: number) => (
+                          <option key={idx} value={mem}>{mem} (Integrante)</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                 ))

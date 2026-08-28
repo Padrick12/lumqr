@@ -90,6 +90,9 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
   const [poleSubmitMsg, setPoleSubmitMsg] = useState({ text: '', isError: false });
   const [loadingPole, setLoadingPole] = useState(false);
 
+  const [crewMembersList, setCrewMembersList] = useState<string[]>([]);
+  const [isAdminAssigned, setIsAdminAssigned] = useState<boolean>(false);
+
   const handleModeChange = (mode: 'qr' | 'census') => {
     setPanelMode(mode);
     setPhotoBefore(null);
@@ -101,11 +104,19 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
       .then(res => res.json())
       .then(crews => {
         const currentCrew = Array.isArray(crews) ? crews.find((c: any) => c.id === crewId) : null;
-        if (currentCrew && currentCrew.active_operator) {
-          setOperatorName(currentCrew.active_operator);
+        if (currentCrew) {
+          if (Array.isArray(currentCrew.members)) {
+            setCrewMembersList(currentCrew.members);
+          }
+          if (currentCrew.active_operator) {
+            setOperatorName(currentCrew.active_operator);
+            setIsAdminAssigned(true);
+          } else {
+            setIsAdminAssigned(false);
+          }
         }
       })
-      .catch(err => console.error("Error loading crew active operator:", err));
+      .catch(err => console.error("Error loading crew details:", err));
   }, [crewId]);
 
   const isSinLamp = lampType === 'Sin Lámpara';
@@ -567,29 +578,74 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
         <div className="glass-panel" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '14px', border: '1px solid rgba(5, 243, 162, 0.3)', background: 'rgba(5, 243, 162, 0.04)' }}>
           <UserCheck color="var(--neon-green)" size={22} />
           <div style={{ flex: 1 }}>
-            <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>
+            <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
               Responsable en Turno / Operador ({crewName}):
+              {isAdminAssigned && <span style={{ fontSize: '10px', color: 'var(--neon-green)', background: 'rgba(5,243,162,0.15)', padding: '2px 6px', borderRadius: '4px' }}>🟢 Oficial (Designado por Admin)</span>}
             </label>
-            <input 
-              type="text" 
-              placeholder="Ej. Juan Pérez (Jefe) / Carlos Gómez (Interino)..."
-              value={operatorName}
-              onChange={(e) => {
-                setOperatorName(e.target.value);
-                localStorage.setItem('lumqr_operator_name', e.target.value);
-              }}
-              style={{ 
-                background: 'transparent', 
-                border: 'none', 
-                borderBottom: '1px solid rgba(255, 255, 255, 0.2)', 
-                color: '#fff', 
-                width: '100%', 
-                fontSize: '14px', 
-                fontWeight: 600, 
-                padding: '4px 0',
-                outline: 'none'
-              }}
-            />
+            
+            {isAdminAssigned ? (
+              <input 
+                type="text" 
+                disabled
+                value={operatorName}
+                style={{ 
+                  background: 'transparent', 
+                  border: 'none', 
+                  borderBottom: '1px solid var(--neon-green)', 
+                  color: 'var(--neon-green)', 
+                  width: '100%', 
+                  fontSize: '14px', 
+                  fontWeight: 700, 
+                  padding: '4px 0',
+                  outline: 'none',
+                  cursor: 'not-allowed'
+                }}
+              />
+            ) : crewMembersList.length > 0 ? (
+              <select
+                value={operatorName}
+                onChange={(e) => {
+                  setOperatorName(e.target.value);
+                  localStorage.setItem('lumqr_operator_name', e.target.value);
+                }}
+                style={{
+                  background: 'rgba(0,0,0,0.4)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '6px',
+                  color: '#fff',
+                  width: '100%',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  padding: '6px'
+                }}
+              >
+                <option value="">-- Seleccionar Integrante Responsable hoy --</option>
+                {crewMembersList.map((mem, idx) => (
+                  <option key={idx} value={mem}>{mem} (Integrante)</option>
+                ))}
+              </select>
+            ) : (
+              <input 
+                type="text" 
+                placeholder="Ej. Juan Pérez (Jefe de Cuadrilla)..."
+                value={operatorName}
+                onChange={(e) => {
+                  setOperatorName(e.target.value);
+                  localStorage.setItem('lumqr_operator_name', e.target.value);
+                }}
+                style={{ 
+                  background: 'transparent', 
+                  border: 'none', 
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.2)', 
+                  color: '#fff', 
+                  width: '100%', 
+                  fontSize: '14px', 
+                  fontWeight: 600, 
+                  padding: '4px 0',
+                  outline: 'none'
+                }}
+              />
+            )}
           </div>
         </div>
 
