@@ -110,10 +110,15 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelectRole }) => {
     <div className="role-selector-container">
       <div className="role-selector-content">
         <div className="role-selector-header">
-          <div className="logo-badge" style={{ background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)', boxShadow: '0 0 20px rgba(16, 185, 129, 0.4)' }}>🌳</div>
-          <h1>LUMQR <span className="highlight" style={{ color: 'var(--neon-green)' }}>Lerdo</span></h1>
-          <p style={{ color: '#e2e8f0', fontWeight: 600 }}>Sistema Municipal de Alumbrado Público — Lerdo, Dgo. 🌿</p>
-          <span style={{ fontSize: '11px', color: 'var(--neon-amber)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', marginTop: '4px', display: 'block' }}>"Ciudad Jardín"</span>
+          <div className="logo-badge" style={{ background: 'linear-gradient(135deg, rgba(5, 243, 162, 0.2) 0%, rgba(0, 242, 254, 0.2) 100%)', border: '1px solid rgba(5, 243, 162, 0.4)', boxShadow: '0 0 25px rgba(5, 243, 162, 0.25)', color: 'var(--neon-green)', fontWeight: 800, fontSize: '20px' }}>
+            LQ
+          </div>
+          <h1 style={{ fontSize: '32px', fontWeight: 800, marginTop: '12px' }}>
+            LUMQR <span className="highlight" style={{ color: 'var(--neon-green)' }}>Lerdo</span>
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '6px' }}>
+            Sistema Municipal de Alumbrado Público — Lerdo, Dgo.
+          </p>
         </div>
 
         <div className="roles-grid">
