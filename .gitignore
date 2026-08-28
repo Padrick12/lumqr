@@ -4,3 +4,11 @@ server/node_modules/
 client/dist/
 .DS_Store
 *.log
+
+# Databases & User Uploaded Data (MUST NEVER BE TOUCHED BY GIT)
+*.db
+*.db-wal
+*.db-shm
+server/lumqr.db
+server/uploads/
+server/backups/
