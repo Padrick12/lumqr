@@ -39,8 +39,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
   const [crewName, setCrewName] = useState('');
   const [crewUsername, setCrewUsername] = useState('');
   const [crewPassword, setCrewPassword] = useState('');
-  const [crewMembers, setCrewMembers] = useState(''); 
-  const [crewActiveOperator, setCrewActiveOperator] = useState('');
+  const [crewMembersList, setCrewMembersList] = useState<string[]>([]);
+  const [newMemberInput, setNewMemberInput] = useState('');
   const [editingCrewId, setEditingCrewId] = useState<number | null>(null);
 
   const [batchPrefix, setBatchPrefix] = useState('LUM-LERDO');
@@ -144,17 +144,31 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
     }
   };
 
+  const handleAddMember = () => {
+    const trimmed = newMemberInput.trim();
+    if (trimmed) {
+      if (!crewMembersList.includes(trimmed)) {
+        setCrewMembersList([...crewMembersList, trimmed]);
+      }
+      setNewMemberInput('');
+    }
+  };
+
+  const handleRemoveMember = (indexToRemove: number) => {
+    setCrewMembersList(crewMembersList.filter((_, idx) => idx !== indexToRemove));
+  };
+
   const handleCrewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!crewName.trim() || !crewUsername.trim() || !crewPassword.trim() || !crewMembers.trim()) {
-      setCrewMsg({ text: 'Por favor complete todos los campos.', isError: true });
+    if (!crewName.trim() || !crewUsername.trim() || (!editingCrewId && !crewPassword.trim())) {
+      setCrewMsg({ text: 'Por favor ingrese nombre, usuario y contraseña de la cuadrilla.', isError: true });
       return;
     }
 
-    const membersArray = crewMembers
-      .split(',')
-      .map(m => m.trim())
-      .filter(m => m.length > 0);
+    if (crewMembersList.length === 0) {
+      setCrewMsg({ text: 'Debe agregar al menos 1 integrante a la cuadrilla.', isError: true });
+      return;
+    }
 
     const url = editingCrewId 
       ? `${API_BASE_URL}/api/crews/${editingCrewId}` 
@@ -169,8 +183,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
           name: crewName, 
           username: crewUsername, 
           password: crewPassword, 
-          members: membersArray,
-          active_operator: crewActiveOperator.trim() || null
+          members: crewMembersList
         })
       });
 
@@ -185,8 +198,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
         setCrewName('');
         setCrewUsername('');
         setCrewPassword('');
-        setCrewMembers('');
-        setCrewActiveOperator('');
+        setCrewMembersList([]);
+        setNewMemberInput('');
         setEditingCrewId(null);
         fetchCrews();
         onDataChange();
@@ -230,8 +243,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
     setCrewName(crew.name);
     setCrewUsername(crew.username);
     setCrewPassword('');
-    setCrewMembers(Array.isArray(crew.members) ? crew.members.join(', ') : crew.members);
-    setCrewActiveOperator(crew.active_operator || '');
+    setCrewMembersList(Array.isArray(crew.members) ? crew.members : []);
+    setNewMemberInput('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -438,26 +451,78 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
                   />
                 </div>
               </div>
+              {/* GESTOR INTERACTIVO DE INTEGRANTES */}
               <div className="form-group">
-                <label>Integrantes de la Cuadrilla (separados por comas)</label>
-                <textarea 
-                  rows={2}
-                  placeholder="Ej. Juan Pérez, Luis Gómez, María Solís" 
-                  value={crewMembers} 
-                  onChange={(e) => setCrewMembers(e.target.value)}
-                />
-              </div>
+                <label>Agregar Integrantes de la Cuadrilla (Uno por Uno)</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input 
+                    type="text" 
+                    placeholder="Escriba el nombre completo (ej. Jose Nieves) y presione Enter o Agregar..." 
+                    value={newMemberInput} 
+                    onChange={(e) => setNewMemberInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddMember();
+                      }
+                    }}
+                    style={{ flex: 1 }}
+                  />
+                  <button 
+                    type="button" 
+                    onClick={handleAddMember}
+                    style={{ 
+                      background: 'var(--neon-green)', 
+                      color: '#000', 
+                      fontWeight: 800, 
+                      fontSize: '13px', 
+                      padding: '0 16px', 
+                      borderRadius: '8px', 
+                      border: 'none', 
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    + Agregar
+                  </button>
+                </div>
 
-              <div className="form-group" style={{ background: 'rgba(5, 243, 162, 0.05)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(5, 243, 162, 0.2)' }}>
-                <label style={{ color: 'var(--neon-green)', fontWeight: 'bold' }}>👤 Responsable en Turno / Operador Designado hoy:</label>
-                <input 
-                  type="text" 
-                  placeholder="Ej. Juan Pérez (Jefe de Cuadrilla) / Roberto Morales (Encargado hoy)" 
-                  value={crewActiveOperator} 
-                  onChange={(e) => setCrewActiveOperator(e.target.value)}
-                  style={{ width: '100%', marginTop: '4px' }}
-                />
-                <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Este nombre aparecerá automáticamente bloqueado en los registros que haga la cuadrilla.</span>
+                {/* LISTA DE INTEGRANTES COMO CHIPS/PASTILLAS */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px', minHeight: '36px' }}>
+                  {crewMembersList.length === 0 ? (
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                      Sin integrantes aún. Escriba un nombre arriba para agregarlo.
+                    </span>
+                  ) : (
+                    crewMembersList.map((mem, idx) => (
+                      <span 
+                        key={idx} 
+                        style={{ 
+                          background: 'rgba(255, 255, 255, 0.08)', 
+                          border: '1px solid rgba(255, 255, 255, 0.15)', 
+                          borderRadius: '20px', 
+                          padding: '6px 12px', 
+                          fontSize: '12px', 
+                          fontWeight: 600, 
+                          color: '#fff', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '6px' 
+                        }}
+                      >
+                        👤 {mem}
+                        <button 
+                          type="button" 
+                          onClick={() => handleRemoveMember(idx)}
+                          style={{ border: 'none', background: 'transparent', color: 'var(--neon-rose)', cursor: 'pointer', fontWeight: 800, fontSize: '14px', padding: 0, marginLeft: '4px' }}
+                          title="Quitar integrante"
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    ))
+                  )}
+                </div>
               </div>
               
               {crewMsg.text && (
@@ -475,7 +540,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
                       setCrewName('');
                       setCrewUsername('');
                       setCrewPassword('');
-                      setCrewMembers('');
+                      setCrewMembersList([]);
+                      setNewMemberInput('');
                     }}
                     className="secondary-btn"
                   >
@@ -523,8 +589,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
                       </div>
                     </div>
 
-                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                      Integrantes: <span style={{ color: '#fff' }}>{crew.members.join(', ')}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', fontSize: '12px', color: 'var(--text-muted)' }}>
+                      <span>Integrantes:</span>
+                      {crew.members.map((mem: string, idx: number) => (
+                        <span key={idx} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', padding: '2px 8px', borderRadius: '12px', color: '#fff', fontSize: '11px', fontWeight: 600 }}>
+                          👤 {mem}
+                        </span>
+                      ))}
                     </div>
 
                     {/* SELECTOR RÁPIDO DE RESPONSABLE EN TURNO */}
