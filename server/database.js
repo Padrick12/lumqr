@@ -129,18 +129,11 @@ async function initializeDatabase() {
     await db.run('ALTER TABLE crews ADD COLUMN active_operator TEXT');
   } catch (e) {}
 
-  // Seed default data if database is empty
-  const crewCount = await db.get('SELECT COUNT(*) as count FROM crews');
-  if (crewCount.count === 0) {
-    console.log('Seeding initial database content...');
-
-    // 0. Seed admin
-    const adminCount = await db.get('SELECT COUNT(*) as count FROM admins');
-    if (adminCount.count === 0) {
-      await db.run('INSERT INTO admins (username, password) VALUES (?, ?)', ['admin', 'admin123']);
-    }
-
-    // (Seed crews, batches, etc. removed for production)
+  // Seed default admin if no admin exists
+  const adminCount = await db.get('SELECT COUNT(*) as count FROM admins');
+  if (adminCount.count === 0) {
+    console.log('Seeding initial default admin account...');
+    await db.run('INSERT INTO admins (username, password) VALUES (?, ?)', ['admin', 'admin123']);
   }
 
   return db;
