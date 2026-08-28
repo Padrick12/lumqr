@@ -1,18 +1,25 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const jwt = require('jsonwebtoken');
 const { initializeDatabase } = require('./database');
+const { saveBase64Image } = require('./utils/fileStorage');
+const { createDatabaseBackup, listBackups, BACKUPS_DIR } = require('./scripts/backup');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const JWT_SECRET = process.env.JWT_SECRET || 'lumqr_secret_key_lerdo_2026';
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '15mb' }));
 
 app.use((req, res, next) => {
   res.setHeader('ngrok-skip-browser-warning', 'true');
   next();
 });
+
+// Serve physical uploaded evidence photos statically
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Serve static frontend assets if built
 const clientDistPath = path.join(__dirname, '../client/dist');
@@ -20,10 +27,33 @@ app.use(express.static(clientDistPath));
 
 let db;
 
+// Nightly Backup Scheduler (00:00 AM)
+function setupNightlyBackup() {
+  const checkInterval = 60 * 60 * 1000; // Check every hour
+  let lastBackupDay = -1;
+
+  setInterval(async () => {
+    const now = new Date();
+    const hour = now.getHours();
+    const day = now.getDate();
+
+    if (hour === 0 && day !== lastBackupDay) {
+      lastBackupDay = day;
+      try {
+        const backupResult = await createDatabaseBackup();
+        console.log('📦 Nightly database backup created successfully:', backupResult.filename);
+      } catch (err) {
+        console.error('❌ Nightly database backup failed:', err);
+      }
+    }
+  }, checkInterval);
+}
+
 // Initialize Database connection and start server
 initializeDatabase()
   .then(database => {
     db = database;
+    setupNightlyBackup();
     app.listen(PORT, () => {
       console.log(`Backend server running on http://localhost:${PORT}`);
     });
@@ -35,7 +65,7 @@ initializeDatabase()
 
 // --- API ROUTES ---
 
-// 1. Auth Login
+// 1. Auth Login (JWT Token with 12-Hour Expiration)
 app.post('/api/auth/login', async (req, res) => {
   const { username, password, type } = req.body;
   if (!username || !password || !type) {
@@ -46,17 +76,58 @@ app.post('/api/auth/login', async (req, res) => {
     if (type === 'admin') {
       const admin = await db.get('SELECT * FROM admins WHERE username = ? AND password = ?', [username, password]);
       if (admin) {
-        return res.json({ role: 'admin', admin_id: admin.id, admin_name: admin.username });
+        const token = jwt.sign(
+          { role: 'admin', admin_id: admin.id, username: admin.username },
+          JWT_SECRET,
+          { expiresIn: '12h' }
+        );
+        return res.json({ role: 'admin', admin_id: admin.id, admin_name: admin.username, token });
       }
     } else if (type === 'operator') {
       const crew = await db.get('SELECT * FROM crews WHERE username = ? AND password = ?', [username, password]);
       if (crew) {
-        return res.json({ role: 'operator', crew_id: crew.id, crew_name: crew.name });
+        const token = jwt.sign(
+          { role: 'operator', crew_id: crew.id, crew_name: crew.name },
+          JWT_SECRET,
+          { expiresIn: '12h' }
+        );
+        return res.json({ role: 'operator', crew_id: crew.id, crew_name: crew.name, token });
       }
     }
     return res.status(401).json({ error: 'Usuario o contraseña incorrectos.' });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Backups Management Routes
+app.get('/api/admin/backups', (req, res) => {
+  try {
+    const backups = listBackups();
+    res.json({ backups });
+  } catch (err) {
+    res.status(500).json({ error: 'Error listing backups.' });
+  }
+});
+
+app.post('/api/admin/backups/trigger', async (req, res) => {
+  try {
+    const backup = await createDatabaseBackup();
+    res.json({ message: 'Respaldo manual generado con éxito.', backup });
+  } catch (err) {
+    res.status(500).json({ error: 'Error al generar respaldo manual.' });
+  }
+});
+
+app.get('/api/admin/backups/download/:filename', (req, res) => {
+  const { filename } = req.params;
+  const safeFilename = path.basename(filename);
+  const filePath = path.join(BACKUPS_DIR, safeFilename);
+
+  if (fs.existsSync(filePath)) {
+    res.download(filePath, safeFilename);
+  } else {
+    res.status(404).json({ error: 'Archivo de respaldo no encontrado.' });
   }
 });
 
@@ -323,6 +394,10 @@ app.post('/api/installations', async (req, res) => {
   try {
     await db.run('BEGIN TRANSACTION;');
 
+    // Save base64 photos to NVMe disk
+    const photoBeforePath = saveBase64Image(photo_before, 'evidences');
+    const photoAfterPath = saveBase64Image(photo_after, 'evidences');
+
     // Verify fixture exists
     const fixture = await db.get('SELECT * FROM fixtures WHERE code = ?', [code]);
     if (!fixture) {
@@ -331,7 +406,6 @@ app.post('/api/installations', async (req, res) => {
     }
 
     // Determine final crew_id
-    // If not provided in request, check if already assigned to a crew, else default to NULL/None
     const finalCrewId = crew_id || fixture.crew_id;
     if (!finalCrewId) {
       await db.run('ROLLBACK;');
@@ -345,7 +419,7 @@ app.post('/api/installations', async (req, res) => {
     await db.run(
       `INSERT INTO installations (fixture_code, crew_id, operator_name, lat, lng, installed_at, status_at_install, notes, photo_before, photo_after)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [code, finalCrewId, operator_name || null, lat, lng, dateStr, status, notes || '', photo_before || null, photo_after || null]
+      [code, finalCrewId, operator_name || null, lat, lng, dateStr, status, notes || '', photoBeforePath || null, photoAfterPath || null]
     );
 
     // Update fixture state and ensure it links to the installing crew if it wasn't
@@ -364,8 +438,8 @@ app.post('/api/installations', async (req, res) => {
       lat,
       lng,
       installed_at: dateStr,
-      photo_before: photo_before || null,
-      photo_after: photo_after || null
+      photo_before: photoBeforePath || null,
+      photo_after: photoAfterPath || null
     });
   } catch (error) {
     await db.run('ROLLBACK;');
@@ -568,6 +642,9 @@ app.post('/api/poles', async (req, res) => {
   }
 
   try {
+    const photoBeforePath = saveBase64Image(photo_before, 'evidences');
+    const photoAfterPath = saveBase64Image(photo_after, 'evidences');
+
     const countRow = await db.get('SELECT COUNT(*) as count FROM poles');
     const poleCode = `PST-${String((countRow.count || 0) + 1).padStart(5, '0')}`;
     const isoDate = new Date().toISOString();
@@ -587,8 +664,8 @@ app.post('/api/poles', async (req, res) => {
       wattage ? Number(wattage) : null,
       operating_status || 'Funcionando',
       notes || '',
-      photo_before || null,
-      photo_after || null,
+      photoBeforePath || null,
+      photoAfterPath || null,
       isoDate
     ]);
 

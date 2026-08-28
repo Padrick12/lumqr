@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Map, Truck, Users, BarChart3, HelpCircle } from 'lucide-react';
 import './layout.css';
 
@@ -12,15 +12,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userD
   return (
     <aside className="app-sidebar">
       <div className="sidebar-header">
-        <div className="sidebar-logo">
-          <span>LQ</span>
+        <div className="sidebar-logo" style={{ background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)', boxShadow: '0 0 12px rgba(16, 185, 129, 0.4)' }}>
+          <span>🌳</span>
         </div>
         <div className="sidebar-title">
           <h1>
             <span className="gradient-text">LUMQR</span>
-            <span className="badge">Lerdo, Dgo.</span>
+            <span className="badge" style={{ background: 'rgba(5, 243, 162, 0.15)', color: 'var(--neon-green)', border: '1px solid rgba(5, 243, 162, 0.3)' }}>Lerdo, Dgo.</span>
           </h1>
-          <p className="sidebar-subtitle">Control Interno</p>
+          <p className="sidebar-subtitle" style={{ color: '#94a3b8' }}>Alumbrado — Ciudad Jardín</p>
           {userData && <p style={{ fontSize: '12px', marginTop: '4px', color: 'var(--neon-green)' }}>Bienvenido, {userData.name}</p>}
         </div>
       </div>

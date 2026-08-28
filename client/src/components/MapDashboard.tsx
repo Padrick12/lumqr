@@ -3,6 +3,9 @@ import { API_BASE_URL } from '../config';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet.markercluster';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { ShieldAlert, Sparkles, Filter, RefreshCw, Clock, Search, ChevronDown, MapPin } from 'lucide-react';
 import sectoresData from '../data/sectores-lerdo.json';
 import './MapDashboard.css';
@@ -305,7 +308,12 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
     }).addTo(map);
 
     polygonsGroupRef.current = L.layerGroup().addTo(map);
-    markersGroupRef.current = L.layerGroup().addTo(map);
+    markersGroupRef.current = (L as any).markerClusterGroup({
+      disableClusteringAtZoom: 17,
+      maxClusterRadius: 45,
+      chunkedLoading: true,
+      spiderfyOnMaxZoom: true
+    }).addTo(map);
 
     return () => {
       if (mapRef.current) {

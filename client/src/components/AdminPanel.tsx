@@ -1,6 +1,6 @@
 import { API_BASE_URL } from '../config';
 import React, { useState, useEffect } from 'react';
-import { Users, UserPlus, Trash2, Plus, Calendar, Grid, Edit3, Tag, PackageOpen, ShieldAlert } from 'lucide-react';
+import { Users, UserPlus, Trash2, Plus, Calendar, Grid, Edit3, Tag, PackageOpen, ShieldAlert, RefreshCw } from 'lucide-react';
 import { ConfirmModal } from './ConfirmModal';
 import './shared-panels.css';
 
@@ -47,6 +47,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
   const [batchQty, setBatchQty] = useState(50);
   const [batchDate, setBatchDate] = useState(new Date().toISOString().split('T')[0]);
 
+  const [backups, setBackups] = useState<any[]>([]);
+  const [backupLoading, setBackupLoading] = useState(false);
   const [crewMsg, setCrewMsg] = useState({ text: '', isError: false });
   const [batchMsg, setBatchMsg] = useState({ text: '', isError: false });
   const [confirmDialog, setConfirmDialog] = useState<{isOpen: boolean, message: string, onConfirm: () => void} | null>(null);
@@ -55,7 +57,34 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
     fetchCrews();
     fetchBatches();
     fetchAdmins();
+    fetchBackups();
   }, []);
+
+  const fetchBackups = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/admin/backups`);
+      if (res.ok) {
+        const data = await res.json();
+        setBackups(data.backups || []);
+      }
+    } catch (err) {
+      console.error('Error fetching backups:', err);
+    }
+  };
+
+  const triggerManualBackup = async () => {
+    setBackupLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/admin/backups/trigger`, { method: 'POST' });
+      if (res.ok) {
+        await fetchBackups();
+      }
+    } catch (err) {
+      console.error('Error triggering manual backup:', err);
+    } finally {
+      setBackupLoading(false);
+    }
+  };
 
   const fetchAdmins = async () => {
     try {
@@ -729,6 +758,73 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
                 ))
               )}
             </div>
+          </div>
+        </div>
+
+        {/* SECCIÓN RESPALDOS DE BASE DE DATOS (DISASTER RECOVERY) */}
+        <div className="glass-panel" style={{ marginTop: '24px', border: '1px solid rgba(245, 158, 11, 0.3)', background: 'rgba(245, 158, 11, 0.03)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+            <div>
+              <h3 className="panel-header" style={{ fontSize: '16px', color: 'var(--neon-amber)', margin: 0 }}>
+                📦 Respaldos de Base de Datos (Disaster Recovery)
+              </h3>
+              <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                Respaldos automáticos todas las noches a las 00:00 h en disco NVMe.
+              </p>
+            </div>
+            <button
+              onClick={triggerManualBackup}
+              disabled={backupLoading}
+              style={{
+                background: 'var(--neon-amber)',
+                color: '#000',
+                fontWeight: 800,
+                fontSize: '12px',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: backupLoading ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <RefreshCw size={14} style={backupLoading ? { animation: 'spin 1s linear infinite' } : {}} />
+              {backupLoading ? 'Generando...' : '⚡ Respaldo Manual Inmediato'}
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
+            {backups.length === 0 ? (
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>No hay respaldos generados aún.</p>
+            ) : (
+              backups.map((b, idx) => (
+                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div>
+                    <strong style={{ fontSize: '12px', color: '#fff' }}>{b.filename}</strong>
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '10px' }}>
+                      ({(b.sizeBytes / 1024).toFixed(1)} KB) — {new Date(b.createdAt).toLocaleString()}
+                    </span>
+                  </div>
+                  <a
+                    href={`${API_BASE_URL}/api/admin/backups/download/${b.filename}`}
+                    download
+                    style={{
+                      background: 'rgba(255,255,255,0.08)',
+                      color: 'var(--neon-green)',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      textDecoration: 'none',
+                      border: '1px solid rgba(5,243,162,0.3)'
+                    }}
+                  >
+                    ⬇️ Descargar
+                  </a>
+                </div>
+              ))
+            )}
           </div>
         </div>
             {confirmDialog && (

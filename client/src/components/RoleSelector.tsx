@@ -110,9 +110,10 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelectRole }) => {
     <div className="role-selector-container">
       <div className="role-selector-content">
         <div className="role-selector-header">
-          <div className="logo-badge">LQ</div>
-          <h1>LUMQR <span className="highlight">Access</span></h1>
-          <p>Seleccione su entorno de trabajo para iniciar sesión.</p>
+          <div className="logo-badge" style={{ background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)', boxShadow: '0 0 20px rgba(16, 185, 129, 0.4)' }}>🌳</div>
+          <h1>LUMQR <span className="highlight" style={{ color: 'var(--neon-green)' }}>Lerdo</span></h1>
+          <p style={{ color: '#e2e8f0', fontWeight: 600 }}>Sistema Municipal de Alumbrado Público — Lerdo, Dgo. 🌿</p>
+          <span style={{ fontSize: '11px', color: 'var(--neon-amber)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', marginTop: '4px', display: 'block' }}>"Ciudad Jardín"</span>
         </div>
 
         <div className="roles-grid">

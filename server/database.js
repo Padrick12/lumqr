@@ -17,8 +17,14 @@ async function initializeDatabase() {
     driver: sqlite3.Database
   });
 
-  // Enable foreign keys
+  // Enable foreign keys and High-Performance WAL mode for NVMe SSD
   await db.run('PRAGMA foreign_keys = ON;');
+  try {
+    await db.run('PRAGMA journal_mode = WAL;');
+    await db.run('PRAGMA synchronous = NORMAL;');
+  } catch (err) {
+    console.warn('WAL mode pragma warning:', err);
+  }
 
   // Create tables
   await db.exec(`
