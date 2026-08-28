@@ -272,7 +272,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
     setCrewName(crew.name);
     setCrewUsername(crew.username);
     setCrewPassword('');
-    setCrewMembersList(Array.isArray(crew.members) ? crew.members : []);
+
+    let parsedMembers: string[] = [];
+    if (Array.isArray(crew.members)) {
+      crew.members.forEach((m: string) => {
+        if (typeof m === 'string' && m.includes(',')) {
+          m.split(',').forEach(sub => sub.trim() && parsedMembers.push(sub.trim()));
+        } else if (typeof m === 'string') {
+          parsedMembers.push(m.trim());
+        }
+      });
+    }
+    setCrewMembersList(parsedMembers);
     setNewMemberInput('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };

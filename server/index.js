@@ -225,18 +225,23 @@ app.post('/api/crews', async (req, res) => {
 app.put('/api/crews/:id', async (req, res) => {
   const { id } = req.params;
   const { name, username, password, members, active_operator } = req.body;
-  if (!name || !username || !password || !members || !Array.isArray(members)) {
+  if (!name || !username || !members || !Array.isArray(members)) {
     return res.status(400).json({ error: 'Campos requeridos vacíos o incorrectos.' });
   }
   try {
-    const result = await db.run(
-      'UPDATE crews SET name = ?, username = ?, password = ?, members = ?, active_operator = ? WHERE id = ?',
-      [name, username, password, JSON.stringify(members), active_operator || null, id]
-    );
-    if (result.changes === 0) {
+    const existing = await db.get('SELECT * FROM crews WHERE id = ?', [id]);
+    if (!existing) {
       return res.status(404).json({ error: 'Cuadrilla no encontrada.' });
     }
-    res.json({ id: Number(id), name, username, members, active_operator: active_operator || null });
+
+    const finalPassword = (password && password.trim()) ? password : existing.password;
+    const finalOperator = active_operator !== undefined ? active_operator : existing.active_operator;
+
+    await db.run(
+      'UPDATE crews SET name = ?, username = ?, password = ?, members = ?, active_operator = ? WHERE id = ?',
+      [name, username, finalPassword, JSON.stringify(members), finalOperator, id]
+    );
+    res.json({ id: Number(id), name, username, members, active_operator: finalOperator });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
