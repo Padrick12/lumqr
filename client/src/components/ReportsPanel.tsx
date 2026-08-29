@@ -58,6 +58,8 @@ export const ReportsPanel: React.FC = () => {
     fetchReportData();
   }, []);
 
+  const [incidents, setIncidents] = useState<any[]>([]);
+
   const fetchReportData = async () => {
     setLoading(true);
     try {
@@ -73,6 +75,11 @@ export const ReportsPanel: React.FC = () => {
           if (f.crew_name) crewsSet.add(f.crew_name);
         });
         setUniqueCrews(Array.from(crewsSet));
+      }
+
+      const resIncidents = await fetch(`${API_BASE_URL}/api/incidents`);
+      if (resIncidents.ok) {
+        setIncidents(await resIncidents.json());
       }
     } catch (err) {
       console.error('Error fetching report data:', err);
@@ -533,6 +540,76 @@ export const ReportsPanel: React.FC = () => {
                     </td>
                     <td style={{ color: 'var(--text-muted)' }}>{f.code_prefix}</td>
                     <td style={{ color: 'var(--text-muted)' }}>{f.arrival_date}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {/* SECCIÓN AUDITORÍA DE TRABAJOS ESPECIALES / CORTOS / INCIDENCIAS */}
+      <div className="glass-panel" style={{ border: '1px solid rgba(245, 158, 11, 0.3)', background: 'rgba(245, 158, 11, 0.02)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div>
+            <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--neon-amber)' }}>
+              🛠️ Auditoría de Incidencias y Cortos Circuito Atendidos
+            </h3>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+              Historial de respaldos de trabajos especiales, reparaciones de fotoceldas y emergencias de campo.
+            </p>
+          </div>
+          <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--neon-amber)', background: 'rgba(245, 158, 11, 0.1)', padding: '4px 10px', borderRadius: '6px' }}>
+            {incidents.length} Incidencias Registradas
+          </span>
+        </div>
+
+        <div className="reports-table-container">
+          {incidents.length === 0 ? (
+            <div className="empty-state">No hay incidencias o trabajos especiales registrados aún.</div>
+          ) : (
+            <table className="reports-table">
+              <thead>
+                <tr>
+                  <th>Fecha / Hora</th>
+                  <th>Tipo de Trabajo</th>
+                  <th>Cuadrilla Responsable</th>
+                  <th>Operador en Turno</th>
+                  <th>Detalle / Observaciones</th>
+                  <th>Evidencia Fotográfica</th>
+                  <th>Ubicación GPS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {incidents.map(inc => (
+                  <tr key={inc.id}>
+                    <td style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                      {new Date(inc.created_at).toLocaleString()}
+                    </td>
+                    <td>
+                      <span style={{ padding: '2px 8px', borderRadius: '4px', background: 'rgba(245,158,11,0.15)', color: 'var(--neon-amber)', fontWeight: 700, fontSize: '11px' }}>
+                        {inc.incident_type}
+                      </span>
+                    </td>
+                    <td style={{ fontWeight: 600 }}>{inc.crew_name || 'Desconocida'}</td>
+                    <td style={{ color: 'var(--neon-green)', fontWeight: 600 }}>{inc.operator_name || 'N/A'}</td>
+                    <td style={{ fontSize: '12px', fontStyle: 'italic', maxWidth: '250px' }}>"{inc.notes}"</td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        {inc.photo_before && <a href={inc.photo_before} target="_blank" rel="noreferrer" style={{ fontSize: '10px', color: 'var(--neon-blue)' }}>[Foto Antes]</a>}
+                        {inc.photo_after && <a href={inc.photo_after} target="_blank" rel="noreferrer" style={{ fontSize: '10px', color: 'var(--neon-green)' }}>[Foto Después]</a>}
+                      </div>
+                    </td>
+                    <td>
+                      <a
+                        href={`https://maps.google.com/?q=${inc.lat},${inc.lng}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ color: 'var(--neon-blue)', fontSize: '11px', textDecoration: 'none', fontWeight: 700 }}
+                      >
+                        📍 Ver en Mapa
+                      </a>
+                    </td>
                   </tr>
                 ))}
               </tbody>

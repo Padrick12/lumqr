@@ -390,7 +390,7 @@ app.post('/api/batches/assign', async (req, res) => {
 
 // 4. Register Installation / Change Status (Despliegue & Mantenimiento)
 app.post('/api/installations', async (req, res) => {
-  const { code, crew_id, operator_name, lat, lng, notes, status, installed_at, photo_before, photo_after } = req.body;
+  const { code, crew_id, operator_name, lat, lng, notes, status, installed_at, photo_before, photo_after, wattage } = req.body;
 
   if (!code || !lat || !lng || !status) {
     return res.status(400).json({ error: 'Faltan parámetros (code, lat, lng, status).' });
@@ -421,10 +421,12 @@ app.post('/api/installations', async (req, res) => {
 
     // Insert installation log
     const dateStr = installed_at || new Date().toISOString();
+    const parsedWattage = wattage ? Number(wattage) : null;
+
     await db.run(
-      `INSERT INTO installations (fixture_code, crew_id, operator_name, lat, lng, installed_at, status_at_install, notes, photo_before, photo_after)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [code, finalCrewId, operator_name || null, lat, lng, dateStr, status, notes || '', photoBeforePath || null, photoAfterPath || null]
+      `INSERT INTO installations (fixture_code, crew_id, operator_name, lat, lng, installed_at, status_at_install, notes, photo_before, photo_after, wattage)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [code, finalCrewId, operator_name || null, lat, lng, dateStr, status, notes || '', photoBeforePath || null, photoAfterPath || null, parsedWattage]
     );
 
     // Update fixture state and ensure it links to the installing crew if it wasn't
@@ -442,6 +444,7 @@ app.post('/api/installations', async (req, res) => {
       status,
       lat,
       lng,
+      wattage: parsedWattage,
       installed_at: dateStr,
       photo_before: photoBeforePath || null,
       photo_after: photoAfterPath || null
@@ -702,6 +705,66 @@ app.delete('/api/poles/:id', async (req, res) => {
       return res.status(404).json({ error: 'Poste no encontrado.' });
     }
     res.json({ message: 'Poste eliminado del censo.' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 8. Field Incidents / Special Maintenance Reports
+app.get('/api/incidents', async (req, res) => {
+  try {
+    const incidents = await db.all(`
+      SELECT i.*, c.name as crew_name
+      FROM incidents i
+      LEFT JOIN crews c ON i.crew_id = c.id
+      ORDER BY i.id DESC
+    `);
+    res.json(incidents);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/incidents', async (req, res) => {
+  const { crew_id, operator_name, incident_type, lat, lng, notes, photo_before, photo_after } = req.body;
+
+  if (!crew_id || !incident_type || !notes || notes.trim().length < 5) {
+    return res.status(400).json({ error: 'Faltan parámetros requeridos o la justificación es menor a 5 caracteres.' });
+  }
+
+  try {
+    const photoBeforePath = saveBase64Image(photo_before, 'evidences');
+    const photoAfterPath = saveBase64Image(photo_after, 'evidences');
+    const isoDate = new Date().toISOString();
+
+    const result = await db.run(`
+      INSERT INTO incidents (crew_id, operator_name, incident_type, lat, lng, notes, photo_before, photo_after, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      crew_id,
+      operator_name || null,
+      incident_type,
+      lat || 25.539,
+      lng || -103.524,
+      notes.trim(),
+      photoBeforePath || null,
+      photoAfterPath || null,
+      isoDate
+    ]);
+
+    res.status(201).json({
+      message: 'Incidencia / Reporte especial guardado con éxito.',
+      id: result.lastID,
+      crew_id,
+      operator_name: operator_name || null,
+      incident_type,
+      lat,
+      lng,
+      notes: notes.trim(),
+      photo_before: photoBeforePath || null,
+      photo_after: photoAfterPath || null,
+      created_at: isoDate
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

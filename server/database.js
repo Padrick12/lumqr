@@ -97,6 +97,19 @@ async function initializeDatabase() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (crew_id) REFERENCES crews(id) ON DELETE SET NULL
     );
+    CREATE TABLE IF NOT EXISTS incidents (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      crew_id INTEGER NOT NULL,
+      operator_name TEXT,
+      incident_type TEXT NOT NULL,
+      lat REAL NOT NULL,
+      lng REAL NOT NULL,
+      notes TEXT NOT NULL,
+      photo_before TEXT,
+      photo_after TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (crew_id) REFERENCES crews(id) ON DELETE CASCADE
+    );
   `);
 
   // Migrations for existing databases
@@ -108,6 +121,9 @@ async function initializeDatabase() {
   } catch (e) {}
   try {
     await db.run('ALTER TABLE installations ADD COLUMN photo_after TEXT');
+  } catch (e) {}
+  try {
+    await db.run('ALTER TABLE installations ADD COLUMN wattage INTEGER');
   } catch (e) {}
 
   try {

@@ -41,7 +41,7 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
   crewId,
   crewName
 }) => {
-  const [panelMode, setPanelMode] = useState<'qr' | 'census'>('qr');
+  const [panelMode, setPanelMode] = useState<'qr' | 'census' | 'incident'>('qr');
   
   // GPS Accuracy State
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
@@ -59,15 +59,18 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
   // Submission Locks
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmittingPole, setIsSubmittingPole] = useState(false);
+  const [isSubmittingIncident, setIsSubmittingIncident] = useState(false);
 
   // Success State for WhatsApp Share
   const [lastSuccessData, setLastSuccessData] = useState<{
-    type: 'installation' | 'pole';
+    type: 'installation' | 'pole' | 'incident';
     code: string;
     status: string;
+    wattage?: number | string | null;
     lat: number;
     lng: number;
     date: string;
+    notes?: string;
   } | null>(null);
 
   const [fixtureCode, setFixtureCode] = useState('');
@@ -77,6 +80,7 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
   const [loadingSearch, setLoadingSearch] = useState(false);
 
   const [newStatus, setNewStatus] = useState<'Nueva' | 'Reparada' | 'Rehabilitada' | 'Robo'>('Nueva');
+  const [qrWattage, setQrWattage] = useState<string>('70');
   const [installNotes, setInstallNotes] = useState('');
   const [submitMsg, setSubmitMsg] = useState({ text: '', isError: false });
 
@@ -89,11 +93,18 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
   const [poleNotes, setPoleNotes] = useState('');
   const [poleSubmitMsg, setPoleSubmitMsg] = useState({ text: '', isError: false });
   const [loadingPole, setLoadingPole] = useState(false);
+  const [existingPolesList, setExistingPolesList] = useState<any[]>([]);
+
+  // Incident States
+  const [incidentType, setIncidentType] = useState<string>('Reparación de Corto Circuito');
+  const [incidentNotes, setIncidentNotes] = useState<string>('');
+  const [incidentSubmitMsg, setIncidentSubmitMsg] = useState({ text: '', isError: false });
+  const [loadingIncident, setLoadingIncident] = useState(false);
 
   const [crewMembersList, setCrewMembersList] = useState<string[]>([]);
   const [isAdminAssigned, setIsAdminAssigned] = useState<boolean>(false);
 
-  const handleModeChange = (mode: 'qr' | 'census') => {
+  const handleModeChange = (mode: 'qr' | 'census' | 'incident') => {
     setPanelMode(mode);
     setPhotoBefore(null);
     setPhotoAfter(null);
@@ -181,22 +192,64 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
     }
   };
 
+  // Haversine Distance Helper (Meters)
+  const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  const fetchPolesList = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/poles`);
+      if (res.ok) {
+        const data = await res.json();
+        setExistingPolesList(Array.isArray(data) ? data : []);
+      }
+    } catch (e) {
+      console.warn("Error fetching existing poles list:", e);
+    }
+  };
+
+  useEffect(() => {
+    fetchPolesList();
+  }, []);
+
   const shareOnWhatsApp = () => {
     if (!lastSuccessData) return;
-    const isPole = lastSuccessData.type === 'pole';
     const formattedDate = new Date(lastSuccessData.date).toLocaleString('es-MX', {
       day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit'
     });
 
-    const text = `💡 *REPORTE DE ALUMBRADO PÚBLICO - LERDO, DGO.*
+    let header = '💡 *REPORTE DE ALUMBRADO PÚBLICO - LERDO, DGO.*';
+    let typeLine = `🆔 *Luminaria QR:* ${lastSuccessData.code}`;
+    
+    if (lastSuccessData.type === 'pole') {
+      header = '📍 *REPORTE DE CENSO DE POSTE - LERDO, DGO.*';
+      typeLine = `📍 *Poste Censado:* ${lastSuccessData.code}`;
+    } else if (lastSuccessData.type === 'incident') {
+      header = '🛠️ *REPORTE DE ATENCIÓN DE INCIDENCIA / TRABAJO ESPECIAL*';
+      typeLine = `📋 *Trabajo Realizado:* ${lastSuccessData.code}`;
+    }
+
+    const wattageLine = lastSuccessData.wattage ? `\n⚡ *Potencia / Watts:* ${lastSuccessData.wattage} Watts` : '';
+    const notesLine = lastSuccessData.notes ? `\n📝 *Observaciones:* "${lastSuccessData.notes}"` : '';
+
+    const text = `${header}
 ----------------------------------------------
-🆔 *${isPole ? 'Poste Censado' : 'Luminaria QR'}:* ${lastSuccessData.code}
+${typeLine}
 👷‍♂️ *Cuadrilla:* ${crewName}
 👤 *Responsable en Turno:* ${operatorName.trim() || 'No especificado'}
-🌐 *Estado / Tipo:* ${lastSuccessData.status}
+🌐 *Estado / Tipo:* ${lastSuccessData.status}${wattageLine}
 📅 *Fecha/Hora:* ${formattedDate}
-📍 *Ubicación GPS:* https://maps.google.com/?q=${lastSuccessData.lat},${lastSuccessData.lng}
+📍 *Ubicación GPS:* https://maps.google.com/?q=${lastSuccessData.lat},${lastSuccessData.lng}${notesLine}
 
 📸 *Evidencia fotográfica respaldada en sistema LUMQR*`;
 
@@ -264,6 +317,24 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
       lng = -103.524;
     }
 
+    // GEO-PROXIMITY DUPLICATE CENSUS CHECK (< 15 METERS)
+    const nearbyPole = existingPolesList.find(p => {
+      const dist = getDistanceInMeters(lat, lng, p.lat, p.lng);
+      return dist <= 15;
+    });
+
+    if (nearbyPole) {
+      const distMeters = getDistanceInMeters(lat, lng, nearbyPole.lat, nearbyPole.lng).toFixed(1);
+      const poleDate = nearbyPole.created_at ? new Date(nearbyPole.created_at).toLocaleDateString('es-MX') : 'previamente';
+      setPoleSubmitMsg({
+        text: `🚫 PREVENCIÓN DE DUPLICADO POR GPS: Ya existe un poste censado a sólo ${distMeters}m de esta ubicación (${nearbyPole.pole_code} censado el ${poleDate} por ${nearbyPole.crew_name || 'otra cuadrilla'}).`,
+        isError: true
+      });
+      setLoadingPole(false);
+      setIsSubmittingPole(false);
+      return;
+    }
+
     try {
       const res = await fetch(`${API_BASE_URL}/api/poles`, {
         method: 'POST',
@@ -291,14 +362,17 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
         setLastSuccessData({
           type: 'pole',
           code: data.pole_code,
-          status: `${lampType} | ${wattage || '?'}W | ${operatingStatus}`,
+          status: `${lampType} | ${operatingStatus}`,
+          wattage: wattage || null,
           lat,
           lng,
-          date: new Date().toISOString()
+          date: new Date().toISOString(),
+          notes: poleNotes
         });
         setPoleNotes('');
         setPhotoBefore(null);
         setPhotoAfter(null);
+        fetchPolesList();
         onSyncComplete();
       }
     } catch (err) {
@@ -306,6 +380,84 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
     } finally {
       setLoadingPole(false);
       setIsSubmittingPole(false);
+    }
+  };
+
+  const handleRegisterIncident = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSubmittingIncident || loadingIncident) return;
+
+    if (!incidentNotes || incidentNotes.trim().length < 5) {
+      setIncidentSubmitMsg({
+        text: '⚠️ Descripción obligatoria: Por favor detalle el trabajo realizado en "Observaciones" (mínimo 5 caracteres).',
+        isError: true
+      });
+      return;
+    }
+
+    setIsSubmittingIncident(true);
+    setLoadingIncident(true);
+    setIncidentSubmitMsg({ text: 'Obteniendo geolocalización GPS...', isError: false });
+
+    let lat: number;
+    let lng: number;
+
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        });
+      });
+      lat = position.coords.latitude;
+      lng = position.coords.longitude;
+      setGpsAccuracy(Math.round(position.coords.accuracy));
+    } catch (err: any) {
+      lat = 25.539;
+      lng = -103.524;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/incidents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          crew_id: crewId,
+          operator_name: operatorName.trim() || null,
+          incident_type: incidentType,
+          lat,
+          lng,
+          notes: incidentNotes,
+          photo_before: photoBefore,
+          photo_after: photoAfter
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setIncidentSubmitMsg({ text: data.error || 'Error al guardar incidencia.', isError: true });
+      } else {
+        setIncidentSubmitMsg({ text: `¡Trabajo especial / incidencia "${incidentType}" registrada con éxito!`, isError: false });
+        setLastSuccessData({
+          type: 'incident',
+          code: incidentType,
+          status: 'Atendida / Finalizada',
+          lat,
+          lng,
+          date: new Date().toISOString(),
+          notes: incidentNotes
+        });
+        setIncidentNotes('');
+        setPhotoBefore(null);
+        setPhotoAfter(null);
+        onSyncComplete();
+      }
+    } catch (err) {
+      setIncidentSubmitMsg({ text: 'Error de red al guardar la incidencia.', isError: true });
+    } finally {
+      setLoadingIncident(false);
+      setIsSubmittingIncident(false);
     }
   };
 
@@ -472,6 +624,7 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
       lat,
       lng,
       status: newStatus,
+      wattage: qrWattage ? Number(qrWattage) : null,
       notes: installNotes,
       photo_before: photoBefore,
       photo_after: photoAfter,
@@ -491,9 +644,11 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
           type: 'installation',
           code: payload.code,
           status: newStatus,
+          wattage: qrWattage || null,
           lat,
           lng,
-          date: new Date().toISOString()
+          date: new Date().toISOString(),
+          notes: installNotes
         });
         setFixtureDetails(null);
         setFixtureCode('');
@@ -520,9 +675,11 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
             type: 'installation',
             code: payload.code,
             status: newStatus,
+            wattage: qrWattage || null,
             lat,
             lng,
-            date: new Date().toISOString()
+            date: new Date().toISOString(),
+            notes: installNotes
           });
           setFixtureDetails(null);
           setFixtureCode('');
@@ -700,12 +857,13 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
         </div>
       )}
 
-      {/* Selector de Modo: Registro QR vs Censo de Postes */}
-      <div style={{ display: 'flex', gap: '12px', background: 'rgba(13, 20, 38, 0.8)', padding: '6px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+      {/* Selector de Modo: Registro QR vs Censo de Postes vs Incidencias / Cortos */}
+      <div style={{ display: 'flex', gap: '8px', background: 'rgba(13, 20, 38, 0.8)', padding: '6px', borderRadius: '12px', border: '1px solid var(--border-color)', flexWrap: 'wrap' }}>
         <button
           onClick={() => handleModeChange('qr')}
           style={{
             flex: 1,
+            minWidth: '140px',
             padding: '12px',
             borderRadius: '8px',
             border: 'none',
@@ -729,6 +887,7 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
           onClick={() => handleModeChange('census')}
           style={{
             flex: 1,
+            minWidth: '140px',
             padding: '12px',
             borderRadius: '8px',
             border: 'none',
@@ -745,11 +904,137 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
           }}
         >
           <Save size={18} />
-          <span>Censar Poste de Infraestructura</span>
+          <span>Censar Poste</span>
+        </button>
+
+        <button
+          onClick={() => handleModeChange('incident')}
+          style={{
+            flex: 1,
+            minWidth: '140px',
+            padding: '12px',
+            borderRadius: '8px',
+            border: 'none',
+            background: panelMode === 'incident' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+            color: panelMode === 'incident' ? 'var(--neon-amber)' : 'var(--text-muted)',
+            fontWeight: 700,
+            fontSize: '13px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            transition: 'all 0.2s'
+          }}
+        >
+          <AlertCircle size={18} />
+          <span>🛠️ Atender Corto / Incidencia</span>
         </button>
       </div>
 
-      {panelMode === 'census' ? (
+      {panelMode === 'incident' ? (
+        /* MÓDULO DE REPORTES DE INCIDENCIAS / CORTOS / TRABAJOS ESPECIALES */
+        <div className="glass-panel" style={{ maxWidth: '600px', margin: '0 auto', width: '100%', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+          <h2 className="panel-header" style={{ color: 'var(--neon-amber)' }}>
+            <AlertCircle color="var(--neon-amber)" />
+            <span>Reportar Atención de Incidencia / Trabajo Especial</span>
+          </h2>
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '20px' }}>
+            Registre emergencias atendidas (cortos circuitos, fotoceldas, líneas caídas, quejas) para respaldar el rendimiento de la cuadrilla.
+          </p>
+
+          <form onSubmit={handleRegisterIncident} className="form-group">
+            {incidentSubmitMsg.text && (
+              <div style={{
+                padding: '12px',
+                borderRadius: '8px',
+                marginBottom: '16px',
+                fontSize: '13px',
+                background: incidentSubmitMsg.isError ? 'rgba(244, 63, 94, 0.1)' : 'rgba(5, 243, 162, 0.1)',
+                border: '1px solid ' + (incidentSubmitMsg.isError ? 'var(--neon-rose)' : 'var(--neon-green)'),
+                color: incidentSubmitMsg.isError ? 'var(--neon-rose)' : 'var(--neon-green)'
+              }}>
+                {incidentSubmitMsg.text}
+              </div>
+            )}
+
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                Tipo de Trabajo / Incidencia Atendida:
+              </label>
+              <select
+                value={incidentType}
+                onChange={(e) => setIncidentType(e.target.value)}
+                style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', color: '#fff', fontSize: '13px' }}
+              >
+                <option value="Reparación de Corto Circuito">⚡ Reparación de Corto Circuito</option>
+                <option value="Cambio de Fotocelda / Contactor">🔌 Cambio de Fotocelda / Contactor</option>
+                <option value="Reparación de Línea / Cableado">🧵 Reparación de Línea / Cableado Caído</option>
+                <option value="Reemplazo de Brazo / Abrazadera">🛠️ Reemplazo de Brazo / Abrazadera</option>
+                <option value="Atención de Queja Ciudadana">📢 Atención de Queja Ciudadana</option>
+                <option value="Mantenimiento Especial / Otro">🔧 Mantenimiento Especial / Otro</option>
+              </select>
+            </div>
+
+            <div style={{ marginTop: '14px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                Observaciones y Detalles del Trabajo (Mínimo 5 caracteres):
+              </label>
+              <textarea
+                value={incidentNotes}
+                onChange={(e) => setIncidentNotes(e.target.value)}
+                placeholder="Ej. Se reparó corto en la esquina de Juárez y Zaragoza, se aisló empalme sulfatado y se reestableció luz."
+                rows={3}
+                style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', color: '#fff', fontSize: '13px' }}
+              />
+            </div>
+
+            {/* FOTOS DE EVIDENCIA FÍSICA */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '16px' }}>
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                  Foto Evidencia Antes:
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px dashed var(--border-color)', borderRadius: '8px', cursor: 'pointer', background: 'rgba(0,0,0,0.2)' }}>
+                  <ImageIcon size={20} color="var(--text-muted)" />
+                  <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px' }}>{photoBefore ? 'Foto Seleccionada ✓' : 'Subir Foto'}</span>
+                  <input type="file" accept="image/*" capture="environment" onChange={handlePhotoBeforeUpload} style={{ display: 'none' }} />
+                </label>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                  Foto Evidencia Después:
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px dashed var(--neon-amber)', borderRadius: '8px', cursor: 'pointer', background: 'rgba(245,158,11,0.05)' }}>
+                  <ImageIcon size={20} color="var(--neon-amber)" />
+                  <span style={{ fontSize: '10px', color: 'var(--neon-amber)', marginTop: '4px' }}>{photoAfter ? 'Foto Seleccionada ✓' : 'Subir Foto Final'}</span>
+                  <input type="file" accept="image/*" capture="environment" onChange={handlePhotoAfterUpload} style={{ display: 'none' }} />
+                </label>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmittingIncident || loadingIncident}
+              style={{
+                width: '100%',
+                padding: '14px',
+                marginTop: '20px',
+                borderRadius: '8px',
+                border: 'none',
+                background: isSubmittingIncident ? 'gray' : 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+                color: '#000',
+                fontWeight: 'bold',
+                fontSize: '14px',
+                cursor: 'pointer'
+              }}
+            >
+              {loadingIncident ? 'Capturando GPS y Guardando...' : '🛠️ Guardar Reporte de Incidencia (Captura GPS)'}
+            </button>
+          </form>
+        </div>
+      ) : panelMode === 'census' ? (
         /* MÓDULO DE CENSO DE POSTES */
         <div className="glass-panel" style={{ maxWidth: '600px', margin: '0 auto', width: '100%' }}>
           <h2 className="panel-header" style={{ color: 'var(--neon-blue)' }}>
@@ -1111,6 +1396,24 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
                         <option value="Robo">Robo / Pérdida total</option>
                       </>
                     )}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>⚡ Potencia / Watts de la Luminaria (W):</label>
+                  <select 
+                    value={qrWattage} 
+                    onChange={(e) => setQrWattage(e.target.value)}
+                    style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', color: '#fff', fontSize: '13px' }}
+                  >
+                    <option value="50">50 Watts LED</option>
+                    <option value="70">70 Watts LED</option>
+                    <option value="100">100 Watts LED</option>
+                    <option value="150">150 Watts LED / Sodio</option>
+                    <option value="200">200 Watts LED</option>
+                    <option value="250">250 Watts LED / Sodio</option>
+                    <option value="300">300 Watts LED</option>
+                    <option value="0">0 Watts (Sin Lámpara / Vacío)</option>
                   </select>
                 </div>
               </div>
