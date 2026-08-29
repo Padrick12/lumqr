@@ -560,6 +560,30 @@ app.get('/api/fixtures/:code/history', async (req, res) => {
   }
 });
 
+// Reset/Delete installation history for a specific QR fixture code (for test cleanup)
+app.delete('/api/fixtures/:code/reset', async (req, res) => {
+  const { code } = req.params;
+  try {
+    await db.run('DELETE FROM installations WHERE fixture_code = ?', [code]);
+    await db.run('UPDATE fixtures SET status = "Nueva" WHERE code = ?', [code]);
+    res.json({ message: `Luminaria ${code} reseteada exitosamente. Instalaciones de prueba eliminadas.` });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete a fixture completely
+app.delete('/api/fixtures/:code', async (req, res) => {
+  const { code } = req.params;
+  try {
+    await db.run('DELETE FROM installations WHERE fixture_code = ?', [code]);
+    await db.run('DELETE FROM fixtures WHERE code = ?', [code]);
+    res.json({ message: `Luminaria ${code} eliminada del sistema.` });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 6. Global Reports & Inventory Stats
 app.get('/api/reports', async (req, res) => {
   try {
