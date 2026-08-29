@@ -226,7 +226,13 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
     fetchPolesList();
   }, []);
 
-  const shareOnWhatsApp = () => {
+  const base64ToFile = async (dataUrl: string, filename: string): Promise<File> => {
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    return new File([blob], filename, { type: blob.type || 'image/jpeg' });
+  };
+
+  const shareOnWhatsApp = async () => {
     if (!lastSuccessData) return;
     const formattedDate = new Date(lastSuccessData.date).toLocaleString('es-MX', {
       day: '2-digit', month: '2-digit', year: 'numeric',
@@ -247,26 +253,7 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
     const wattageLine = lastSuccessData.wattage ? `\n⚡ *Potencia / Watts:* ${lastSuccessData.wattage} Watts` : '';
     const notesLine = lastSuccessData.notes ? `\n📝 *Observaciones:* "${lastSuccessData.notes}"` : '';
 
-    let photoSection = '';
-    const origin = window.location.origin;
-    if (lastSuccessData.photoBefore) {
-      const urlBefore = lastSuccessData.photoBefore.startsWith('http') || lastSuccessData.photoBefore.startsWith('data:') 
-        ? lastSuccessData.photoBefore 
-        : origin + lastSuccessData.photoBefore;
-      if (!urlBefore.startsWith('data:')) {
-        photoSection += `\n🖼️ *Foto Antes/Poste:* ${urlBefore}`;
-      }
-    }
-    if (lastSuccessData.photoAfter) {
-      const urlAfter = lastSuccessData.photoAfter.startsWith('http') || lastSuccessData.photoAfter.startsWith('data:') 
-        ? lastSuccessData.photoAfter 
-        : origin + lastSuccessData.photoAfter;
-      if (!urlAfter.startsWith('data:')) {
-        photoSection += `\n🖼️ *Foto Encendida/Final:* ${urlAfter}`;
-      }
-    }
-
-    const text = `${header}
+    const textCaption = `${header}
 ----------------------------------------------
 ${typeLine}
 👷‍♂️ *Cuadrilla:* ${crewName}
@@ -274,8 +261,67 @@ ${typeLine}
 🌐 *Estado / Tipo:* ${lastSuccessData.status}${wattageLine}
 📅 *Fecha/Hora:* ${formattedDate}
 📍 *Ubicación GPS:* https://maps.google.com/?q=${lastSuccessData.lat},${lastSuccessData.lng}${notesLine}
-${photoSection ? `\n📸 *Evidencia Fotográfica en Servidor:*${photoSection}` : '\n📸 *Evidencia fotográfica respaldada en sistema LUMQR*'}`;
 
+📸 *Evidencia Fotográfica Respaldada en Sistema LUMQR*`;
+
+    // INTENTO 1: COMPARTIR ARCHIVOS DE FOTOS DIRECTOS AL MENÚ NATIVO (WHATSAPP, ETC.)
+    const filesToShare: File[] = [];
+    try {
+      if (lastSuccessData.photoBefore) {
+        if (lastSuccessData.photoBefore.startsWith('data:')) {
+          const fileBefore = await base64ToFile(lastSuccessData.photoBefore, `evidencia_antes_${lastSuccessData.code}.jpg`);
+          filesToShare.push(fileBefore);
+        } else if (lastSuccessData.photoBefore.startsWith('http') || lastSuccessData.photoBefore.startsWith('/')) {
+          const fullUrl = lastSuccessData.photoBefore.startsWith('http') ? lastSuccessData.photoBefore : window.location.origin + lastSuccessData.photoBefore;
+          const fileBefore = await base64ToFile(fullUrl, `evidencia_antes_${lastSuccessData.code}.jpg`);
+          filesToShare.push(fileBefore);
+        }
+      }
+
+      if (lastSuccessData.photoAfter) {
+        if (lastSuccessData.photoAfter.startsWith('data:')) {
+          const fileAfter = await base64ToFile(lastSuccessData.photoAfter, `evidencia_encendida_${lastSuccessData.code}.jpg`);
+          filesToShare.push(fileAfter);
+        } else if (lastSuccessData.photoAfter.startsWith('http') || lastSuccessData.photoAfter.startsWith('/')) {
+          const fullUrl = lastSuccessData.photoAfter.startsWith('http') ? lastSuccessData.photoAfter : window.location.origin + lastSuccessData.photoAfter;
+          const fileAfter = await base64ToFile(fullUrl, `evidencia_encendida_${lastSuccessData.code}.jpg`);
+          filesToShare.push(fileAfter);
+        }
+      }
+    } catch (e) {
+      console.warn("Error convirtiendo fotos para Web Share:", e);
+    }
+
+    if (navigator.share && filesToShare.length > 0 && navigator.canShare && navigator.canShare({ files: filesToShare })) {
+      try {
+        await navigator.share({
+          title: header,
+          text: textCaption,
+          files: filesToShare
+        });
+        return;
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.warn("Fallo Web Share nativo, usando WhatsApp URL fallback:", err);
+        } else {
+          return; // Usuario canceló el diálogo compartir
+        }
+      }
+    }
+
+    // INTENTO 2: FALLBACK NAVEGADOR WEB / ESCRITORIO
+    let photoSection = '';
+    const origin = window.location.origin;
+    if (lastSuccessData.photoBefore && !lastSuccessData.photoBefore.startsWith('data:')) {
+      const urlBefore = lastSuccessData.photoBefore.startsWith('http') ? lastSuccessData.photoBefore : origin + lastSuccessData.photoBefore;
+      photoSection += `\n🖼️ *Foto Antes/Poste:* ${urlBefore}`;
+    }
+    if (lastSuccessData.photoAfter && !lastSuccessData.photoAfter.startsWith('data:')) {
+      const urlAfter = lastSuccessData.photoAfter.startsWith('http') ? lastSuccessData.photoAfter : origin + lastSuccessData.photoAfter;
+      photoSection += `\n🖼️ *Foto Encendida/Final:* ${urlAfter}`;
+    }
+
+    const text = `${textCaption}${photoSection}`;
     const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
     window.open(whatsappUrl, '_blank');
   };
