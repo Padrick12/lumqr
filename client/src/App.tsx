@@ -10,8 +10,22 @@ import { RoleSelector } from './components/RoleSelector';
 import { OfflineIndicator } from './components/OfflineIndicator';
 
 function App() {
-  const [role, setRole] = useState<'admin' | 'operator' | null>(null);
-  const [userData, setUserData] = useState<{ id: number; name: string } | null>(null);
+  const [role, setRole] = useState<'admin' | 'operator' | null>(() => {
+    const savedAdmin = localStorage.getItem('lumqr_admin_session');
+    if (savedAdmin) return 'admin';
+    return null;
+  });
+
+  const [userData, setUserData] = useState<{ id: number; name: string } | null>(() => {
+    const savedAdmin = localStorage.getItem('lumqr_admin_session');
+    if (savedAdmin) {
+      try {
+        return JSON.parse(savedAdmin);
+      } catch (e) {}
+    }
+    return null;
+  });
+
   const [activeTab, setActiveTab] = useState<'map' | 'operator' | 'warehouse' | 'admin' | 'reports'>('map');
   const [isSimulatedOffline, setIsSimulatedOffline] = useState<boolean>(false);
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
@@ -21,6 +35,7 @@ function App() {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('lumqr_admin_session');
     setRole(null);
     setUserData(null);
     setActiveTab('map');
@@ -30,6 +45,9 @@ function App() {
     setRole(selectedRole);
     if (data) {
       setUserData(data);
+    }
+    if (selectedRole === 'admin') {
+      localStorage.setItem('lumqr_admin_session', JSON.stringify(data || { id: 1, name: 'Administrador' }));
     }
   };
 

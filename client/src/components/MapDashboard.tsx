@@ -107,10 +107,24 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
   const [zoneTypeFilter, setZoneTypeFilter] = useState<'Todas' | 'Urbana' | 'Rural' | 'Trayectos Seguros'>('Todas');
   const dropdownRef = useRef<HTMLDivElement>(null);
   
+  const [incidents, setIncidents] = useState<any[]>([]);
+
   useEffect(() => {
     fetchInstallations();
     fetchPoles();
+    fetchIncidents();
   }, [refreshTrigger]);
+
+  const fetchIncidents = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/incidents`);
+      if (res.ok) {
+        setIncidents(await res.json());
+      }
+    } catch (err) {
+      console.error('Error fetching incidents for heatmap:', err);
+    }
+  };
 
   const fetchPoles = async () => {
     try {
@@ -371,10 +385,10 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
 
     group.clearLayers();
 
-    filteredInstallations.forEach(inst => {
-      const isAlert = alerts.some(a => a.fixture_code === inst.fixture_code);
-
-      if (isHeatmapMode) {
+    if (isHeatmapMode) {
+      // Render heat circles for installations
+      filteredInstallations.forEach(inst => {
+        const isAlert = alerts.some(a => a.fixture_code === inst.fixture_code);
         let heatColor = '#05f3a2';
         if (inst.current_status === 'Reparada') heatColor = '#00f2fe';
         else if (inst.current_status === 'Rehabilitada') heatColor = '#8b5cf6';
@@ -382,81 +396,109 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
         if (isAlert) heatColor = '#f59e0b';
 
         const circle = L.circleMarker([inst.lat, inst.lng], {
-          radius: 20,
+          radius: 22,
           fillColor: heatColor,
-          fillOpacity: 0.22,
+          fillOpacity: 0.35,
           color: heatColor,
-          weight: 1,
-          opacity: 0.4
+          weight: 2,
+          opacity: 0.6
         });
-        
+        circle.bindPopup(`<b>💡 Luminaria QR: ${inst.fixture_code}</b><br/>Estado: ${inst.current_status}`);
         circle.addTo(group);
-      } else {
-        const icon = createCustomIcon(inst.current_status, isAlert);
-        const marker = L.marker([inst.lat, inst.lng], { icon });
+      });
 
-        let badgeClassStyle = 'background-color: #065f46; color: #34d399;';
-        if (inst.current_status === 'Reparada') badgeClassStyle = 'background-color: #1e40af; color: #60a5fa;';
-        else if (inst.current_status === 'Rehabilitada') badgeClassStyle = 'background-color: #5b21b6; color: #c084fc;';
-        else if (inst.current_status === 'Robo') badgeClassStyle = 'background-color: #991b1b; color: #f87171;';
-
-        const alertHTML = isAlert ? `
-          <div style="display: flex; align-items: center; gap: 4px; color: #f59e0b; font-weight: bold; margin-top: 8px; background: rgba(245, 158, 11, 0.1); padding: 6px; border-radius: 6px; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 10px;">
-            <span>⚠️ Mantenimiento Recomendado (Vida Útil > 90%)</span>
+      // Render glowing red/amber heat zones for all reported Incidents / Short Circuits
+      incidents.forEach(inc => {
+        if (!inc.lat || !inc.lng) return;
+        const heatCircle = L.circleMarker([inc.lat, inc.lng], {
+          radius: 30,
+          fillColor: '#ef4444',
+          fillOpacity: 0.55,
+          color: '#f97316',
+          weight: 3,
+          opacity: 0.9
+        });
+        heatCircle.bindPopup(`
+          <div style="color: #ef4444; font-weight: bold; font-size: 12px;">
+            🔥 CORTO CIRCUITO / FALLA REPORTADA
           </div>
-        ` : '';
+          <div style="font-size: 11px; color: #fff; margin-top: 4px;">
+            <strong>Tipo:</strong> ${inc.incident_type}<br/>
+            <strong>Cuadrilla:</strong> ${inc.crew_name || 'N/A'}<br/>
+            <strong>Notas:</strong> "${inc.notes}"
+          </div>
+        `);
+        heatCircle.addTo(group);
+      });
+      return;
+    }
 
-        const usageStat = maintenanceStats.find(m => m.fixture_code === inst.fixture_code);
-        const usageHTML = usageStat ? `
-          <div style="margin-top: 6px;">
-            <div style="display: flex; justify-content: space-between; font-size: 9px; color: #94a3b8; margin-bottom: 2px;">
-              <span>Vida Útil (30k hrs)</span>
-              <span>${usageStat.usedHours.toLocaleString()} hrs (${usageStat.lifePercentage.toFixed(1)}%)</span>
-            </div>
-            <div style="width: 100%; background: rgba(255,255,255,0.1); border-radius: 2px; height: 4px;">
-              <div style="width: ${usageStat.lifePercentage}%; background: ${usageStat.lifePercentage > 90 ? '#f59e0b' : '#05f3a2'}; height: 100%; border-radius: 2px;"></div>
+    filteredInstallations.forEach(inst => {
+      const isAlert = alerts.some(a => a.fixture_code === inst.fixture_code);
+      const icon = createCustomIcon(inst.current_status, isAlert);
+      const marker = L.marker([inst.lat, inst.lng], { icon });
+
+      let badgeClassStyle = 'background-color: #065f46; color: #34d399;';
+      if (inst.current_status === 'Reparada') badgeClassStyle = 'background-color: #1e40af; color: #60a5fa;';
+      else if (inst.current_status === 'Rehabilitada') badgeClassStyle = 'background-color: #5b21b6; color: #c084fc;';
+      else if (inst.current_status === 'Robo') badgeClassStyle = 'background-color: #991b1b; color: #f87171;';
+
+      const alertHTML = isAlert ? `
+        <div style="display: flex; align-items: center; gap: 4px; color: #f59e0b; font-weight: bold; margin-top: 8px; background: rgba(245, 158, 11, 0.1); padding: 6px; border-radius: 6px; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 10px;">
+          <span>⚠️ Mantenimiento Recomendado (Vida Útil > 90%)</span>
+        </div>
+      ` : '';
+
+      const usageStat = maintenanceStats.find(m => m.fixture_code === inst.fixture_code);
+      const usageHTML = usageStat ? `
+        <div style="margin-top: 6px;">
+          <div style="display: flex; justify-content: space-between; font-size: 9px; color: #94a3b8; margin-bottom: 2px;">
+            <span>Vida Útil (30k hrs)</span>
+            <span>${usageStat.usedHours.toLocaleString()} hrs (${usageStat.lifePercentage.toFixed(1)}%)</span>
+          </div>
+          <div style="width: 100%; background: rgba(255,255,255,0.1); border-radius: 2px; height: 4px;">
+            <div style="width: ${usageStat.lifePercentage}%; background: ${usageStat.lifePercentage > 90 ? '#f59e0b' : '#05f3a2'}; height: 100%; border-radius: 2px;"></div>
+          </div>
+        </div>
+      ` : '';
+
+      const photoHTML = (inst.photo_before || inst.photo_after) ? `
+        <div style="display: flex; gap: 6px; margin-top: 8px;">
+          ${inst.photo_before ? `<div style="flex: 1;"><span style="font-size: 8px; color: #94a3b8; display: block; margin-bottom: 2px;">Foto Antes / Poste:</span><img src="${inst.photo_before}" onclick="window.openPhotoModal('${inst.photo_before}', 'Foto Antes / Poste - ${inst.fixture_code}')" style="cursor: pointer; width: 100%; height: 65px; object-fit: cover; border-radius: 4px; border: 1px solid #38bdf8;" /></div>` : ''}
+          ${inst.photo_after ? `<div style="flex: 1;"><span style="font-size: 8px; color: #94a3b8; display: block; margin-bottom: 2px;">Foto Encendida:</span><img src="${inst.photo_after}" onclick="window.openPhotoModal('${inst.photo_after}', 'Foto Encendida - ${inst.fixture_code}')" style="cursor: pointer; width: 100%; height: 65px; object-fit: cover; border-radius: 4px; border: 1px solid #34d399;" /></div>` : ''}
+        </div>
+      ` : '';
+
+      const popupHTML = `
+        <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px; color: #f1f5f9; min-width: 210px; padding: 4px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 6px; margin-bottom: 6px;">
+            <span style="font-family: monospace; font-weight: bold; font-size: 13px; color: #fff;">${inst.fixture_code}</span>
+            <span style="padding: 2px 6px; border-radius: 4px; font-weight: 600; font-size: 10px; ${badgeClassStyle}">${inst.current_status}</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <p style="margin: 2px 0;"><strong>Cuadrilla:</strong> ${inst.crew_name}</p>
+            ${inst.operator_name ? `<p style="margin: 2px 0; color: #34d399;"><strong>Responsable en Turno:</strong> ${inst.operator_name}</p>` : ''}
+            ${inst.wattage ? `<p style="margin: 2px 0; color: #f59e0b; font-weight: 700;"><strong>⚡ Potencia / Watts:</strong> ${inst.wattage} Watts</p>` : ''}
+            <p style="margin: 2px 0;"><strong>Ubicación:</strong> ${getColoniaName(inst.lat, inst.lng)}</p>
+            <p style="margin: 2px 0;"><strong>Instalada:</strong> ${formatLocalDateTime(inst.installed_at)}</p>
+            ${inst.notes ? `<p style="margin: 6px 0 0 0; font-style: italic; background: rgba(255,255,255,0.04); padding: 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.04);">"${inst.notes}"</p>` : ''}
+            ${photoHTML}
+            ${usageHTML}
+            ${alertHTML}
+            <div style="display: flex; gap: 6px; margin-top: 10px; border-top: 1px solid #334155; padding-top: 8px;">
+              <a href="https://www.google.com/maps/dir/?api=1&destination=${inst.lat},${inst.lng}" target="_blank" rel="noopener noreferrer" style="flex: 1; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 4px; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); padding: 5px 8px; border-radius: 6px; font-weight: 600; font-size: 10px;">
+                📍 Google Maps
+              </a>
+              <a href="https://waze.com/ul?ll=${inst.lat},${inst.lng}&navigate=yes" target="_blank" rel="noopener noreferrer" style="flex: 1; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 4px; background: rgba(5, 243, 162, 0.15); color: #05f3a2; border: 1px solid rgba(5, 243, 162, 0.4); padding: 5px 8px; border-radius: 6px; font-weight: 600; font-size: 10px;">
+                🚙 Waze
+              </a>
             </div>
           </div>
-        ` : '';
+        </div>
+      `;
 
-        const photoHTML = (inst.photo_before || inst.photo_after) ? `
-          <div style="display: flex; gap: 6px; margin-top: 8px;">
-            ${inst.photo_before ? `<div style="flex: 1;"><span style="font-size: 8px; color: #94a3b8; display: block; margin-bottom: 2px;">Foto Antes / Poste:</span><img src="${inst.photo_before}" onclick="window.openPhotoModal('${inst.photo_before}', 'Foto Antes / Poste - ${inst.fixture_code}')" style="cursor: pointer; width: 100%; height: 65px; object-fit: cover; border-radius: 4px; border: 1px solid #38bdf8;" /></div>` : ''}
-            ${inst.photo_after ? `<div style="flex: 1;"><span style="font-size: 8px; color: #94a3b8; display: block; margin-bottom: 2px;">Foto Encendida:</span><img src="${inst.photo_after}" onclick="window.openPhotoModal('${inst.photo_after}', 'Foto Encendida - ${inst.fixture_code}')" style="cursor: pointer; width: 100%; height: 65px; object-fit: cover; border-radius: 4px; border: 1px solid #34d399;" /></div>` : ''}
-          </div>
-        ` : '';
-
-        const popupHTML = `
-          <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px; color: #f1f5f9; min-width: 210px; padding: 4px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 6px; margin-bottom: 6px;">
-              <span style="font-family: monospace; font-weight: bold; font-size: 13px; color: #fff;">${inst.fixture_code}</span>
-              <span style="padding: 2px 6px; border-radius: 4px; font-weight: 600; font-size: 10px; ${badgeClassStyle}">${inst.current_status}</span>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 4px;">
-              <p style="margin: 2px 0;"><strong>Cuadrilla:</strong> ${inst.crew_name}</p>
-              ${inst.operator_name ? `<p style="margin: 2px 0; color: #34d399;"><strong>Responsable en Turno:</strong> ${inst.operator_name}</p>` : ''}
-              ${inst.wattage ? `<p style="margin: 2px 0; color: #f59e0b; font-weight: 700;"><strong>⚡ Potencia / Watts:</strong> ${inst.wattage} Watts</p>` : ''}
-              <p style="margin: 2px 0;"><strong>Ubicación:</strong> ${getColoniaName(inst.lat, inst.lng)}</p>
-              <p style="margin: 2px 0;"><strong>Instalada:</strong> ${formatLocalDateTime(inst.installed_at)}</p>
-              ${inst.notes ? `<p style="margin: 6px 0 0 0; font-style: italic; background: rgba(255,255,255,0.04); padding: 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.04);">"${inst.notes}"</p>` : ''}
-              ${photoHTML}
-              ${usageHTML}
-              ${alertHTML}
-              <div style="display: flex; gap: 6px; margin-top: 10px; border-top: 1px solid #334155; padding-top: 8px;">
-                <a href="https://www.google.com/maps/dir/?api=1&destination=${inst.lat},${inst.lng}" target="_blank" rel="noopener noreferrer" style="flex: 1; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 4px; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); padding: 5px 8px; border-radius: 6px; font-weight: 600; font-size: 10px;">
-                  📍 Google Maps
-                </a>
-                <a href="https://waze.com/ul?ll=${inst.lat},${inst.lng}&navigate=yes" target="_blank" rel="noopener noreferrer" style="flex: 1; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 4px; background: rgba(5, 243, 162, 0.15); color: #05f3a2; border: 1px solid rgba(5, 243, 162, 0.4); padding: 5px 8px; border-radius: 6px; font-weight: 600; font-size: 10px;">
-                  🚙 Waze
-                </a>
-              </div>
-            </div>
-          </div>
-        `;
-
-        marker.bindPopup(popupHTML);
-        marker.addTo(group);
-      }
+      marker.bindPopup(popupHTML);
+      marker.addTo(group);
     });
 
     // RENDER CENSORED POLES ON MAP
@@ -695,13 +737,20 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
                   <div className="alert-details">
                     <p>Ubicación: <strong>{getColoniaName(al.lat, al.lng)}</strong></p>
                     <p>Horas uso: {al.usedHours.toLocaleString()} / 30,000</p>
-                    <p>Responsable: {al.crew_name}</p>
-                    <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
-                      <a href={`https://www.google.com/maps/dir/?api=1&destination=${al.lat},${al.lng}`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.4)', padding: '4px 6px', borderRadius: '6px', fontWeight: 600, fontSize: '10px' }}>
-                        📍 Google Maps
+                    <div style={{ display: 'flex', gap: '4px', marginTop: '8px' }}>
+                      <a href={`https://www.google.com/maps/dir/?api=1&destination=${al.lat},${al.lng}`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.4)', padding: '4px 4px', borderRadius: '6px', fontWeight: 600, fontSize: '9px' }}>
+                        📍 Maps
                       </a>
-                      <a href={`https://waze.com/ul?ll=${al.lat},${al.lng}&navigate=yes`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', background: 'rgba(5, 243, 162, 0.15)', color: '#05f3a2', border: '1px solid rgba(5, 243, 162, 0.4)', padding: '4px 6px', borderRadius: '6px', fontWeight: 600, fontSize: '10px' }}>
+                      <a href={`https://waze.com/ul?ll=${al.lat},${al.lng}&navigate=yes`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px', background: 'rgba(5, 243, 162, 0.15)', color: '#05f3a2', border: '1px solid rgba(5, 243, 162, 0.4)', padding: '4px 4px', borderRadius: '6px', fontWeight: 600, fontSize: '9px' }}>
                         🚙 Waze
+                      </a>
+                      <a 
+                        href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`🔔 *ALERTA DE MANTENIMIENTO PREVENTIVO - LERDO, DGO.*\n----------------------------------------------\n🆔 *Luminaria QR:* ${al.fixture_code}\n⚠️ *Vida Útil Acumulada:* ${al.usedHours.toLocaleString()} Horas (${al.lifePercentage.toFixed(1)}% - Máx 30,000h)\n👷‍♂️ *Cuadrilla Encargada:* ${al.crew_name}\n📍 *Ubicación:* ${getColoniaName(al.lat, al.lng)}\n📍 *Google Maps:* https://maps.google.com/?q=${al.lat},${al.lng}\n\n🛠️ *Acción Requerida:* Programar sustitución preventiva antes de falla.`)}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        style={{ flex: 1, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px', background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', border: '1px solid rgba(34, 197, 94, 0.4)', padding: '4px 4px', borderRadius: '6px', fontWeight: 600, fontSize: '9px' }}
+                      >
+                        📲 Avisar
                       </a>
                     </div>
                   </div>
