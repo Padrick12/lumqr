@@ -7,6 +7,7 @@ import 'leaflet.markercluster';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { ShieldAlert, Sparkles, Filter, RefreshCw, Clock, Search, ChevronDown, MapPin } from 'lucide-react';
+import { ImageModal } from './ImageModal';
 import sectoresData from '../data/sectores-lerdo.json';
 import './MapDashboard.css';
 
@@ -23,6 +24,7 @@ interface Installation {
   notes: string;
   photo_before?: string;
   photo_after?: string;
+  wattage?: number;
   current_status: 'Nueva' | 'Reparada' | 'Rehabilitada' | 'Robo';
   arrival_date: string;
 }
@@ -145,6 +147,14 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const [selectedImageModal, setSelectedImageModal] = useState<{ url: string; title: string } | null>(null);
+
+  useEffect(() => {
+    (window as any).openPhotoModal = (url: string, title: string) => {
+      setSelectedImageModal({ url, title });
+    };
   }, []);
 
   const filteredColoniasList = COLONIAS.filter(c => {
@@ -411,8 +421,8 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
 
         const photoHTML = (inst.photo_before || inst.photo_after) ? `
           <div style="display: flex; gap: 6px; margin-top: 8px;">
-            ${inst.photo_before ? `<div style="flex: 1;"><span style="font-size: 8px; color: #94a3b8; display: block; margin-bottom: 2px;">Foto Antes / Poste:</span><img src="${inst.photo_before}" style="width: 100%; height: 65px; object-fit: cover; border-radius: 4px; border: 1px solid #38bdf8;" /></div>` : ''}
-            ${inst.photo_after ? `<div style="flex: 1;"><span style="font-size: 8px; color: #94a3b8; display: block; margin-bottom: 2px;">Foto Encendida:</span><img src="${inst.photo_after}" style="width: 100%; height: 65px; object-fit: cover; border-radius: 4px; border: 1px solid #34d399;" /></div>` : ''}
+            ${inst.photo_before ? `<div style="flex: 1;"><span style="font-size: 8px; color: #94a3b8; display: block; margin-bottom: 2px;">Foto Antes / Poste:</span><img src="${inst.photo_before}" onclick="window.openPhotoModal('${inst.photo_before}', 'Foto Antes / Poste - ${inst.fixture_code}')" style="cursor: pointer; width: 100%; height: 65px; object-fit: cover; border-radius: 4px; border: 1px solid #38bdf8;" /></div>` : ''}
+            ${inst.photo_after ? `<div style="flex: 1;"><span style="font-size: 8px; color: #94a3b8; display: block; margin-bottom: 2px;">Foto Encendida:</span><img src="${inst.photo_after}" onclick="window.openPhotoModal('${inst.photo_after}', 'Foto Encendida - ${inst.fixture_code}')" style="cursor: pointer; width: 100%; height: 65px; object-fit: cover; border-radius: 4px; border: 1px solid #34d399;" /></div>` : ''}
           </div>
         ` : '';
 
@@ -425,6 +435,7 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
             <div style="display: flex; flex-direction: column; gap: 4px;">
               <p style="margin: 2px 0;"><strong>Cuadrilla:</strong> ${inst.crew_name}</p>
               ${inst.operator_name ? `<p style="margin: 2px 0; color: #34d399;"><strong>Responsable en Turno:</strong> ${inst.operator_name}</p>` : ''}
+              ${inst.wattage ? `<p style="margin: 2px 0; color: #f59e0b; font-weight: 700;"><strong>⚡ Potencia / Watts:</strong> ${inst.wattage} Watts</p>` : ''}
               <p style="margin: 2px 0;"><strong>Ubicación:</strong> ${getColoniaName(inst.lat, inst.lng)}</p>
               <p style="margin: 2px 0;"><strong>Instalada:</strong> ${formatLocalDateTime(inst.installed_at)}</p>
               ${inst.notes ? `<p style="margin: 6px 0 0 0; font-style: italic; background: rgba(255,255,255,0.04); padding: 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.04);">"${inst.notes}"</p>` : ''}
@@ -465,8 +476,8 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
 
         const polePhotoHTML = (p.photo_before || p.photo_after) ? `
           <div style="display: flex; gap: 6px; margin-top: 8px;">
-            ${p.photo_before ? `<div style="flex: 1;"><span style="font-size: 8px; color: #94a3b8; display: block; margin-bottom: 2px;">Foto Antes / Poste:</span><img src="${p.photo_before}" style="width: 100%; height: 65px; object-fit: cover; border-radius: 4px; border: 1px solid #38bdf8;" /></div>` : ''}
-            ${p.photo_after ? `<div style="flex: 1;"><span style="font-size: 8px; color: #94a3b8; display: block; margin-bottom: 2px;">Foto Encendida:</span><img src="${p.photo_after}" style="width: 100%; height: 65px; object-fit: cover; border-radius: 4px; border: 1px solid #34d399;" /></div>` : ''}
+            ${p.photo_before ? `<div style="flex: 1;"><span style="font-size: 8px; color: #94a3b8; display: block; margin-bottom: 2px;">Foto Antes / Poste:</span><img src="${p.photo_before}" onclick="window.openPhotoModal('${p.photo_before}', 'Foto Antes / Poste - ${p.pole_code}')" style="cursor: pointer; width: 100%; height: 65px; object-fit: cover; border-radius: 4px; border: 1px solid #38bdf8;" /></div>` : ''}
+            ${p.photo_after ? `<div style="flex: 1;"><span style="font-size: 8px; color: #94a3b8; display: block; margin-bottom: 2px;">Foto Encendida:</span><img src="${p.photo_after}" onclick="window.openPhotoModal('${p.photo_after}', 'Foto Encendida - ${p.pole_code}')" style="cursor: pointer; width: 100%; height: 65px; object-fit: cover; border-radius: 4px; border: 1px solid #34d399;" /></div>` : ''}
           </div>
         ` : '';
 
@@ -700,6 +711,13 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
           </div>
         </div>
       </div>
+
+      <ImageModal
+        isOpen={!!selectedImageModal}
+        imageUrl={selectedImageModal?.url || null}
+        title={selectedImageModal?.title}
+        onClose={() => setSelectedImageModal(null)}
+      />
     </div>
   );
 };

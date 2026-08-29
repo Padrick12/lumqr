@@ -1,6 +1,7 @@
 import { API_BASE_URL } from '../config';
 import React, { useState, useEffect } from 'react';
 import { FileSpreadsheet, Printer, Search, RefreshCcw } from 'lucide-react';
+import { ImageModal } from './ImageModal';
 import './shared-panels.css';
 
 interface Fixture {
@@ -48,6 +49,7 @@ export const ReportsPanel: React.FC = () => {
   const [summary, setSummary] = useState<SummaryStats | null>(null);
   const [crewPerformance, setCrewPerformance] = useState<CrewPerformance[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedImageModal, setSelectedImageModal] = useState<{ url: string; title: string } | null>(null);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('todos');
@@ -595,9 +597,23 @@ export const ReportsPanel: React.FC = () => {
                     <td style={{ color: 'var(--neon-green)', fontWeight: 600 }}>{inc.operator_name || 'N/A'}</td>
                     <td style={{ fontSize: '12px', fontStyle: 'italic', maxWidth: '250px' }}>"{inc.notes}"</td>
                     <td>
-                      <div style={{ display: 'flex', gap: '4px' }}>
-                        {inc.photo_before && <a href={inc.photo_before} target="_blank" rel="noreferrer" style={{ fontSize: '10px', color: 'var(--neon-blue)' }}>[Foto Antes]</a>}
-                        {inc.photo_after && <a href={inc.photo_after} target="_blank" rel="noreferrer" style={{ fontSize: '10px', color: 'var(--neon-green)' }}>[Foto Después]</a>}
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        {inc.photo_before && (
+                          <button
+                            onClick={() => setSelectedImageModal({ url: inc.photo_before, title: `Foto Antes - ${inc.incident_type}` })}
+                            style={{ background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.3)', color: 'var(--neon-blue)', borderRadius: '4px', padding: '2px 6px', fontSize: '10px', cursor: 'pointer', fontWeight: 600 }}
+                          >
+                            🖼️ Foto Antes
+                          </button>
+                        )}
+                        {inc.photo_after && (
+                          <button
+                            onClick={() => setSelectedImageModal({ url: inc.photo_after, title: `Foto Después - ${inc.incident_type}` })}
+                            style={{ background: 'rgba(5, 243, 162, 0.1)', border: '1px solid rgba(5, 243, 162, 0.3)', color: 'var(--neon-green)', borderRadius: '4px', padding: '2px 6px', fontSize: '10px', cursor: 'pointer', fontWeight: 600 }}
+                          >
+                            🖼️ Foto Después
+                          </button>
+                        )}
                       </div>
                     </td>
                     <td>
@@ -617,6 +633,13 @@ export const ReportsPanel: React.FC = () => {
           )}
         </div>
       </div>
+
+      <ImageModal
+        isOpen={!!selectedImageModal}
+        imageUrl={selectedImageModal?.url || null}
+        title={selectedImageModal?.title}
+        onClose={() => setSelectedImageModal(null)}
+      />
     </div>
   );
 };

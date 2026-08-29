@@ -4,6 +4,7 @@ import { Camera, Search, Calendar, History, ShieldCheck, AlertCircle, Save, Wifi
 import { Html5Qrcode } from 'html5-qrcode';
 import { addToQueue } from '../utils/offlineStore';
 import { formatFixtureCode } from '../utils/codeFormatter';
+import { ImageModal } from './ImageModal';
 import './shared-panels.css';
 
 interface FixtureHistory {
@@ -61,6 +62,8 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
   const [isSubmittingPole, setIsSubmittingPole] = useState(false);
   const [isSubmittingIncident, setIsSubmittingIncident] = useState(false);
 
+  const [selectedImageModal, setSelectedImageModal] = useState<{ url: string; title: string } | null>(null);
+
   // Success State for WhatsApp Share
   const [lastSuccessData, setLastSuccessData] = useState<{
     type: 'installation' | 'pole' | 'incident';
@@ -71,6 +74,8 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
     lng: number;
     date: string;
     notes?: string;
+    photoBefore?: string | null;
+    photoAfter?: string | null;
   } | null>(null);
 
   const [fixtureCode, setFixtureCode] = useState('');
@@ -242,6 +247,25 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
     const wattageLine = lastSuccessData.wattage ? `\n⚡ *Potencia / Watts:* ${lastSuccessData.wattage} Watts` : '';
     const notesLine = lastSuccessData.notes ? `\n📝 *Observaciones:* "${lastSuccessData.notes}"` : '';
 
+    let photoSection = '';
+    const origin = window.location.origin;
+    if (lastSuccessData.photoBefore) {
+      const urlBefore = lastSuccessData.photoBefore.startsWith('http') || lastSuccessData.photoBefore.startsWith('data:') 
+        ? lastSuccessData.photoBefore 
+        : origin + lastSuccessData.photoBefore;
+      if (!urlBefore.startsWith('data:')) {
+        photoSection += `\n🖼️ *Foto Antes/Poste:* ${urlBefore}`;
+      }
+    }
+    if (lastSuccessData.photoAfter) {
+      const urlAfter = lastSuccessData.photoAfter.startsWith('http') || lastSuccessData.photoAfter.startsWith('data:') 
+        ? lastSuccessData.photoAfter 
+        : origin + lastSuccessData.photoAfter;
+      if (!urlAfter.startsWith('data:')) {
+        photoSection += `\n🖼️ *Foto Encendida/Final:* ${urlAfter}`;
+      }
+    }
+
     const text = `${header}
 ----------------------------------------------
 ${typeLine}
@@ -250,8 +274,7 @@ ${typeLine}
 🌐 *Estado / Tipo:* ${lastSuccessData.status}${wattageLine}
 📅 *Fecha/Hora:* ${formattedDate}
 📍 *Ubicación GPS:* https://maps.google.com/?q=${lastSuccessData.lat},${lastSuccessData.lng}${notesLine}
-
-📸 *Evidencia fotográfica respaldada en sistema LUMQR*`;
+${photoSection ? `\n📸 *Evidencia Fotográfica en Servidor:*${photoSection}` : '\n📸 *Evidencia fotográfica respaldada en sistema LUMQR*'}`;
 
     const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
     window.open(whatsappUrl, '_blank');
@@ -367,7 +390,9 @@ ${typeLine}
           lat,
           lng,
           date: new Date().toISOString(),
-          notes: poleNotes
+          notes: poleNotes,
+          photoBefore,
+          photoAfter
         });
         setPoleNotes('');
         setPhotoBefore(null);
@@ -446,7 +471,9 @@ ${typeLine}
           lat,
           lng,
           date: new Date().toISOString(),
-          notes: incidentNotes
+          notes: incidentNotes,
+          photoBefore,
+          photoAfter
         });
         setIncidentNotes('');
         setPhotoBefore(null);
@@ -648,7 +675,9 @@ ${typeLine}
           lat,
           lng,
           date: new Date().toISOString(),
-          notes: installNotes
+          notes: installNotes,
+          photoBefore,
+          photoAfter
         });
         setFixtureDetails(null);
         setFixtureCode('');
@@ -679,7 +708,9 @@ ${typeLine}
             lat,
             lng,
             date: new Date().toISOString(),
-            notes: installNotes
+            notes: installNotes,
+            photoBefore,
+            photoAfter
           });
           setFixtureDetails(null);
           setFixtureCode('');
@@ -1413,7 +1444,6 @@ ${typeLine}
                     <option value="200">200 Watts LED</option>
                     <option value="250">250 Watts LED / Sodio</option>
                     <option value="300">300 Watts LED</option>
-                    <option value="0">0 Watts (Sin Lámpara / Vacío)</option>
                   </select>
                 </div>
               </div>
@@ -1513,6 +1543,12 @@ ${typeLine}
       </div>
     </div>
     )}
+    <ImageModal
+      isOpen={!!selectedImageModal}
+      imageUrl={selectedImageModal?.url || null}
+      title={selectedImageModal?.title}
+      onClose={() => setSelectedImageModal(null)}
+    />
     </div>
   );
 };
