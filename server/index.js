@@ -328,13 +328,18 @@ app.post('/api/batches', async (req, res) => {
 app.delete('/api/batches/:id', async (req, res) => {
   const { id } = req.params;
   try {
+    await db.run('BEGIN TRANSACTION;');
+    await db.run('DELETE FROM installations WHERE fixture_code IN (SELECT code FROM fixtures WHERE batch_id = ?)', [id]);
+    await db.run('DELETE FROM fixtures WHERE batch_id = ?', [id]);
     const result = await db.run('DELETE FROM batches WHERE id = ?', [id]);
+    await db.run('COMMIT;');
+
     if (result.changes === 0) {
       return res.status(404).json({ error: 'Lote no encontrado.' });
     }
-    // Foreign keys with ON DELETE CASCADE will automatically delete fixtures and their installations
-    res.json({ message: 'Lote eliminado correctamente.' });
+    res.json({ message: 'Lote y sus registros asociados eliminados correctamente.' });
   } catch (error) {
+    await db.run('ROLLBACK;');
     res.status(500).json({ error: error.message });
   }
 });
@@ -789,6 +794,24 @@ app.post('/api/incidents', async (req, res) => {
       photo_after: photoAfterPath || null,
       created_at: isoDate
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 9. Manual Disaster Recovery Backup Trigger
+app.post('/api/backup', async (req, res) => {
+  try {
+    const backupsDir = path.join(__dirname, 'backups');
+    if (!fs.existsSync(backupsDir)) {
+      fs.mkdirSync(backupsDir, { recursive: true });
+    }
+
+    const dateStr = new Date().toISOString().replace(/[:.]/g, '-');
+    const backupPath = path.join(backupsDir, `lumqr_backup_${dateStr}.db`);
+
+    await db.run('VACUUM INTO ?', [backupPath]);
+    res.json({ message: 'Respaldo generado exitosamente.', filename: path.basename(backupPath) });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
