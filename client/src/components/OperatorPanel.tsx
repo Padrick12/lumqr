@@ -232,6 +232,80 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
     return new File([blob], filename, { type: blob.type || 'image/jpeg' });
   };
 
+  const createCombinedEvidenceImage = async (
+    urlBefore: string,
+    urlAfter: string,
+    code: string
+  ): Promise<File | null> => {
+    return new Promise((resolve) => {
+      const img1 = new Image();
+      const img2 = new Image();
+      img1.crossOrigin = 'anonymous';
+      img2.crossOrigin = 'anonymous';
+
+      let loadedCount = 0;
+      const onImgLoad = () => {
+        loadedCount++;
+        if (loadedCount < 2) return;
+
+        const width = 1200;
+        const height = 650;
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return resolve(null);
+
+        ctx.fillStyle = '#0b0f19';
+        ctx.fillRect(0, 0, width, height);
+
+        const halfW = (width - 30) / 2;
+        const imgH = height - 90;
+
+        // Foto 1
+        ctx.drawImage(img1, 10, 50, halfW, imgH);
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(10, 50, halfW, imgH);
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillText('📸 1. EVIDENCIA ANTES / POSTE', 15, 35);
+
+        // Foto 2
+        ctx.drawImage(img2, 20 + halfW, 50, halfW, imgH);
+        ctx.strokeStyle = '#05f3a2';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(20 + halfW, 50, halfW, imgH);
+        ctx.fillStyle = '#05f3a2';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillText('📸 2. LÁMPARA LED ENCENDIDA', 25 + halfW, 35);
+
+        // Banner inferior de custodia
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(0, height - 30, width, 30);
+        ctx.fillStyle = '#05f3a2';
+        ctx.font = 'bold 13px monospace';
+        ctx.fillText(`LUMQR LERDO — EVIDENCIA OFICIAL DE CUSTODIA — CÓDIGO: ${code}`, 20, height - 10);
+
+        canvas.toBlob((blob) => {
+          if (!blob) return resolve(null);
+          const file = new File([blob], `evidencia_collage_${code}.jpg`, { type: 'image/jpeg' });
+          resolve(file);
+        }, 'image/jpeg', 0.90);
+      };
+
+      img1.onerror = () => resolve(null);
+      img2.onerror = () => resolve(null);
+
+      img1.onload = onImgLoad;
+      img2.onload = onImgLoad;
+
+      const origin = window.location.origin;
+      img1.src = urlBefore.startsWith('data:') || urlBefore.startsWith('http') ? urlBefore : origin + urlBefore;
+      img2.src = urlAfter.startsWith('data:') || urlAfter.startsWith('http') ? urlAfter : origin + urlAfter;
+    });
+  };
+
   const shareOnWhatsApp = async () => {
     if (!lastSuccessData) return;
     const formattedDate = new Date(lastSuccessData.date).toLocaleString('es-MX', {
@@ -264,32 +338,29 @@ ${typeLine}
 
 📸 *Evidencia Fotográfica Respaldada en Sistema LUMQR*`;
 
-    // INTENTO 1: COMPARTIR ARCHIVOS DE FOTOS DIRECTOS AL MENÚ NATIVO (WHATSAPP, ETC.)
+    // INTENTO 1: SI EXISTEN LAS 2 FOTOS, COMBINARLAS EN 1 ÚNICA IMAGEN DE ALTA CALIDAD PARA UN SOLO BURBUJA EN WHATSAPP
     const filesToShare: File[] = [];
     try {
-      if (lastSuccessData.photoBefore) {
-        if (lastSuccessData.photoBefore.startsWith('data:')) {
-          const fileBefore = await base64ToFile(lastSuccessData.photoBefore, `evidencia_antes_${lastSuccessData.code}.jpg`);
-          filesToShare.push(fileBefore);
-        } else if (lastSuccessData.photoBefore.startsWith('http') || lastSuccessData.photoBefore.startsWith('/')) {
-          const fullUrl = lastSuccessData.photoBefore.startsWith('http') ? lastSuccessData.photoBefore : window.location.origin + lastSuccessData.photoBefore;
-          const fileBefore = await base64ToFile(fullUrl, `evidencia_antes_${lastSuccessData.code}.jpg`);
-          filesToShare.push(fileBefore);
+      if (lastSuccessData.photoBefore && lastSuccessData.photoAfter) {
+        const collageFile = await createCombinedEvidenceImage(lastSuccessData.photoBefore, lastSuccessData.photoAfter, lastSuccessData.code);
+        if (collageFile) {
+          filesToShare.push(collageFile);
         }
       }
 
-      if (lastSuccessData.photoAfter) {
-        if (lastSuccessData.photoAfter.startsWith('data:')) {
-          const fileAfter = await base64ToFile(lastSuccessData.photoAfter, `evidencia_encendida_${lastSuccessData.code}.jpg`);
-          filesToShare.push(fileAfter);
-        } else if (lastSuccessData.photoAfter.startsWith('http') || lastSuccessData.photoAfter.startsWith('/')) {
-          const fullUrl = lastSuccessData.photoAfter.startsWith('http') ? lastSuccessData.photoAfter : window.location.origin + lastSuccessData.photoAfter;
-          const fileAfter = await base64ToFile(fullUrl, `evidencia_encendida_${lastSuccessData.code}.jpg`);
+      if (filesToShare.length === 0) {
+        if (lastSuccessData.photoBefore) {
+          const urlB = lastSuccessData.photoBefore.startsWith('data:') || lastSuccessData.photoBefore.startsWith('http') ? lastSuccessData.photoBefore : window.location.origin + lastSuccessData.photoBefore;
+          const fileBefore = await base64ToFile(urlB, `evidencia_antes_${lastSuccessData.code}.jpg`);
+          filesToShare.push(fileBefore);
+        } else if (lastSuccessData.photoAfter) {
+          const urlA = lastSuccessData.photoAfter.startsWith('data:') || lastSuccessData.photoAfter.startsWith('http') ? lastSuccessData.photoAfter : window.location.origin + lastSuccessData.photoAfter;
+          const fileAfter = await base64ToFile(urlA, `evidencia_encendida_${lastSuccessData.code}.jpg`);
           filesToShare.push(fileAfter);
         }
       }
     } catch (e) {
-      console.warn("Error convirtiendo fotos para Web Share:", e);
+      console.warn("Error generando collage para Web Share:", e);
     }
 
     if (navigator.share && filesToShare.length > 0 && navigator.canShare && navigator.canShare({ files: filesToShare })) {
@@ -304,7 +375,7 @@ ${typeLine}
         if (err.name !== 'AbortError') {
           console.warn("Fallo Web Share nativo, usando WhatsApp URL fallback:", err);
         } else {
-          return; // Usuario canceló el diálogo compartir
+          return;
         }
       }
     }
@@ -1486,9 +1557,9 @@ ${typeLine}
                     <option value="50">50 Watts LED</option>
                     <option value="70">70 Watts LED</option>
                     <option value="100">100 Watts LED</option>
-                    <option value="150">150 Watts LED / Sodio</option>
+                    <option value="150">150 Watts LED</option>
                     <option value="200">200 Watts LED</option>
-                    <option value="250">250 Watts LED / Sodio</option>
+                    <option value="250">250 Watts LED</option>
                     <option value="300">300 Watts LED</option>
                   </select>
                 </div>

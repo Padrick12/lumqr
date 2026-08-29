@@ -61,6 +61,12 @@ export const ReportsPanel: React.FC = () => {
   }, []);
 
   const [incidents, setIncidents] = useState<any[]>([]);
+  const [installations, setInstallations] = useState<any[]>([]);
+
+  // Advanced Filters for PDF Reports
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+  const [recordTypeFilter, setRecordTypeFilter] = useState<'all' | 'qr' | 'poles' | 'incidents'>('all');
 
   const fetchReportData = async () => {
     setLoading(true);
@@ -82,6 +88,11 @@ export const ReportsPanel: React.FC = () => {
       const resIncidents = await fetch(`${API_BASE_URL}/api/incidents`);
       if (resIncidents.ok) {
         setIncidents(await resIncidents.json());
+      }
+
+      const resInst = await fetch(`${API_BASE_URL}/api/installations`);
+      if (resInst.ok) {
+        setInstallations(await resInst.json());
       }
     } catch (err) {
       console.error('Error fetching report data:', err);
@@ -133,127 +144,235 @@ export const ReportsPanel: React.FC = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
+    // Filter items based on user criteria
+    const filteredInstallations = installations.filter(inst => {
+      const matchSearch = inst.fixture_code.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchCrew = crewFilter === 'todos' || inst.crew_name === crewFilter;
+      const matchStatus = statusFilter === 'todos' || inst.status === statusFilter;
+      
+      let matchDate = true;
+      if (startDate) {
+        matchDate = matchDate && new Date(inst.installed_at) >= new Date(startDate);
+      }
+      if (endDate) {
+        const endDateTime = new Date(endDate);
+        endDateTime.setHours(23, 59, 59);
+        matchDate = matchDate && new Date(inst.installed_at) <= endDateTime;
+      }
+
+      return matchSearch && matchCrew && matchStatus && matchDate;
+    });
+
+    const filteredIncidents = incidents.filter(inc => {
+      const matchSearch = inc.incident_type.toLowerCase().includes(searchTerm.toLowerCase()) || (inc.notes && inc.notes.toLowerCase().includes(searchTerm.toLowerCase()));
+      const matchCrew = crewFilter === 'todos' || inc.crew_name === crewFilter;
+      
+      let matchDate = true;
+      if (startDate) {
+        matchDate = matchDate && new Date(inc.created_at) >= new Date(startDate);
+      }
+      if (endDate) {
+        const endDateTime = new Date(endDate);
+        endDateTime.setHours(23, 59, 59);
+        matchDate = matchDate && new Date(inc.created_at) <= endDateTime;
+      }
+
+      return matchSearch && matchCrew && matchDate;
+    });
+
+    let totalWatts = 0;
+    filteredInstallations.forEach(i => {
+      if (i.wattage) totalWatts += Number(i.wattage);
+    });
+
+    const showQR = recordTypeFilter === 'all' || recordTypeFilter === 'qr';
+    const showIncidents = recordTypeFilter === 'all' || recordTypeFilter === 'incidents';
+
+    const origin = window.location.origin;
+
     const htmlContent = `
+      <!DOCTYPE html>
       <html>
         <head>
-          <title>Dictamen Oficial de Auditoría y Censo de Alumbrado - LUMQR Lerdo</title>
+          <title>Reporte Ejecutivo de Entregables - LUMQR Lerdo</title>
           <style>
-            body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 30px; color: #1e293b; background: #fff; }
-            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0284c7; padding-bottom: 15px; margin-bottom: 20px; }
-            .title h1 { margin: 0; font-size: 22px; color: #0f172a; text-transform: uppercase; }
-            .title p { margin: 4px 0 0 0; font-size: 12px; color: #64748b; font-weight: bold; }
-            .meta { text-align: right; font-size: 11px; color: #475569; }
-            .section-title { font-size: 14px; font-weight: bold; margin: 20px 0 10px 0; color: #0284c7; text-transform: uppercase; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; }
-            .grid-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
-            .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; text-align: center; }
-            .card h3 { margin: 0; font-size: 20px; color: #0f172a; }
-            .card p { margin: 4px 0 0 0; font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: bold; }
-            table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }
-            th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; }
-            th { background-color: #f1f5f9; color: #0f172a; text-transform: uppercase; font-size: 10px; }
-            .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 9px; }
-            .badge-nueva { background-color: #d1fae5; color: #065f46; }
-            .badge-reparada { background-color: #dbeafe; color: #1e40af; }
-            .badge-rehabilitada { background-color: #f3e8ff; color: #5b21b6; }
-            .badge-robo { background-color: #fee2e2; color: #991b1b; }
-            .footer { margin-top: 40px; text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 10px; }
+            @page { size: A4; margin: 12mm; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #0f172a; background: #fff; margin: 0; padding: 10px; font-size: 11px; }
+            .header-banner { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #0284c7; padding-bottom: 12px; margin-bottom: 20px; }
+            .brand { display: flex; align-items: center; gap: 12px; }
+            .badge-logo { background: #0284c7; color: #fff; font-weight: 900; padding: 6px 12px; border-radius: 6px; font-size: 18px; letter-spacing: 1px; }
+            .title h1 { margin: 0; font-size: 18px; color: #0f172a; text-transform: uppercase; }
+            .title p { margin: 2px 0 0 0; font-size: 11px; color: #475569; font-weight: 600; }
+            .meta-box { text-align: right; font-size: 10px; color: #475569; line-height: 1.4; }
+            
+            .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+            .kpi-card { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; text-align: center; }
+            .kpi-card h3 { margin: 0; font-size: 18px; color: #0284c7; }
+            .kpi-card p { margin: 2px 0 0 0; font-size: 9px; color: #64748b; font-weight: 700; text-transform: uppercase; }
+
+            .section-header { font-size: 13px; font-weight: 800; color: #0284c7; text-transform: uppercase; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; margin: 24px 0 12px 0; }
+
+            .cards-container { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+            .item-card { background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; page-break-inside: avoid; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+            .card-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; }
+            .card-code { font-family: monospace; font-size: 14px; font-weight: 800; color: #0f172a; }
+            .card-badge { background: #d1fae5; color: #065f46; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; }
+            .card-badge-inc { background: #fef3c7; color: #92400e; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; }
+
+            .info-list { display: flex; flex-direction: column; gap: 3px; font-size: 10px; color: #334155; }
+            .info-list span { color: #0f172a; font-weight: 600; }
+            .watts-highlight { color: #d97706; font-weight: 800; }
+
+            .photos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+            .photo-box { width: 100%; height: 110px; object-fit: cover; border-radius: 6px; border: 1px solid #cbd5e1; }
+            .photo-label { font-size: 8px; color: #64748b; font-weight: 700; margin-bottom: 2px; }
+
+            .footer-sig { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; text-align: center; page-break-inside: avoid; }
+            .sig-line { border-top: 1px solid #0f172a; padding-top: 6px; font-size: 10px; font-weight: bold; color: #334155; }
           </style>
         </head>
         <body>
-          <div class="header">
-            <div class="title">
-              <h1>LUMQR - Dictamen de Auditoría y Censo Municipal</h1>
-              <p>Dirección de Servicios Públicos | Municipio de Lerdo, Durango</p>
+          <div class="header-banner">
+            <div class="brand">
+              <div class="badge-logo">LQ</div>
+              <div class="title">
+                <h1>MUNICIPIO DE LERDO, DGO.</h1>
+                <p>Dirección de Servicios Públicos | Reporte Oficial de Alumbrado Público</p>
+              </div>
             </div>
-            <div class="meta">
-              <strong>Fecha:</strong> ${new Date().toLocaleString()}<br/>
-              <strong>Sistema:</strong> PWA LUMQR v2.0
-            </div>
-          </div>
-          
-          <div class="section-title">Resumen Ejecutivo de Cobertura y Lotes</div>
-          <div class="grid-stats">
-            <div class="card">
-              <h3>${summary?.total || 0}</h3>
-              <p>Luminarias QR en Inventario</p>
-            </div>
-            <div class="card">
-              <h3>${summary?.installed || 0}</h3>
-              <p>Luminarias QR Instaladas</p>
-            </div>
-            <div class="card">
-              <h3>${summary?.total_poles || 0}</h3>
-              <p>Postes en Censo Municipal</p>
-            </div>
-            <div class="card">
-              <h3>${summary?.statuses.Robo || 0}</h3>
-              <p>Incidentes / Robos</p>
+            <div class="meta-box">
+              <strong>Fecha Emisión:</strong> ${new Date().toLocaleString('es-MX')}<br/>
+              <strong>Cuadrilla:</strong> ${crewFilter === 'todos' ? 'Todas las Cuadrillas' : crewFilter}<br/>
+              <strong>Rango:</strong> ${startDate || 'Inicio'} al ${endDate || 'Hoy'}
             </div>
           </div>
 
-          <div class="section-title">Desglose por Clasificación de Zona</div>
-          <div class="grid-stats">
-            <div class="card">
-              <h3>${summary?.poles_by_zone?.Urbana || 0}</h3>
-              <p>Postes Zona Urbana</p>
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <h3>${filteredInstallations.length}</h3>
+              <p>Luminarias QR Registradas</p>
             </div>
-            <div class="card">
-              <h3>${summary?.poles_by_zone?.Rural || 0}</h3>
-              <p>Postes Zona Rural</p>
+            <div class="kpi-card">
+              <h3>${totalWatts.toLocaleString()} W</h3>
+              <p>Potencia Total LED Instalada</p>
             </div>
-            <div class="card" style="border-color: #0284c7;">
-              <h3 style="color: #0284c7;">${summary?.poles_by_zone?.['Trayectos Seguros'] || 0}</h3>
-              <p style="color: #0284c7;">Trayectos Seguros</p>
+            <div class="kpi-card">
+              <h3>${filteredIncidents.length}</h3>
+              <p>Incidencias / Cortos Atendidos</p>
             </div>
-            <div class="card">
-              <h3>${summary?.poles_by_lamp?.['LED Nueva (Sin QR)'] || 0}</h3>
-              <p>LED Nueva Sin QR</p>
+            <div class="kpi-card">
+              <h3>${uniqueCrews.length}</h3>
+              <p>Cuadrillas en Trabajo</p>
             </div>
           </div>
 
-          <div class="section-title">Detalle de Inventario de Custodia</div>
-          <table>
-            <thead>
-              <tr>
-                <th>Código / QR</th>
-                <th>Estado Actual</th>
-                <th>Cuadrilla Encargada</th>
-                <th>Lote Origen</th>
-                <th>Fecha Ingreso Lote</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${filteredFixtures.map(f => {
-                let badgeClass = 'badge-nueva';
-                if (f.status === 'Reparada') badgeClass = 'badge-reparada';
-                else if (f.status === 'Rehabilitada') badgeClass = 'badge-rehabilitada';
-                else if (f.status === 'Robo') badgeClass = 'badge-robo';
+          ${showQR && filteredInstallations.length > 0 ? `
+            <div class="section-header">💡 Fichas de Registro de Luminarias QR (${filteredInstallations.length})</div>
+            <div class="cards-container">
+              ${filteredInstallations.map(inst => {
+                const photoB = inst.photo_before ? (inst.photo_before.startsWith('http') ? inst.photo_before : origin + inst.photo_before) : null;
+                const photoA = inst.photo_after ? (inst.photo_after.startsWith('http') ? inst.photo_after : origin + inst.photo_after) : null;
 
                 return `
-                  <tr>
-                    <td><strong>${f.code}</strong></td>
-                    <td><span class="badge ${badgeClass}">${f.status}</span></td>
-                    <td>${f.crew_name || 'En Almacén / Sin Asignar'}</td>
-                    <td>${f.code_prefix}</td>
-                    <td>${f.arrival_date}</td>
-                  </tr>
+                  <div class="item-card">
+                    <div class="card-top">
+                      <span class="card-code">${inst.fixture_code}</span>
+                      <span class="card-badge">${inst.status || 'Nueva'}</span>
+                    </div>
+                    <div class="info-list">
+                      <div>👷‍♂️ <strong>Cuadrilla:</strong> <span>${inst.crew_name || 'N/A'}</span></div>
+                      ${inst.operator_name ? `<div>👤 <strong>Responsable:</strong> <span>${inst.operator_name}</span></div>` : ''}
+                      <div>⚡ <strong>Potencia:</strong> <span class="watts-highlight">${inst.wattage || 70} Watts LED</span></div>
+                      <div>📅 <strong>Fecha/Hora:</strong> <span>${new Date(inst.installed_at).toLocaleString('es-MX')}</span></div>
+                      <div>📍 <strong>GPS:</strong> <a href="https://maps.google.com/?q=${inst.lat},${inst.lng}" target="_blank" style="color:#0284c7;">Ver en Maps (${inst.lat?.toFixed(5)}, ${inst.lng?.toFixed(5)})</a></div>
+                      ${inst.notes ? `<div>📝 <strong>Notas:</strong> <em>"${inst.notes}"</em></div>` : ''}
+                    </div>
+
+                    ${(photoB || photoA) ? `
+                      <div class="photos-grid">
+                        <div>
+                          <div class="photo-label">📸 1. ESTADO ANTES / POSTE:</div>
+                          ${photoB ? `<img src="${photoB}" class="photo-box" />` : '<div style="height:110px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-size:9px;">Sin foto</div>'}
+                        </div>
+                        <div>
+                          <div class="photo-label">📸 2. LÁMPARA LED ENCENDIDA:</div>
+                          ${photoA ? `<img src="${photoA}" class="photo-box" />` : '<div style="height:110px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-size:9px;">Sin foto</div>'}
+                        </div>
+                      </div>
+                    ` : ''}
+                  </div>
                 `;
               }).join('')}
-            </tbody>
-          </table>
+            </div>
+          ` : ''}
 
-          <div class="footer">
-            Documento Oficial Generado Automáticamente por la Plataforma de Control Interno LUMQR - Municipio de Lerdo, Dgo.
+          ${showIncidents && filteredIncidents.length > 0 ? `
+            <div class="section-header" style="color: #d97706; border-color: #fef3c7;">🛠️ Fichas de Incidencias y Cortos Circuito Atendidos (${filteredIncidents.length})</div>
+            <div class="cards-container">
+              ${filteredIncidents.map(inc => {
+                const photoB = inc.photo_before ? (inc.photo_before.startsWith('http') ? inc.photo_before : origin + inc.photo_before) : null;
+                const photoA = inc.photo_after ? (inc.photo_after.startsWith('http') ? inc.photo_after : origin + inc.photo_after) : null;
+
+                return `
+                  <div class="item-card" style="border-color: #fde68a;">
+                    <div class="card-top">
+                      <span class="card-code">${inc.incident_type}</span>
+                      <span class="card-badge-inc">Atendida</span>
+                    </div>
+                    <div class="info-list">
+                      <div>👷‍♂️ <strong>Cuadrilla:</strong> <span>${inc.crew_name || 'N/A'}</span></div>
+                      ${inc.operator_name ? `<div>👤 <strong>Responsable:</strong> <span>${inc.operator_name}</span></div>` : ''}
+                      <div>📅 <strong>Fecha/Hora:</strong> <span>${new Date(inc.created_at).toLocaleString('es-MX')}</span></div>
+                      <div>📍 <strong>GPS:</strong> <a href="https://maps.google.com/?q=${inc.lat},${inc.lng}" target="_blank" style="color:#d97706;">Ver en Maps</a></div>
+                      <div>📝 <strong>Detalle:</strong> <em>"${inc.notes}"</em></div>
+                    </div>
+
+                    ${(photoB || photoA) ? `
+                      <div class="photos-grid">
+                        <div>
+                          <div class="photo-label">📸 1. EVIDENCIA ANTES:</div>
+                          ${photoB ? `<img src="${photoB}" class="photo-box" />` : '<div style="height:110px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-size:9px;">Sin foto</div>'}
+                        </div>
+                        <div>
+                          <div class="photo-label">📸 2. TRABAJO REALIZADO:</div>
+                          ${photoA ? `<img src="${photoA}" class="photo-box" />` : '<div style="height:110px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-size:9px;">Sin foto</div>'}
+                        </div>
+                      </div>
+                    ` : ''}
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          ` : ''}
+
+          <div class="footer-sig">
+            <div>
+              <div style="height: 40px;"></div>
+              <div class="sig-line">
+                RESPONSABLE DE CUADRILLA DE CAMPO<br/>
+                ${crewFilter === 'todos' ? 'Supervisión General' : crewFilter}
+              </div>
+            </div>
+            <div>
+              <div style="height: 40px;"></div>
+              <div class="sig-line">
+                DIRECCIÓN DE SERVICIOS PÚBLICOS MUNICIPALES<br/>
+                Municipio de Lerdo, Durango
+              </div>
+            </div>
           </div>
+
           <script>
             window.onload = function() {
-              window.print();
-              setTimeout(function() { window.close(); }, 500);
+              setTimeout(function() {
+                window.print();
+              }, 500);
             };
           </script>
         </body>
       </html>
     `;
+
     printWindow.document.write(htmlContent);
     printWindow.document.close();
   };
@@ -457,19 +576,19 @@ export const ReportsPanel: React.FC = () => {
             </button>
             <button 
               onClick={handlePrintReport}
-              disabled={filteredFixtures.length === 0}
               className="secondary-btn"
+              style={{ background: 'linear-gradient(135deg, var(--neon-blue), var(--neon-purple))', color: '#fff', fontWeight: 800 }}
             >
               <Printer size={16} />
-              Imprimir Reporte
+              📄 Generar PDF Ejecutivo (Con Fotos)
             </button>
           </div>
         </div>
 
         {/* Filters bar */}
-        <div className="form-row" style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+        <div className="form-row" style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
           <div className="form-group" style={{ gap: '8px' }}>
-            <label style={{ fontSize: '11px' }}>Buscar Código</label>
+            <label style={{ fontSize: '11px' }}>Buscar Código / Observación</label>
             <div className="input-with-icon">
               <Search size={14} className="input-icon" />
               <input 
@@ -488,7 +607,7 @@ export const ReportsPanel: React.FC = () => {
               value={statusFilter} 
               onChange={(e) => setStatusFilter(e.target.value)}
             >
-              <option value="todos">Todos</option>
+              <option value="todos">Todos los Estados</option>
               <option value="Nueva">Nueva</option>
               <option value="Reparada">Reparada</option>
               <option value="Rehabilitada">Rehabilitada</option>
@@ -508,6 +627,38 @@ export const ReportsPanel: React.FC = () => {
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
+          </div>
+
+          <div className="form-group" style={{ gap: '8px' }}>
+            <label style={{ fontSize: '11px' }}>Tipo de Entregable</label>
+            <select 
+              value={recordTypeFilter} 
+              onChange={(e) => setRecordTypeFilter(e.target.value as any)}
+            >
+              <option value="all">Todos los Registros</option>
+              <option value="qr">💡 Solo Luminarias QR</option>
+              <option value="incidents">🛠️ Solo Incidencias / Cortos</option>
+            </select>
+          </div>
+
+          <div className="form-group" style={{ gap: '8px' }}>
+            <label style={{ fontSize: '11px' }}>Fecha Inicio</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-color)', borderRadius: '6px', color: '#fff', padding: '8px', fontSize: '12px' }}
+            />
+          </div>
+
+          <div className="form-group" style={{ gap: '8px' }}>
+            <label style={{ fontSize: '11px' }}>Fecha Fin</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-color)', borderRadius: '6px', color: '#fff', padding: '8px', fontSize: '12px' }}
+            />
           </div>
         </div>
 
