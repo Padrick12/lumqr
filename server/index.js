@@ -739,6 +739,19 @@ app.delete('/api/poles/:id', async (req, res) => {
   }
 });
 
+app.delete('/api/poles/code/:code', async (req, res) => {
+  const { code } = req.params;
+  try {
+    const result = await db.run('DELETE FROM poles WHERE pole_code = ?', [code]);
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Poste no encontrado.' });
+    }
+    res.json({ message: `Poste ${code} eliminado del censo.` });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 8. Field Incidents / Special Maintenance Reports
 app.get('/api/incidents', async (req, res) => {
   try {
