@@ -2,7 +2,7 @@ import { API_BASE_URL } from '../config';
 import React, { useState, useEffect, useRef } from 'react';
 import { Camera, Search, Calendar, History, ShieldCheck, AlertCircle, Save, WifiOff, UserCheck, MessageCircle, Image as ImageIcon, Navigation, RefreshCw } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { addToQueue } from '../utils/offlineStore';
+import { addToQueue, addPendingWhatsApp, getPendingWhatsAppList, removePendingWhatsApp, type PendingWhatsAppMsg } from '../utils/offlineStore';
 import { formatFixtureCode } from '../utils/codeFormatter';
 import { ImageModal } from './ImageModal';
 import './shared-panels.css';
@@ -108,6 +108,45 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
 
   const [crewMembersList, setCrewMembersList] = useState<string[]>([]);
   const [isAdminAssigned, setIsAdminAssigned] = useState<boolean>(false);
+
+  // Offline Pending WhatsApp Drawer States
+  const [pendingWhatsAppList, setPendingWhatsAppList] = useState<PendingWhatsAppMsg[]>([]);
+  const [showWhatsAppDrawer, setShowWhatsAppDrawer] = useState<boolean>(false);
+
+  const loadPendingWhatsAppList = async () => {
+    try {
+      const list = await getPendingWhatsAppList();
+      setPendingWhatsAppList(list || []);
+    } catch (e) {
+      console.warn("Error loading pending WhatsApp messages:", e);
+    }
+  };
+
+  useEffect(() => {
+    loadPendingWhatsAppList();
+  }, []);
+
+  const registerSuccessAndQueueWhatsApp = async (successObj: any) => {
+    setLastSuccessData(successObj);
+    const pendingMsg: PendingWhatsAppMsg = {
+      id: `${successObj.code}_${Date.now()}`,
+      type: successObj.type,
+      code: successObj.code,
+      date: successObj.date || new Date().toISOString(),
+      lat: successObj.lat,
+      lng: successObj.lng,
+      status: successObj.status,
+      wattage: successObj.wattage,
+      notes: successObj.notes,
+      photoBefore: successObj.photoBefore,
+      photoAfter: successObj.photoAfter,
+      operatorName: operatorName.trim(),
+      crewName,
+      created_at: new Date().toISOString()
+    };
+    await addPendingWhatsApp(pendingMsg);
+    await loadPendingWhatsAppList();
+  };
 
   const handleModeChange = (mode: 'qr' | 'census' | 'incident') => {
     setPanelMode(mode);
@@ -337,65 +376,69 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
     return `Lerdo, Durango`;
   };
 
-  const shareOnWhatsApp = async () => {
-    if (!lastSuccessData) return;
-    const formattedDate = new Date(lastSuccessData.date).toLocaleString('es-MX', {
+  const shareOnWhatsApp = async (customItem?: any) => {
+    const dataToShare = customItem || lastSuccessData;
+    if (!dataToShare) return;
+
+    const formattedDate = new Date(dataToShare.date || dataToShare.created_at).toLocaleString('es-MX', {
       day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit'
     });
 
-    const addressString = await getWrittenAddress(lastSuccessData.lat, lastSuccessData.lng);
+    const addressString = await getWrittenAddress(dataToShare.lat, dataToShare.lng);
     const addressLine = `\n🏠 *Dirección:* ${addressString}`;
 
     let header = '💡 *REPORTE DE ALUMBRADO PÚBLICO - LERDO, DGO.*';
-    let typeLine = `🆔 *Luminaria QR:* ${lastSuccessData.code}`;
+    let typeLine = `🆔 *Luminaria QR:* ${dataToShare.code}`;
     
-    if (lastSuccessData.type === 'pole') {
+    if (dataToShare.type === 'pole') {
       header = '📍 *REPORTE DE CENSO DE POSTE - LERDO, DGO.*';
-      typeLine = `📍 *Poste Censado:* ${lastSuccessData.code}`;
-    } else if (lastSuccessData.type === 'incident') {
+      typeLine = `📍 *Poste Censado:* ${dataToShare.code}`;
+    } else if (dataToShare.type === 'incident') {
       header = '🛠️ *REPORTE DE ATENCIÓN DE INCIDENCIA / TRABAJO ESPECIAL*';
-      typeLine = `📋 *Trabajo Realizado:* ${lastSuccessData.code}`;
+      typeLine = `📋 *Trabajo Realizado:* ${dataToShare.code}`;
     }
 
-    const wattageLine = lastSuccessData.wattage ? `\n⚡ *Potencia / Watts:* ${lastSuccessData.wattage} Watts` : '';
-    const notesLine = lastSuccessData.notes ? `\n📝 *Observaciones:* "${lastSuccessData.notes}"` : '';
+    const wattageLine = dataToShare.wattage ? `\n⚡ *Potencia / Watts:* ${dataToShare.wattage} Watts` : '';
+    const notesLine = dataToShare.notes ? `\n📝 *Observaciones:* "${dataToShare.notes}"` : '';
 
     const textCaption = `${header}
 ----------------------------------------------
 ${typeLine}
-👷‍♂️ *Cuadrilla:* ${crewName}
-👤 *Responsable en Turno:* ${operatorName.trim() || 'No especificado'}
-🌐 *Estado / Tipo:* ${lastSuccessData.status}${wattageLine}
+👷‍♂️ *Cuadrilla:* ${dataToShare.crewName || crewName}
+👤 *Responsable en Turno:* ${(dataToShare.operatorName || operatorName).trim() || 'No especificado'}
+🌐 *Estado / Tipo:* ${dataToShare.status}${wattageLine}
 📅 *Fecha/Hora:* ${formattedDate}
-📍 *Ubicación GPS:* https://maps.google.com/?q=${lastSuccessData.lat},${lastSuccessData.lng}${addressLine}${notesLine}
+📍 *Ubicación GPS:* https://maps.google.com/?q=${dataToShare.lat},${dataToShare.lng}${addressLine}${notesLine}
 
 📸 *Evidencia Fotográfica Respaldada en Sistema LUMQR*`;
 
     // INTENTO 1: SI EXISTEN LAS 2 FOTOS, COMBINARLAS EN 1 ÚNICA IMAGEN DE ALTA CALIDAD PARA UN SOLO BURBUJA EN WHATSAPP
     const filesToShare: File[] = [];
     try {
-      if (lastSuccessData.photoBefore && lastSuccessData.photoAfter) {
-        const collageFile = await createCombinedEvidenceImage(lastSuccessData.photoBefore, lastSuccessData.photoAfter, lastSuccessData.code);
+      if (dataToShare.photoBefore && dataToShare.photoAfter) {
+        const collageFile = await createCombinedEvidenceImage(dataToShare.photoBefore, dataToShare.photoAfter, dataToShare.code);
         if (collageFile) {
           filesToShare.push(collageFile);
         }
       }
 
       if (filesToShare.length === 0) {
-        if (lastSuccessData.photoBefore) {
-          const urlB = lastSuccessData.photoBefore.startsWith('data:') || lastSuccessData.photoBefore.startsWith('http') ? lastSuccessData.photoBefore : window.location.origin + lastSuccessData.photoBefore;
-          const fileBefore = await base64ToFile(urlB, `evidencia_antes_${lastSuccessData.code}.jpg`);
+        if (dataToShare.photoBefore) {
+          const urlB = dataToShare.photoBefore.startsWith('data:') || dataToShare.photoBefore.startsWith('http') ? dataToShare.photoBefore : window.location.origin + dataToShare.photoBefore;
+          const fileBefore = await base64ToFile(urlB, `evidencia_antes_${dataToShare.code}.jpg`);
           filesToShare.push(fileBefore);
-        } else if (lastSuccessData.photoAfter) {
-          const urlA = lastSuccessData.photoAfter.startsWith('data:') || lastSuccessData.photoAfter.startsWith('http') ? lastSuccessData.photoAfter : window.location.origin + lastSuccessData.photoAfter;
-          const fileAfter = await base64ToFile(urlA, `evidencia_encendida_${lastSuccessData.code}.jpg`);
+        } else if (dataToShare.photoAfter) {
+          const urlA = dataToShare.photoAfter.startsWith('data:') || dataToShare.photoAfter.startsWith('http') ? dataToShare.photoAfter : window.location.origin + dataToShare.photoAfter;
+          const fileAfter = await base64ToFile(urlA, `evidencia_encendida_${dataToShare.code}.jpg`);
           filesToShare.push(fileAfter);
         }
       }
     } catch (e) {
       console.warn("Error generando collage para Web Share:", e);
     }
+
+    let sharedSuccess = false;
 
     if (navigator.share && filesToShare.length > 0 && navigator.canShare && navigator.canShare({ files: filesToShare })) {
       try {
@@ -404,31 +447,38 @@ ${typeLine}
           text: textCaption,
           files: filesToShare
         });
-        return;
+        sharedSuccess = true;
       } catch (err: any) {
         if (err.name !== 'AbortError') {
           console.warn("Fallo Web Share nativo, usando WhatsApp URL fallback:", err);
         } else {
-          return;
+          sharedSuccess = true;
         }
       }
     }
 
-    // INTENTO 2: FALLBACK NAVEGADOR WEB / ESCRITORIO
-    let photoSection = '';
-    const origin = window.location.origin;
-    if (lastSuccessData.photoBefore && !lastSuccessData.photoBefore.startsWith('data:')) {
-      const urlBefore = lastSuccessData.photoBefore.startsWith('http') ? lastSuccessData.photoBefore : origin + lastSuccessData.photoBefore;
-      photoSection += `\n🖼️ *Foto Antes/Poste:* ${urlBefore}`;
-    }
-    if (lastSuccessData.photoAfter && !lastSuccessData.photoAfter.startsWith('data:')) {
-      const urlAfter = lastSuccessData.photoAfter.startsWith('http') ? lastSuccessData.photoAfter : origin + lastSuccessData.photoAfter;
-      photoSection += `\n🖼️ *Foto Encendida/Final:* ${urlAfter}`;
+    if (!sharedSuccess) {
+      // INTENTO 2: FALLBACK NAVEGADOR WEB / ESCRITORIO
+      let photoSection = '';
+      const origin = window.location.origin;
+      if (dataToShare.photoBefore && !dataToShare.photoBefore.startsWith('data:')) {
+        const urlBefore = dataToShare.photoBefore.startsWith('http') ? dataToShare.photoBefore : origin + dataToShare.photoBefore;
+        photoSection += `\n🖼️ *Foto Antes/Poste:* ${urlBefore}`;
+      }
+      if (dataToShare.photoAfter && !dataToShare.photoAfter.startsWith('data:')) {
+        const urlAfter = dataToShare.photoAfter.startsWith('http') ? dataToShare.photoAfter : origin + dataToShare.photoAfter;
+        photoSection += `\n🖼️ *Foto Encendida/Final:* ${urlAfter}`;
+      }
+
+      const text = `${textCaption}${photoSection}`;
+      const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+      window.open(whatsappUrl, '_blank');
     }
 
-    const text = `${textCaption}${photoSection}`;
-    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
-    window.open(whatsappUrl, '_blank');
+    if (customItem && customItem.id) {
+      await removePendingWhatsApp(customItem.id);
+      loadPendingWhatsAppList();
+    }
   };
 
   const refreshGpsAccuracy = () => {
@@ -533,7 +583,7 @@ ${typeLine}
         setPoleSubmitMsg({ text: data.error || 'Error al censar poste.', isError: true });
       } else {
         setPoleSubmitMsg({ text: `¡Poste ${data.pole_code} censado con éxito en ${zoneType}!`, isError: false });
-        setLastSuccessData({
+        registerSuccessAndQueueWhatsApp({
           type: 'pole',
           code: data.pole_code,
           status: `${lampType} | ${operatingStatus}`,
@@ -615,7 +665,7 @@ ${typeLine}
         setIncidentSubmitMsg({ text: data.error || 'Error al guardar incidencia.', isError: true });
       } else {
         setIncidentSubmitMsg({ text: `¡Trabajo especial / incidencia "${incidentType}" registrada con éxito!`, isError: false });
-        setLastSuccessData({
+        registerSuccessAndQueueWhatsApp({
           type: 'incident',
           code: incidentType,
           status: 'Atendida / Finalizada',
@@ -818,7 +868,7 @@ ${typeLine}
           text: `Lectura guardada localmente en IndexedDB. Se sincronizará silenciosamente cuando haya señal celular.`,
           isError: false
         });
-        setLastSuccessData({
+        registerSuccessAndQueueWhatsApp({
           type: 'installation',
           code: payload.code,
           status: newStatus,
@@ -851,7 +901,7 @@ ${typeLine}
           setSubmitMsg({ text: data.error || 'Error al registrar instalación.', isError: true });
         } else {
           setSubmitMsg({ text: `Instalación registrada con éxito. Luminaria ${payload.code} actualizada a ${newStatus}.`, isError: false });
-          setLastSuccessData({
+          registerSuccessAndQueueWhatsApp({
             type: 'installation',
             code: payload.code,
             status: newStatus,
@@ -877,7 +927,7 @@ ${typeLine}
             text: 'Fallo de conexión. Lectura respaldada localmente en IndexedDB.',
             isError: false
           });
-          setLastSuccessData({
+          registerSuccessAndQueueWhatsApp({
             type: 'installation',
             code: payload.code,
             status: newStatus,
@@ -912,6 +962,32 @@ ${typeLine}
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* BOTÓN SUPERIOR DE WHATSAPP PENDIENTE (SI EXISTEN) */}
+      {pendingWhatsAppList.length > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            onClick={() => setShowWhatsAppDrawer(true)}
+            style={{
+              background: 'linear-gradient(135deg, #25D366, #128C7E)',
+              color: '#fff',
+              fontWeight: 800,
+              fontSize: '12px',
+              padding: '10px 16px',
+              borderRadius: '24px',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              boxShadow: '0 0 15px rgba(37, 211, 102, 0.4)'
+            }}
+          >
+            <MessageCircle size={18} />
+            <span>📥 Mensajes Pendientes WhatsApp ({pendingWhatsAppList.length})</span>
+          </button>
+        </div>
+      )}
+
       {/* TARJETA DE RESPONSABLE EN TURNO Y SEMÁFORO GPS */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '12px', alignItems: 'center' }}>
         <div className="glass-panel" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '14px', border: '1px solid rgba(5, 243, 162, 0.3)', background: 'rgba(5, 243, 162, 0.04)' }}>
@@ -1694,6 +1770,69 @@ ${typeLine}
       </div>
     </div>
     )}
+    {showWhatsAppDrawer && (
+      <div className="modal-overlay" style={{ zIndex: 1000, position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(5px)' }}>
+        <div className="glass-panel modal-content" style={{ maxWidth: '500px', width: '92%', maxHeight: '85vh', display: 'flex', flexDirection: 'column', gap: '16px', padding: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+            <h3 style={{ margin: 0, fontSize: '15px', color: '#25D366', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <MessageCircle size={20} /> Reportes Pendientes de WhatsApp ({pendingWhatsAppList.length})
+            </h3>
+            <button onClick={() => setShowWhatsAppDrawer(false)} className="icon-btn" style={{ fontSize: '16px', fontWeight: 'bold' }}>✕</button>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', maxHeight: '60vh', paddingRight: '4px' }}>
+            {pendingWhatsAppList.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                No hay mensajes pendientes por enviar.
+              </div>
+            ) : (
+              pendingWhatsAppList.map(msg => (
+                <div key={msg.id} style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <strong style={{ fontFamily: 'monospace', fontSize: '15px', color: '#fff' }}>{msg.code}</strong>
+                    <span style={{ fontSize: '10px', padding: '3px 8px', borderRadius: '4px', background: 'rgba(37, 211, 102, 0.15)', color: '#25D366', fontWeight: 800 }}>
+                      {msg.type === 'pole' ? '📍 Censo Poste' : msg.type === 'incident' ? '🛠️ Incidencia' : '💡 Lámpara QR'}
+                    </span>
+                  </div>
+
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    <div>📅 <strong>Fecha:</strong> {new Date(msg.created_at || msg.date).toLocaleString('es-MX')}</div>
+                    <div>🌐 <strong>Estado:</strong> {msg.status} {msg.wattage ? `(${msg.wattage} Watts)` : ''}</div>
+                    {msg.notes ? <div>📝 <strong>Notas:</strong> "{msg.notes}"</div> : null}
+                  </div>
+
+                  {(msg.photoBefore || msg.photoAfter) && (
+                    <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+                      {msg.photoBefore && <img src={msg.photoBefore} style={{ width: '50%', height: '65px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #38bdf8' }} />}
+                      {msg.photoAfter && <img src={msg.photoAfter} style={{ width: '50%', height: '65px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #34d399' }} />}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                    <button
+                      onClick={() => shareOnWhatsApp(msg)}
+                      style={{ flex: 1, background: '#25D366', color: '#000', fontWeight: 800, border: 'none', borderRadius: '6px', padding: '10px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    >
+                      <MessageCircle size={16} /> 📲 Enviar a WhatsApp
+                    </button>
+                    <button
+                      onClick={async () => {
+                        await removePendingWhatsApp(msg.id);
+                        loadPendingWhatsAppList();
+                      }}
+                      style={{ background: 'rgba(244,63,94,0.15)', color: '#f43f5e', border: '1px solid rgba(244,63,94,0.4)', borderRadius: '6px', padding: '10px 14px', cursor: 'pointer', fontSize: '11px', fontWeight: 700 }}
+                    >
+                      Descartar
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+
     <ImageModal
       isOpen={!!selectedImageModal}
       imageUrl={selectedImageModal?.url || null}
