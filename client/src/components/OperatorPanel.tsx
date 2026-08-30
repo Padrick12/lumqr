@@ -306,12 +306,46 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
     });
   };
 
+  const getWrittenAddress = async (lat: number, lng: number): Promise<string> => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
+        signal: controller.signal,
+        headers: { 'Accept-Language': 'es' }
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data = await res.json();
+        const addr = data.address || {};
+        const road = addr.road || addr.pedestrian || addr.street || addr.footway || '';
+        const colonia = addr.suburb || addr.neighbourhood || addr.residential || addr.quarter || '';
+        const cp = addr.postcode ? `C.P. ${addr.postcode}` : '';
+        const city = addr.city || addr.town || addr.village || 'Lerdo';
+        const state = 'Dgo.';
+
+        const parts = [road, cp, colonia, city, state].filter(Boolean);
+        if (parts.length >= 2) {
+          return parts.join(', ');
+        }
+      }
+    } catch (e) {
+      console.warn("Reverse geocoding timeout or error:", e);
+    }
+
+    return `Lerdo, Durango`;
+  };
+
   const shareOnWhatsApp = async () => {
     if (!lastSuccessData) return;
     const formattedDate = new Date(lastSuccessData.date).toLocaleString('es-MX', {
       day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit'
     });
+
+    const addressString = await getWrittenAddress(lastSuccessData.lat, lastSuccessData.lng);
+    const addressLine = `\n🏠 *Dirección:* ${addressString}`;
 
     let header = '💡 *REPORTE DE ALUMBRADO PÚBLICO - LERDO, DGO.*';
     let typeLine = `🆔 *Luminaria QR:* ${lastSuccessData.code}`;
@@ -334,7 +368,7 @@ ${typeLine}
 👤 *Responsable en Turno:* ${operatorName.trim() || 'No especificado'}
 🌐 *Estado / Tipo:* ${lastSuccessData.status}${wattageLine}
 📅 *Fecha/Hora:* ${formattedDate}
-📍 *Ubicación GPS:* https://maps.google.com/?q=${lastSuccessData.lat},${lastSuccessData.lng}${notesLine}
+📍 *Ubicación GPS:* https://maps.google.com/?q=${lastSuccessData.lat},${lastSuccessData.lng}${addressLine}${notesLine}
 
 📸 *Evidencia Fotográfica Respaldada en Sistema LUMQR*`;
 
