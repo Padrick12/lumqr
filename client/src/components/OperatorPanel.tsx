@@ -481,6 +481,41 @@ ${typeLine}
     }
   };
 
+  const renderWhatsAppSuccessCard = () => {
+    if (!lastSuccessData) return null;
+    return (
+      <div style={{ background: 'rgba(37, 211, 102, 0.12)', border: '2px solid rgba(37, 211, 102, 0.6)', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', marginTop: '16px', animation: 'fadeIn 0.3s ease', boxShadow: '0 4px 20px rgba(37, 211, 102, 0.25)' }}>
+        <span style={{ fontSize: '13px', fontWeight: 800, color: '#25D366', display: 'flex', alignItems: 'center', gap: '6px', textAlign: 'center' }}>
+          <ShieldCheck size={20} /> ¡Registro de {lastSuccessData.code} guardado exitosamente en sistema!
+        </span>
+        <button
+          type="button"
+          onClick={() => shareOnWhatsApp()}
+          style={{
+            background: 'linear-gradient(135deg, #25D366, #128C7E)',
+            color: '#ffffff',
+            fontWeight: 800,
+            fontSize: '15px',
+            padding: '14px 20px',
+            borderRadius: '12px',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            width: '100%',
+            justifyContent: 'center',
+            boxShadow: '0 6px 20px rgba(37, 211, 102, 0.4)',
+            letterSpacing: '0.3px'
+          }}
+        >
+          <MessageCircle size={22} />
+          <span>📲 Compartir Evidencia por WhatsApp (1 Clic)</span>
+        </button>
+      </div>
+    );
+  };
+
   const refreshGpsAccuracy = () => {
     setIsFetchingGps(true);
     if (navigator.geolocation) {
@@ -1084,37 +1119,6 @@ ${typeLine}
         </div>
       </div>
 
-      {/* TARJETA DE WHATSAPP AL COMPLETAR REGISTRO */}
-      {lastSuccessData && (
-        <div style={{ background: 'rgba(37, 211, 102, 0.1)', border: '1px solid rgba(37, 211, 102, 0.4)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', animation: 'fadeIn 0.3s ease' }}>
-          <span style={{ fontSize: '13px', fontWeight: 700, color: '#25D366', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <ShieldCheck size={18} /> ¡Registro guardado exitosamente en sistema!
-          </span>
-          <button
-            onClick={shareOnWhatsApp}
-            style={{
-              background: '#25D366',
-              color: '#000',
-              fontWeight: 800,
-              fontSize: '14px',
-              padding: '12px 20px',
-              borderRadius: '10px',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              width: '100%',
-              justifyContent: 'center',
-              boxShadow: '0 4px 15px rgba(37, 211, 102, 0.3)'
-            }}
-          >
-            <MessageCircle size={20} />
-            <span>Compartir Evidencia por WhatsApp (1 Clic)</span>
-          </button>
-        </div>
-      )}
-
       {/* Selector de Modo: Registro QR vs Censo de Postes vs Incidencias / Cortos */}
       <div style={{ display: 'flex', gap: '8px', background: 'rgba(13, 20, 38, 0.8)', padding: '6px', borderRadius: '12px', border: '1px solid var(--border-color)', flexWrap: 'wrap' }}>
         <button
@@ -1290,6 +1294,7 @@ ${typeLine}
             >
               {loadingIncident ? 'Capturando GPS y Guardando...' : '🛠️ Guardar Reporte de Incidencia (Captura GPS)'}
             </button>
+            {renderWhatsAppSuccessCard()}
           </form>
         </div>
       ) : panelMode === 'census' ? (
@@ -1528,6 +1533,7 @@ ${typeLine}
             >
               {loadingPole ? 'Capturando GPS y Guardando...' : '📍 Registrar Poste en Censo (Captura GPS)'}
             </button>
+            {renderWhatsAppSuccessCard()}
           </form>
         </div>
       ) : (
@@ -1737,6 +1743,7 @@ ${typeLine}
                 <Save size={18} />
                 <span>Registrar Instalación / Reporte</span>
               </button>
+              {renderWhatsAppSuccessCard()}
             </form>
 
             {historyLog.length > 0 && (
