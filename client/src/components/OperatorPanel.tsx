@@ -1033,25 +1033,26 @@ ${typeLine}
               {isAdminAssigned && <span style={{ fontSize: '10px', color: 'var(--neon-green)', background: 'rgba(5,243,162,0.15)', padding: '2px 6px', borderRadius: '4px' }}>🟢 Oficial (Designado por Admin)</span>}
             </label>
             
-            {isAdminAssigned ? (
-              <input 
-                type="text" 
-                disabled
-                value={operatorName}
+            {isAdminAssigned || crewMembersList.length === 0 ? (
+              <div 
                 style={{ 
-                  background: 'transparent', 
-                  border: 'none', 
-                  borderBottom: '1px solid var(--neon-green)', 
+                  background: 'rgba(5, 243, 162, 0.08)', 
+                  border: '1px solid rgba(5, 243, 162, 0.4)', 
+                  borderRadius: '6px',
                   color: 'var(--neon-green)', 
                   width: '100%', 
-                  fontSize: '14px', 
+                  fontSize: '13px', 
                   fontWeight: 700, 
-                  padding: '4px 0',
-                  outline: 'none',
-                  cursor: 'not-allowed'
+                  padding: '8px 10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  userSelect: 'none'
                 }}
-              />
-            ) : crewMembersList.length > 0 ? (
+              >
+                <span>👤 {operatorName || 'Asignado en Panel Administrador'}</span>
+              </div>
+            ) : (
               <select
                 value={operatorName}
                 onChange={(e) => {
@@ -1066,35 +1067,15 @@ ${typeLine}
                   width: '100%',
                   fontSize: '13px',
                   fontWeight: 600,
-                  padding: '6px'
+                  padding: '8px 10px',
+                  outline: 'none'
                 }}
               >
-                <option value="">-- Seleccionar Integrante Responsable hoy --</option>
+                <option value="">-- Seleccionar Integrante de la Cuadrilla --</option>
                 {crewMembersList.map((mem, idx) => (
                   <option key={idx} value={mem}>{mem} (Integrante)</option>
                 ))}
               </select>
-            ) : (
-              <input 
-                type="text" 
-                placeholder="Ej. Juan Pérez (Jefe de Cuadrilla)..."
-                value={operatorName}
-                onChange={(e) => {
-                  setOperatorName(e.target.value);
-                  localStorage.setItem('lumqr_operator_name', e.target.value);
-                }}
-                style={{ 
-                  background: 'transparent', 
-                  border: 'none', 
-                  borderBottom: '1px solid rgba(255, 255, 255, 0.2)', 
-                  color: '#fff', 
-                  width: '100%', 
-                  fontSize: '14px', 
-                  fontWeight: 600, 
-                  padding: '4px 0',
-                  outline: 'none'
-                }}
-              />
             )}
           </div>
         </div>
