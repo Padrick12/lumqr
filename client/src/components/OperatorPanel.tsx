@@ -106,7 +106,6 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
   const [incidentSubmitMsg, setIncidentSubmitMsg] = useState({ text: '', isError: false });
   const [loadingIncident, setLoadingIncident] = useState(false);
 
-  const [crewMembersList, setCrewMembersList] = useState<string[]>([]);
   const [isAdminAssigned, setIsAdminAssigned] = useState<boolean>(false);
 
   // Offline Pending WhatsApp Drawer States
@@ -160,9 +159,6 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
       .then(crews => {
         const currentCrew = Array.isArray(crews) ? crews.find((c: any) => c.id === crewId) : null;
         if (currentCrew) {
-          if (Array.isArray(currentCrew.members)) {
-            setCrewMembersList(currentCrew.members);
-          }
           if (currentCrew.active_operator) {
             setOperatorName(currentCrew.active_operator);
             setIsAdminAssigned(true);
@@ -1033,50 +1029,24 @@ ${typeLine}
               {isAdminAssigned && <span style={{ fontSize: '10px', color: 'var(--neon-green)', background: 'rgba(5,243,162,0.15)', padding: '2px 6px', borderRadius: '4px' }}>🟢 Oficial (Designado por Admin)</span>}
             </label>
             
-            {isAdminAssigned || crewMembersList.length === 0 ? (
-              <div 
-                style={{ 
-                  background: 'rgba(5, 243, 162, 0.08)', 
-                  border: '1px solid rgba(5, 243, 162, 0.4)', 
-                  borderRadius: '6px',
-                  color: 'var(--neon-green)', 
-                  width: '100%', 
-                  fontSize: '13px', 
-                  fontWeight: 700, 
-                  padding: '8px 10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  userSelect: 'none'
-                }}
-              >
-                <span>👤 {operatorName || 'Asignado en Panel Administrador'}</span>
-              </div>
-            ) : (
-              <select
-                value={operatorName}
-                onChange={(e) => {
-                  setOperatorName(e.target.value);
-                  localStorage.setItem('lumqr_operator_name', e.target.value);
-                }}
-                style={{
-                  background: 'rgba(0,0,0,0.4)',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: '6px',
-                  color: '#fff',
-                  width: '100%',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  padding: '8px 10px',
-                  outline: 'none'
-                }}
-              >
-                <option value="">-- Seleccionar Integrante de la Cuadrilla --</option>
-                {crewMembersList.map((mem, idx) => (
-                  <option key={idx} value={mem}>{mem} (Integrante)</option>
-                ))}
-              </select>
-            )}
+            <div 
+              style={{ 
+                background: 'rgba(5, 243, 162, 0.08)', 
+                border: '1px solid rgba(5, 243, 162, 0.4)', 
+                borderRadius: '8px',
+                color: 'var(--neon-green)', 
+                width: '100%', 
+                fontSize: '13px', 
+                fontWeight: 700, 
+                padding: '9px 12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                userSelect: 'none'
+              }}
+            >
+              <span>👤 {operatorName.trim() || 'Sin asignar (Designar en Panel Admin)'}</span>
+            </div>
           </div>
         </div>
 
