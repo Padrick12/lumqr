@@ -627,6 +627,11 @@ ${typeLine}
           photoAfter
         });
         setPoleNotes('');
+        setWattage('');
+        setLampType('LED Nueva (Sin QR)');
+        setOperatingStatus('Funcionando');
+        setZoneType('Urbana');
+        setPoleType('Concreto');
         setPhotoBefore(null);
         setPhotoAfter(null);
         fetchPolesList();
@@ -708,6 +713,7 @@ ${typeLine}
           photoAfter
         });
         setIncidentNotes('');
+        setIncidentType('Reparación de Corto Circuito');
         setPhotoBefore(null);
         setPhotoAfter(null);
         onSyncComplete();
@@ -947,6 +953,8 @@ ${typeLine}
           setFixtureDetails(null);
           setFixtureCode('');
           setInstallNotes('');
+          setQrWattage('50');
+          setNewStatus('Nueva');
           setPhotoBefore(null);
           setPhotoAfter(null);
           onSyncComplete(); 
@@ -969,6 +977,8 @@ ${typeLine}
           setFixtureDetails(null);
           setFixtureCode('');
           setInstallNotes('');
+          setQrWattage('50');
+          setNewStatus('Nueva');
           setPhotoBefore(null);
           setPhotoAfter(null);
         } catch (localErr) {
