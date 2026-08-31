@@ -1,6 +1,6 @@
 import { API_BASE_URL } from '../config';
 import React, { useState, useEffect } from 'react';
-import { Users, UserPlus, Trash2, Plus, Calendar, Grid, Edit3, Tag, PackageOpen, ShieldAlert, RefreshCw, EyeOff, Eye } from 'lucide-react';
+import { Users, UserPlus, Trash2, Plus, Calendar, Grid, Edit3, Tag, PackageOpen, ShieldAlert, RefreshCw } from 'lucide-react';
 import { ConfirmModal } from './ConfirmModal';
 import { useDemoMode } from '../utils/demoMode';
 import './shared-panels.css';
@@ -26,7 +26,7 @@ interface AdminPanelProps {
 }
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
-  const [isDemoMode, setDemoMode] = useDemoMode();
+  const [isDemoMode] = useDemoMode();
   const [crews, setCrews] = useState<Crew[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
   
@@ -361,65 +361,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
   };
 
   return (
-    <div className="panel-container" style={{ gridTemplateColumns: '1fr' }}>
+    <div className="admin-container">
       <style>{`
         @media (min-width: 1024px) {
           .admin-grid { grid-template-columns: 1fr 1fr; }
         }
       `}</style>
-
-      {/* TARJETA DE CONTROL: MODO DEMOSTRACIÓN / PRESENTACIÓN EJECUTIVA */}
-      <div 
-        className="glass-panel" 
-        style={{ 
-          padding: '18px 22px', 
-          marginBottom: '24px', 
-          display: 'flex', 
-          flexDirection: 'row',
-          alignItems: 'center', 
-          justifyContent: 'space-between', 
-          gap: '16px',
-          background: isDemoMode ? 'rgba(234, 179, 8, 0.08)' : 'rgba(5, 243, 162, 0.06)', 
-          border: isDemoMode ? '1px solid rgba(234, 179, 8, 0.5)' : '1px solid rgba(5, 243, 162, 0.3)',
-          boxShadow: isDemoMode ? '0 0 20px rgba(234, 179, 8, 0.15)' : '0 0 20px rgba(5, 243, 162, 0.15)'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ background: isDemoMode ? 'rgba(234, 179, 8, 0.2)' : 'rgba(5, 243, 162, 0.2)', padding: '10px', borderRadius: '10px', color: isDemoMode ? '#eab308' : 'var(--neon-green)' }}>
-            {isDemoMode ? <EyeOff size={24} /> : <Eye size={24} />}
-          </div>
-          <div>
-            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: isDemoMode ? '#eab308' : 'var(--neon-green)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {isDemoMode ? '🎭 Modo Presentación Ejecutiva (ACTIVO)' : '🟢 Modo Completo Sistema STG-AP'}
-            </h3>
-            <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: 'var(--text-muted)' }}>
-              {isDemoMode 
-                ? 'Ocultando WhatsApp, Fotos de Evidencia, Métricas complejas y Reportes Avanzados para presentación limpia inicial.' 
-                : 'Todas las funcionalidades avanzadas activas (Redirección WhatsApp, Fotos de Evidencia, Auditoría y Reportes).'}
-            </p>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setDemoMode(!isDemoMode)}
-          style={{
-            background: isDemoMode ? '#eab308' : 'var(--neon-green)',
-            color: '#060913',
-            fontWeight: 800,
-            fontSize: '13px',
-            padding: '10px 18px',
-            borderRadius: '8px',
-            border: 'none',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            boxShadow: isDemoMode ? '0 4px 12px rgba(234, 179, 8, 0.3)' : '0 4px 12px rgba(5, 243, 162, 0.3)'
-          }}
-        >
-          {isDemoMode ? '🔓 Activar Modo Completo' : '🔒 Activar Modo Demostración'}
-        </button>
-      </div>
-      
       
       <div className="admin-grid" style={{ display: 'grid', gap: '32px', gridTemplateColumns: '1fr' }}>
       {/* SECCIÓN ADMINISTRADORES */}
