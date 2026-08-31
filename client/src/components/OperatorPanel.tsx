@@ -4,6 +4,7 @@ import { Camera, Search, Calendar, History, ShieldCheck, AlertCircle, Save, Wifi
 import { Html5Qrcode } from 'html5-qrcode';
 import { addToQueue, addPendingWhatsApp, getPendingWhatsAppList, removePendingWhatsApp, type PendingWhatsAppMsg } from '../utils/offlineStore';
 import { formatFixtureCode } from '../utils/codeFormatter';
+import { useDemoMode } from '../utils/demoMode';
 import { ImageModal } from './ImageModal';
 import './shared-panels.css';
 
@@ -42,6 +43,7 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
   crewId,
   crewName
 }) => {
+  const [isDemoMode] = useDemoMode();
   const [panelMode, setPanelMode] = useState<'qr' | 'census' | 'incident'>('qr');
   
   // GPS Accuracy State
@@ -499,7 +501,7 @@ ${typeLine}
   };
 
   const renderWhatsAppSuccessCard = () => {
-    if (!lastSuccessData) return null;
+    if (!lastSuccessData || isDemoMode) return null;
     return (
       <div style={{ background: 'rgba(37, 211, 102, 0.12)', border: '2px solid rgba(37, 211, 102, 0.6)', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', marginTop: '16px', animation: 'fadeIn 0.3s ease', boxShadow: '0 4px 20px rgba(37, 211, 102, 0.25)' }}>
         <span style={{ fontSize: '13px', fontWeight: 800, color: '#25D366', display: 'flex', alignItems: 'center', gap: '6px', textAlign: 'center' }}>
@@ -1024,8 +1026,8 @@ ${typeLine}
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* BOTÓN SUPERIOR DE WHATSAPP PENDIENTE (SI EXISTEN) */}
-      {pendingWhatsAppList.length > 0 && (
+      {/* BOTÓN Y DRAWER DE MENSAJES PENDIENTES WHATSAPP (SOLO EN MODO COMPLETO) */}
+      {!isDemoMode && pendingWhatsAppList.length > 0 && (
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <button
             onClick={() => setShowWhatsAppDrawer(true)}
@@ -1233,30 +1235,32 @@ ${typeLine}
               />
             </div>
 
-            {/* FOTOS DE EVIDENCIA FÍSICA */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '16px' }}>
-              <div>
-                <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
-                  Foto Evidencia Antes:
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px dashed var(--border-color)', borderRadius: '8px', cursor: 'pointer', background: 'rgba(0,0,0,0.2)' }}>
-                  <ImageIcon size={20} color="var(--text-muted)" />
-                  <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px' }}>{photoBefore ? 'Foto Seleccionada ✓' : 'Subir Foto'}</span>
-                  <input type="file" accept="image/*" capture="environment" onChange={handlePhotoBeforeUpload} style={{ display: 'none' }} />
-                </label>
-              </div>
+            {/* FOTOS DE EVIDENCIA FÍSICA (SOLO EN MODO COMPLETO) */}
+            {!isDemoMode && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '16px' }}>
+                <div>
+                  <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                    Foto Evidencia Antes:
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px dashed var(--border-color)', borderRadius: '8px', cursor: 'pointer', background: 'rgba(0,0,0,0.2)' }}>
+                    <ImageIcon size={20} color="var(--text-muted)" />
+                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px' }}>{photoBefore ? 'Foto Seleccionada ✓' : 'Subir Foto'}</span>
+                    <input type="file" accept="image/*" capture="environment" onChange={handlePhotoBeforeUpload} style={{ display: 'none' }} />
+                  </label>
+                </div>
 
-              <div>
-                <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
-                  Foto Evidencia Después:
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px dashed var(--neon-amber)', borderRadius: '8px', cursor: 'pointer', background: 'rgba(245,158,11,0.05)' }}>
-                  <ImageIcon size={20} color="var(--neon-amber)" />
-                  <span style={{ fontSize: '10px', color: 'var(--neon-amber)', marginTop: '4px' }}>{photoAfter ? 'Foto Seleccionada ✓' : 'Subir Foto Final'}</span>
-                  <input type="file" accept="image/*" capture="environment" onChange={handlePhotoAfterUpload} style={{ display: 'none' }} />
-                </label>
+                <div>
+                  <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                    Foto Evidencia Después:
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '80px', border: '1px dashed var(--neon-amber)', borderRadius: '8px', cursor: 'pointer', background: 'rgba(245,158,11,0.05)' }}>
+                    <ImageIcon size={20} color="var(--neon-amber)" />
+                    <span style={{ fontSize: '10px', color: 'var(--neon-amber)', marginTop: '4px' }}>{photoAfter ? 'Foto Seleccionada ✓' : 'Subir Foto Final'}</span>
+                    <input type="file" accept="image/*" capture="environment" onChange={handlePhotoAfterUpload} style={{ display: 'none' }} />
+                  </label>
+                </div>
               </div>
-            </div>
+            )}
 
             <button
               type="submit"
@@ -1451,46 +1455,48 @@ ${typeLine}
               />
             </div>
 
-            {/* SECCIÓN EVIDENCIA FOTOGRÁFICA (Doble Captura Opcional) */}
-            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '12px', marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--neon-blue)', display: 'flex', alignItems: 'center', gap: '6px', textTransform: 'uppercase' }}>
-                <ImageIcon size={14} /> Evidencia Fotográfica en Campo
-              </span>
+            {/* SECCIÓN EVIDENCIA FOTOGRÁFICA (SOLO EN MODO COMPLETO) */}
+            {!isDemoMode && (
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '12px', marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--neon-blue)', display: 'flex', alignItems: 'center', gap: '6px', textTransform: 'uppercase' }}>
+                  <ImageIcon size={14} /> Evidencia Fotográfica en Campo
+                </span>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <div>
-                  <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
-                    📸 1. Estado / Poste
-                  </label>
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    capture="environment"
-                    onChange={handlePhotoBeforeUpload}
-                    style={{ fontSize: '11px', width: '100%' }}
-                  />
-                  {photoBefore && (
-                    <img src={photoBefore} alt="Antes" style={{ width: '100%', height: '70px', objectFit: 'cover', borderRadius: '6px', marginTop: '4px', border: '1px solid var(--neon-blue)' }} />
-                  )}
-                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
+                      📸 1. Estado / Poste
+                    </label>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      capture="environment"
+                      onChange={handlePhotoBeforeUpload}
+                      style={{ fontSize: '11px', width: '100%' }}
+                    />
+                    {photoBefore && (
+                      <img src={photoBefore} alt="Antes" style={{ width: '100%', height: '70px', objectFit: 'cover', borderRadius: '6px', marginTop: '4px', border: '1px solid var(--neon-blue)' }} />
+                    )}
+                  </div>
 
-                <div>
-                  <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
-                    📸 2. Lámpara Encendida
-                  </label>
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    capture="environment"
-                    onChange={handlePhotoAfterUpload}
-                    style={{ fontSize: '11px', width: '100%' }}
-                  />
-                  {photoAfter && (
-                    <img src={photoAfter} alt="Después" style={{ width: '100%', height: '70px', objectFit: 'cover', borderRadius: '6px', marginTop: '4px', border: '1px solid var(--neon-green)' }} />
-                  )}
+                  <div>
+                    <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
+                      📸 2. Lámpara Encendida
+                    </label>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      capture="environment"
+                      onChange={handlePhotoAfterUpload}
+                      style={{ fontSize: '11px', width: '100%' }}
+                    />
+                    {photoAfter && (
+                      <img src={photoAfter} alt="Después" style={{ width: '100%', height: '70px', objectFit: 'cover', borderRadius: '6px', marginTop: '4px', border: '1px solid var(--neon-green)' }} />
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {poleSubmitMsg.text && (
               <div style={{ padding: '12px', background: poleSubmitMsg.isError ? 'rgba(244,63,94,0.1)' : 'rgba(5,243,162,0.1)', color: poleSubmitMsg.isError ? 'var(--neon-rose)' : 'var(--neon-green)', borderRadius: '8px', fontSize: '13px', marginTop: '8px' }}>
@@ -1673,46 +1679,48 @@ ${typeLine}
                 />
               </div>
 
-              {/* SECCIÓN EVIDENCIA FOTOGRÁFICA (Doble Captura Opcional) */}
-              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--neon-green)', display: 'flex', alignItems: 'center', gap: '6px', textTransform: 'uppercase' }}>
-                  <ImageIcon size={14} /> Evidencia Fotográfica en Campo
-                </span>
+              {/* SECCIÓN EVIDENCIA FOTOGRÁFICA (SOLO EN MODO COMPLETO) */}
+              {!isDemoMode && (
+                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--neon-green)', display: 'flex', alignItems: 'center', gap: '6px', textTransform: 'uppercase' }}>
+                    <ImageIcon size={14} /> Evidencia Fotográfica en Campo
+                  </span>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <div>
-                    <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
-                      📸 1. Estado / Poste / Código
-                    </label>
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      capture="environment"
-                      onChange={handlePhotoBeforeUpload}
-                      style={{ fontSize: '11px', width: '100%' }}
-                    />
-                    {photoBefore && (
-                      <img src={photoBefore} alt="Antes" style={{ width: '100%', height: '70px', objectFit: 'cover', borderRadius: '6px', marginTop: '4px', border: '1px solid var(--neon-blue)' }} />
-                    )}
-                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
+                        📸 1. Estado / Poste / Código
+                      </label>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        capture="environment"
+                        onChange={handlePhotoBeforeUpload}
+                        style={{ fontSize: '11px', width: '100%' }}
+                      />
+                      {photoBefore && (
+                        <img src={photoBefore} alt="Antes" style={{ width: '100%', height: '70px', objectFit: 'cover', borderRadius: '6px', marginTop: '4px', border: '1px solid var(--neon-blue)' }} />
+                      )}
+                    </div>
 
-                  <div>
-                    <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
-                      📸 2. Lámpara Encendida
-                    </label>
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      capture="environment"
-                      onChange={handlePhotoAfterUpload}
-                      style={{ fontSize: '11px', width: '100%' }}
-                    />
-                    {photoAfter && (
-                      <img src={photoAfter} alt="Después" style={{ width: '100%', height: '70px', objectFit: 'cover', borderRadius: '6px', marginTop: '4px', border: '1px solid var(--neon-green)' }} />
-                    )}
+                    <div>
+                      <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
+                        📸 2. Lámpara Encendida
+                      </label>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        capture="environment"
+                        onChange={handlePhotoAfterUpload}
+                        style={{ fontSize: '11px', width: '100%' }}
+                      />
+                      {photoAfter && (
+                        <img src={photoAfter} alt="Después" style={{ width: '100%', height: '70px', objectFit: 'cover', borderRadius: '6px', marginTop: '4px', border: '1px solid var(--neon-green)' }} />
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {submitMsg.text && (
                 <div style={{ padding: '12px', background: submitMsg.isError ? 'rgba(244, 63, 94, 0.1)' : 'rgba(5, 243, 162, 0.1)', color: submitMsg.isError ? 'var(--neon-rose)' : 'var(--neon-green)', borderRadius: '8px', fontSize: '13px', display: 'flex', gap: '8px' }}>
