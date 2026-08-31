@@ -1083,24 +1083,26 @@ ${typeLine}
           </div>
         </div>
 
-        {/* SEMÁFORO DE PRECISIÓN GPS */}
-        <div className="glass-panel" style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center', minWidth: '160px', border: gpsAccuracy === null ? '1px solid var(--border-color)' : gpsAccuracy <= 15 ? '1px solid var(--neon-green)' : gpsAccuracy <= 50 ? '1px solid var(--neon-amber)' : '1px solid var(--neon-rose)', background: gpsAccuracy === null ? 'rgba(0,0,0,0.2)' : gpsAccuracy <= 15 ? 'rgba(5,243,162,0.08)' : gpsAccuracy <= 50 ? 'rgba(245,158,11,0.08)' : 'rgba(244,63,94,0.08)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 800 }}>
-            <Navigation size={14} color={gpsAccuracy === null ? 'var(--text-muted)' : gpsAccuracy <= 15 ? 'var(--neon-green)' : gpsAccuracy <= 50 ? 'var(--neon-amber)' : 'var(--neon-rose)'} />
-            <span>GPS: {gpsAccuracy === null ? 'Midiendo...' : `± ${gpsAccuracy} m`}</span>
+        {/* SEMÁFORO DE PRECISIÓN GPS (SOLO EN MODO COMPLETO) */}
+        {!isDemoMode && (
+          <div className="glass-panel" style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center', minWidth: '160px', border: gpsAccuracy === null ? '1px solid var(--border-color)' : gpsAccuracy <= 15 ? '1px solid var(--neon-green)' : gpsAccuracy <= 50 ? '1px solid var(--neon-amber)' : '1px solid var(--neon-rose)', background: gpsAccuracy === null ? 'rgba(0,0,0,0.2)' : gpsAccuracy <= 15 ? 'rgba(5,243,162,0.08)' : gpsAccuracy <= 50 ? 'rgba(245,158,11,0.08)' : 'rgba(244,63,94,0.08)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 800 }}>
+              <Navigation size={14} color={gpsAccuracy === null ? 'var(--text-muted)' : gpsAccuracy <= 15 ? 'var(--neon-green)' : gpsAccuracy <= 50 ? 'var(--neon-amber)' : 'var(--neon-rose)'} />
+              <span>GPS: {gpsAccuracy === null ? 'Midiendo...' : `± ${gpsAccuracy} m`}</span>
+            </div>
+            <span style={{ fontSize: '10px', color: gpsAccuracy === null ? 'var(--text-muted)' : gpsAccuracy <= 15 ? 'var(--neon-green)' : gpsAccuracy <= 50 ? 'var(--neon-amber)' : 'var(--neon-rose)', fontWeight: 600 }}>
+              {gpsAccuracy === null ? 'Lectura satelital' : gpsAccuracy <= 15 ? '🟢 Precisión Óptima' : gpsAccuracy <= 50 ? '🟡 Precisión Aceptable' : '🔴 GPS Desplazado (>50m)'}
+            </span>
+            <button 
+              onClick={refreshGpsAccuracy}
+              disabled={isFetchingGps}
+              style={{ border: 'none', background: 'transparent', color: 'var(--neon-blue)', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}
+            >
+              <RefreshCw size={10} style={isFetchingGps ? { animation: 'spin 1s linear infinite' } : {}} />
+              {isFetchingGps ? 'Leyendo...' : 'Re-obtener GPS'}
+            </button>
           </div>
-          <span style={{ fontSize: '10px', color: gpsAccuracy === null ? 'var(--text-muted)' : gpsAccuracy <= 15 ? 'var(--neon-green)' : gpsAccuracy <= 50 ? 'var(--neon-amber)' : 'var(--neon-rose)', fontWeight: 600 }}>
-            {gpsAccuracy === null ? 'Lectura satelital' : gpsAccuracy <= 15 ? '🟢 Precisión Óptima' : gpsAccuracy <= 50 ? '🟡 Precisión Aceptable' : '🔴 GPS Desplazado (>50m)'}
-          </span>
-          <button 
-            onClick={refreshGpsAccuracy}
-            disabled={isFetchingGps}
-            style={{ border: 'none', background: 'transparent', color: 'var(--neon-blue)', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}
-          >
-            <RefreshCw size={10} style={isFetchingGps ? { animation: 'spin 1s linear infinite' } : {}} />
-            {isFetchingGps ? 'Leyendo...' : 'Re-obtener GPS'}
-          </button>
-        </div>
+        )}
       </div>
 
       {/* Selector de Modo: Registro QR vs Censo de Postes vs Incidencias / Cortos */}
@@ -1153,29 +1155,31 @@ ${typeLine}
           <span>Censar Poste</span>
         </button>
 
-        <button
-          onClick={() => handleModeChange('incident')}
-          style={{
-            flex: 1,
-            minWidth: '140px',
-            padding: '12px',
-            borderRadius: '8px',
-            border: 'none',
-            background: panelMode === 'incident' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
-            color: panelMode === 'incident' ? 'var(--neon-amber)' : 'var(--text-muted)',
-            fontWeight: 700,
-            fontSize: '13px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            transition: 'all 0.2s'
-          }}
-        >
-          <AlertCircle size={18} />
-          <span>🛠️ Atender Corto / Incidencia</span>
-        </button>
+        {!isDemoMode && (
+          <button
+            onClick={() => handleModeChange('incident')}
+            style={{
+              flex: 1,
+              minWidth: '140px',
+              padding: '12px',
+              borderRadius: '8px',
+              border: 'none',
+              background: panelMode === 'incident' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+              color: panelMode === 'incident' ? 'var(--neon-amber)' : 'var(--text-muted)',
+              fontWeight: 700,
+              fontSize: '13px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              transition: 'all 0.2s'
+            }}
+          >
+            <AlertCircle size={18} />
+            <span>Incidencias / Trabajos Especiales</span>
+          </button>
+        )}
       </div>
 
       {panelMode === 'incident' ? (
