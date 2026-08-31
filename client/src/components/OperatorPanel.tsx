@@ -474,6 +474,21 @@ ${typeLine}
     if (customItem && customItem.id) {
       await removePendingWhatsApp(customItem.id);
       loadPendingWhatsAppList();
+    } else if (lastSuccessData) {
+      try {
+        const currentList = await getPendingWhatsAppList();
+        const match = currentList.find(item => item.code === lastSuccessData.code);
+        if (match) {
+          await removePendingWhatsApp(match.id);
+          loadPendingWhatsAppList();
+        }
+      } catch (err) {
+        console.warn("Error cleaning up pending WhatsApp queue:", err);
+      }
+      setLastSuccessData(null);
+      setPoleSubmitMsg({ text: '', isError: false });
+      setSubmitMsg({ text: '', isError: false });
+      setIncidentSubmitMsg({ text: '', isError: false });
     }
   };
 
