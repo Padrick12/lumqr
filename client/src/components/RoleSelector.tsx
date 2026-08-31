@@ -112,47 +112,47 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelectRole }) => {
     <div className="role-selector-container">
       <div className="role-selector-content">
         <div className="role-selector-header">
-          <div className="logo-badge" style={{ background: 'linear-gradient(135deg, rgba(5, 243, 162, 0.2) 0%, rgba(0, 242, 254, 0.2) 100%)', border: '1px solid rgba(5, 243, 162, 0.4)', boxShadow: '0 0 25px rgba(5, 243, 162, 0.25)', color: 'var(--neon-green)', fontWeight: 800, fontSize: '18px' }}>
+          <div className="logo-badge">
             STG
           </div>
-          <h1 style={{ fontSize: '32px', fontWeight: 800, marginTop: '12px' }}>
+          <h1 style={{ fontSize: '24px', fontWeight: 800, marginTop: '4px' }}>
             STG-AP <span className="highlight" style={{ color: 'var(--neon-green)' }}>Lerdo</span>
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '6px' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '2px' }}>
             Sistema Total de Gestión de Alumbrado Público — Lerdo, Dgo.
           </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '20px', width: '100%' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px', width: '100%' }}>
           <button 
             className="role-card admin-card"
             onClick={() => setSelectedType('admin')}
-            style={{ margin: 0, height: '100%', padding: '24px' }}
+            style={{ margin: 0, height: '100%' }}
           >
             <div className="role-icon-wrapper">
-              <ShieldAlert size={32} />
+              <ShieldAlert size={22} />
             </div>
             <h2>Centro de Control</h2>
             <p>Acceso oficial a métricas, mapas, inventario y reportes de auditoría.</p>
             <div className="role-action">
               <span>Ingresar</span>
-              <LogIn size={16} />
+              <LogIn size={14} />
             </div>
           </button>
 
           <button 
             className="role-card operator-card"
             onClick={() => setSelectedType('operator')}
-            style={{ margin: 0, height: '100%', padding: '24px' }}
+            style={{ margin: 0, height: '100%' }}
           >
             <div className="role-icon-wrapper">
-              <HardHat size={32} />
+              <HardHat size={22} />
             </div>
             <h2>Cuadrilla en Campo</h2>
             <p>Acceso móvil oficial para instalación, mantenimiento y lectura QR.</p>
             <div className="role-action">
               <span>Ingresar</span>
-              <LogIn size={16} />
+              <LogIn size={14} />
             </div>
           </button>
 
@@ -165,20 +165,19 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelectRole }) => {
             style={{
               margin: 0,
               height: '100%',
-              padding: '24px',
               background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.1) 0%, rgba(245, 158, 11, 0.03) 100%)',
               border: '1px solid rgba(234, 179, 8, 0.4)',
-              boxShadow: '0 4px 20px rgba(234, 179, 8, 0.12)'
+              boxShadow: '0 4px 16px rgba(234, 179, 8, 0.12)'
             }}
           >
             <div className="role-icon-wrapper" style={{ background: 'rgba(234, 179, 8, 0.2)', color: '#eab308' }}>
-              <EyeOff size={32} />
+              <EyeOff size={22} />
             </div>
             <h2 style={{ color: '#eab308' }}>Admin Demo</h2>
             <p>Vista previa del mapa, despacho y configuración (sin métricas ni respaldos).</p>
             <div className="role-action" style={{ color: '#eab308' }}>
               <span>Entrar Admin Demo</span>
-              <LogIn size={16} />
+              <LogIn size={14} />
             </div>
           </button>
 
@@ -191,20 +190,19 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelectRole }) => {
             style={{
               margin: 0,
               height: '100%',
-              padding: '24px',
               background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.1) 0%, rgba(245, 158, 11, 0.03) 100%)',
               border: '1px solid rgba(234, 179, 8, 0.4)',
-              boxShadow: '0 4px 20px rgba(234, 179, 8, 0.12)'
+              boxShadow: '0 4px 16px rgba(234, 179, 8, 0.12)'
             }}
           >
             <div className="role-icon-wrapper" style={{ background: 'rgba(234, 179, 8, 0.2)', color: '#eab308' }}>
-              <EyeOff size={32} />
+              <EyeOff size={22} />
             </div>
             <h2 style={{ color: '#eab308' }}>Cuadrilla Demo</h2>
             <p>Vista previa básica de escaneo QR y censo (sin WhatsApp ni fotos).</p>
             <div className="role-action" style={{ color: '#eab308' }}>
               <span>Entrar Cuadrilla Demo</span>
-              <LogIn size={16} />
+              <LogIn size={14} />
             </div>
           </button>
         </div>
