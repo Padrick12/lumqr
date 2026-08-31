@@ -474,6 +474,12 @@ ${typeLine}
     if (customItem && customItem.id) {
       await removePendingWhatsApp(customItem.id);
       loadPendingWhatsAppList();
+      if (lastSuccessData && lastSuccessData.code === customItem.code) {
+        setLastSuccessData(null);
+        setPoleSubmitMsg({ text: '', isError: false });
+        setSubmitMsg({ text: '', isError: false });
+        setIncidentSubmitMsg({ text: '', isError: false });
+      }
     } else if (lastSuccessData) {
       try {
         const currentList = await getPendingWhatsAppList();
