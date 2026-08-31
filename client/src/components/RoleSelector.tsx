@@ -123,7 +123,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelectRole }) => {
           </p>
         </div>
 
-        <div className="roles-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+        <div className="roles-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
           <button 
             className="role-card admin-card"
             onClick={() => setSelectedType('admin')}
@@ -132,7 +132,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelectRole }) => {
               <ShieldAlert size={32} />
             </div>
             <h2>Centro de Control</h2>
-            <p>Acceso a métricas, mapas, inventario y reportes de auditoría.</p>
+            <p>Acceso oficial a métricas, mapas, inventario y reportes de auditoría.</p>
             <div className="role-action">
               <span>Ingresar</span>
               <LogIn size={16} />
@@ -147,7 +147,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelectRole }) => {
               <HardHat size={32} />
             </div>
             <h2>Cuadrilla en Campo</h2>
-            <p>Acceso móvil para instalación, mantenimiento y lectura QR.</p>
+            <p>Acceso móvil oficial para instalación, mantenimiento y lectura QR.</p>
             <div className="role-action">
               <span>Ingresar</span>
               <LogIn size={16} />
@@ -158,7 +158,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelectRole }) => {
             className="role-card"
             onClick={() => {
               setDemoMode(true);
-              onSelectRole('operator', { id: 999, name: 'Usuario Demo (Presentación)' });
+              onSelectRole('admin', { id: 888, name: 'Admin Demo (Presentación)' });
             }}
             style={{
               background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.12) 0%, rgba(245, 158, 11, 0.04) 100%)',
@@ -169,10 +169,33 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelectRole }) => {
             <div className="role-icon-wrapper" style={{ background: 'rgba(234, 179, 8, 0.2)', color: '#eab308' }}>
               <EyeOff size={32} />
             </div>
-            <h2 style={{ color: '#eab308' }}>Acceso Demo</h2>
-            <p>Vista previa funcional simplificada (sin WhatsApp, fotos ni auditoría).</p>
+            <h2 style={{ color: '#eab308' }}>Admin Demo</h2>
+            <p>Vista previa del mapa, despacho y configuración (sin métricas ni respaldos).</p>
             <div className="role-action" style={{ color: '#eab308' }}>
-              <span>Entrar como Demo</span>
+              <span>Entrar Admin Demo</span>
+              <LogIn size={16} />
+            </div>
+          </button>
+
+          <button 
+            className="role-card"
+            onClick={() => {
+              setDemoMode(true);
+              onSelectRole('operator', { id: 999, name: 'Cuadrilla Demo (Presentación)' });
+            }}
+            style={{
+              background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.12) 0%, rgba(245, 158, 11, 0.04) 100%)',
+              border: '1px solid rgba(234, 179, 8, 0.4)',
+              boxShadow: '0 4px 20px rgba(234, 179, 8, 0.15)'
+            }}
+          >
+            <div className="role-icon-wrapper" style={{ background: 'rgba(234, 179, 8, 0.2)', color: '#eab308' }}>
+              <EyeOff size={32} />
+            </div>
+            <h2 style={{ color: '#eab308' }}>Cuadrilla Demo</h2>
+            <p>Vista previa básica de escaneo QR y censo (sin WhatsApp ni fotos).</p>
+            <div className="role-action" style={{ color: '#eab308' }}>
+              <span>Entrar Cuadrilla Demo</span>
               <LogIn size={16} />
             </div>
           </button>
