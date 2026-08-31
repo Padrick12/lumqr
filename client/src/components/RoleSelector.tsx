@@ -123,10 +123,11 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelectRole }) => {
           </p>
         </div>
 
-        <div className="roles-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '20px', width: '100%' }}>
           <button 
             className="role-card admin-card"
             onClick={() => setSelectedType('admin')}
+            style={{ margin: 0, height: '100%', padding: '24px' }}
           >
             <div className="role-icon-wrapper">
               <ShieldAlert size={32} />
@@ -142,6 +143,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelectRole }) => {
           <button 
             className="role-card operator-card"
             onClick={() => setSelectedType('operator')}
+            style={{ margin: 0, height: '100%', padding: '24px' }}
           >
             <div className="role-icon-wrapper">
               <HardHat size={32} />
@@ -161,9 +163,12 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelectRole }) => {
               onSelectRole('admin', { id: 888, name: 'Admin Demo (Presentación)' });
             }}
             style={{
-              background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.12) 0%, rgba(245, 158, 11, 0.04) 100%)',
+              margin: 0,
+              height: '100%',
+              padding: '24px',
+              background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.1) 0%, rgba(245, 158, 11, 0.03) 100%)',
               border: '1px solid rgba(234, 179, 8, 0.4)',
-              boxShadow: '0 4px 20px rgba(234, 179, 8, 0.15)'
+              boxShadow: '0 4px 20px rgba(234, 179, 8, 0.12)'
             }}
           >
             <div className="role-icon-wrapper" style={{ background: 'rgba(234, 179, 8, 0.2)', color: '#eab308' }}>
@@ -184,9 +189,12 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelectRole }) => {
               onSelectRole('operator', { id: 999, name: 'Cuadrilla Demo (Presentación)' });
             }}
             style={{
-              background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.12) 0%, rgba(245, 158, 11, 0.04) 100%)',
+              margin: 0,
+              height: '100%',
+              padding: '24px',
+              background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.1) 0%, rgba(245, 158, 11, 0.03) 100%)',
               border: '1px solid rgba(234, 179, 8, 0.4)',
-              boxShadow: '0 4px 20px rgba(234, 179, 8, 0.15)'
+              boxShadow: '0 4px 20px rgba(234, 179, 8, 0.12)'
             }}
           >
             <div className="role-icon-wrapper" style={{ background: 'rgba(234, 179, 8, 0.2)', color: '#eab308' }}>
