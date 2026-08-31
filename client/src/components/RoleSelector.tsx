@@ -38,9 +38,15 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelectRole }) => {
       } else {
         setDemoMode(false); // Official login activates Full Mode
         if (selectedType === 'admin') {
-          onSelectRole('admin', { id: data.admin?.id || 1, name: data.admin?.username || 'Administrador' });
+          onSelectRole('admin', { 
+            id: data.admin_id || data.admin?.id || 1, 
+            name: data.admin_name || data.admin?.username || 'Administrador' 
+          });
         } else {
-          onSelectRole('operator', { id: data.crew.id, name: data.crew.name });
+          onSelectRole('operator', { 
+            id: data.crew_id || data.crew?.id || 1, 
+            name: data.crew_name || data.crew?.name || username 
+          });
         }
       }
     } catch (err) {
