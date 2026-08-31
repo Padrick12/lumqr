@@ -1,6 +1,7 @@
 import { API_BASE_URL } from '../config';
-﻿import React, { useState } from 'react';
-import { ShieldAlert, HardHat, LogIn, ChevronLeft, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { ShieldAlert, HardHat, LogIn, ChevronLeft, AlertCircle, EyeOff } from 'lucide-react';
+import { setDemoMode } from '../utils/demoMode';
 import './RoleSelector.css';
 
 interface RoleSelectorProps {
@@ -28,17 +29,18 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelectRole }) => {
       const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, type: selectedType })
+        body: JSON.stringify({ type: selectedType, username, password })
       });
+
       const data = await res.json();
-      
       if (!res.ok) {
         setErrorMsg(data.error || 'Credenciales incorrectas.');
       } else {
-        if (data.role === 'admin') {
-          onSelectRole('admin', { id: data.admin_id, name: data.admin_name });
-        } else if (data.role === 'operator') {
-          onSelectRole('operator', { id: data.crew_id, name: data.crew_name });
+        setDemoMode(false); // Official login activates Full Mode
+        if (selectedType === 'admin') {
+          onSelectRole('admin', { id: data.admin?.id || 1, name: data.admin?.username || 'Administrador' });
+        } else {
+          onSelectRole('operator', { id: data.crew.id, name: data.crew.name });
         }
       }
     } catch (err) {
@@ -121,7 +123,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelectRole }) => {
           </p>
         </div>
 
-        <div className="roles-grid">
+        <div className="roles-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
           <button 
             className="role-card admin-card"
             onClick={() => setSelectedType('admin')}
@@ -148,6 +150,29 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelectRole }) => {
             <p>Acceso móvil para instalación, mantenimiento y lectura QR.</p>
             <div className="role-action">
               <span>Ingresar</span>
+              <LogIn size={16} />
+            </div>
+          </button>
+
+          <button 
+            className="role-card"
+            onClick={() => {
+              setDemoMode(true);
+              onSelectRole('operator', { id: 999, name: 'Usuario Demo (Presentación)' });
+            }}
+            style={{
+              background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.12) 0%, rgba(245, 158, 11, 0.04) 100%)',
+              border: '1px solid rgba(234, 179, 8, 0.4)',
+              boxShadow: '0 4px 20px rgba(234, 179, 8, 0.15)'
+            }}
+          >
+            <div className="role-icon-wrapper" style={{ background: 'rgba(234, 179, 8, 0.2)', color: '#eab308' }}>
+              <EyeOff size={32} />
+            </div>
+            <h2 style={{ color: '#eab308' }}>Acceso Demo</h2>
+            <p>Vista previa funcional simplificada (sin WhatsApp, fotos ni auditoría).</p>
+            <div className="role-action" style={{ color: '#eab308' }}>
+              <span>Entrar como Demo</span>
               <LogIn size={16} />
             </div>
           </button>
