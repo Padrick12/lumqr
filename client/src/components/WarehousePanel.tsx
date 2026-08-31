@@ -167,7 +167,7 @@ export const WarehousePanel: React.FC<WarehousePanelProps> = ({ onDataChange }) 
     const htmlContent = `
       <html>
         <head>
-          <title>Impresión de Etiquetas QR - LUMQR</title>
+          <title>Impresión de Etiquetas QR — STG-AP</title>
           <style>
             body { font-family: sans-serif; background: #fff; margin: 0; padding: 20px; color: #000; }
             .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }

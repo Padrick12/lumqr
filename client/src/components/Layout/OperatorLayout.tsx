@@ -17,10 +17,10 @@ export const OperatorLayout: React.FC<OperatorLayoutProps> = ({
     <div className="operator-layout">
       <header className="operator-header">
         <div className="operator-brand">
-          <div className="logo-badge-small">LQ</div>
+          <div className="logo-badge-small">STG</div>
           <div className="brand-text">
-            <h2>LUMQR <span className="badge">Lerdo</span></h2>
-            <p>Cuadrilla Operativa — Lerdo, Dgo.</p>
+            <h2>STG-AP <span className="badge">Lerdo</span></h2>
+            <p>Sistema Total de Gestión de Alumbrado Público</p>
           </div>
         </div>
 

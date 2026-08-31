@@ -1,6 +1,6 @@
 {
-  "name": "LUMQR - Custodia e Inventario de Luminarias",
-  "short_name": "LUMQR",
+  "name": "STG-AP — Sistema Total de Gestión de Alumbrado Público",
+  "short_name": "STG-AP",
   "description": "Sistema de cadena de custodia y control geolocalizado de luminarias en el Municipio de Lerdo, Durango.",
   "start_url": "/",
   "display": "standalone",

@@ -13,14 +13,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userD
     <aside className="app-sidebar">
       <div className="sidebar-header">
         <div className="sidebar-logo">
-          <span>LQ</span>
+          <span>STG</span>
         </div>
         <div className="sidebar-title">
           <h1>
-            <span className="gradient-text">LUMQR</span>
+            <span className="gradient-text">STG-AP</span>
             <span className="badge">Lerdo, Dgo.</span>
           </h1>
-          <p className="sidebar-subtitle">Alumbrado Público</p>
+          <p className="sidebar-subtitle">Gestión Alumbrado Público</p>
           {userData && <p style={{ fontSize: '12px', marginTop: '4px', color: 'var(--neon-green)' }}>Bienvenido, {userData.name}</p>}
         </div>
       </div>
@@ -64,7 +64,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userD
           <HelpCircle size={14} />
           <span>PWA Offline-First v2.0</span>
         </div>
-        <p>© 2026 LUMQR</p>
+        <p>© 2026 STG-AP Lerdo</p>
       </div>
     </aside>
   );

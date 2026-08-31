@@ -320,7 +320,7 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
         ctx.fillRect(0, height - 30, width, 30);
         ctx.fillStyle = '#05f3a2';
         ctx.font = 'bold 13px monospace';
-        ctx.fillText(`LUMQR LERDO — EVIDENCIA OFICIAL DE CUSTODIA — CÓDIGO: ${code}`, 20, height - 10);
+        ctx.fillText(`STG-AP LERDO — EVIDENCIA OFICIAL DE CUSTODIA — CÓDIGO: ${code}`, 20, height - 10);
 
         canvas.toBlob((blob) => {
           if (!blob) return resolve(null);
@@ -407,7 +407,7 @@ ${typeLine}
 📅 *Fecha/Hora:* ${formattedDate}
 📍 *Ubicación GPS:* https://maps.google.com/?q=${dataToShare.lat},${dataToShare.lng}${addressLine}${notesLine}
 
-📸 *Evidencia Fotográfica Respaldada en Sistema LUMQR*`;
+📸 *Evidencia Fotográfica Respaldada en Sistema STG-AP Lerdo*`;
 
     // INTENTO 1: SI EXISTEN LAS 2 FOTOS, COMBINARLAS EN 1 ÚNICA IMAGEN DE ALTA CALIDAD PARA UN SOLO BURBUJA EN WHATSAPP
     const filesToShare: File[] = [];

@@ -110,14 +110,14 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelectRole }) => {
     <div className="role-selector-container">
       <div className="role-selector-content">
         <div className="role-selector-header">
-          <div className="logo-badge" style={{ background: 'linear-gradient(135deg, rgba(5, 243, 162, 0.2) 0%, rgba(0, 242, 254, 0.2) 100%)', border: '1px solid rgba(5, 243, 162, 0.4)', boxShadow: '0 0 25px rgba(5, 243, 162, 0.25)', color: 'var(--neon-green)', fontWeight: 800, fontSize: '20px' }}>
-            LQ
+          <div className="logo-badge" style={{ background: 'linear-gradient(135deg, rgba(5, 243, 162, 0.2) 0%, rgba(0, 242, 254, 0.2) 100%)', border: '1px solid rgba(5, 243, 162, 0.4)', boxShadow: '0 0 25px rgba(5, 243, 162, 0.25)', color: 'var(--neon-green)', fontWeight: 800, fontSize: '18px' }}>
+            STG
           </div>
           <h1 style={{ fontSize: '32px', fontWeight: 800, marginTop: '12px' }}>
-            LUMQR <span className="highlight" style={{ color: 'var(--neon-green)' }}>Lerdo</span>
+            STG-AP <span className="highlight" style={{ color: 'var(--neon-green)' }}>Lerdo</span>
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '6px' }}>
-            Sistema Municipal de Alumbrado Público — Lerdo, Dgo.
+            Sistema Total de Gestión de Alumbrado Público — Lerdo, Dgo.
           </p>
         </div>
 
@@ -154,7 +154,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelectRole }) => {
         </div>
 
         <div className="role-selector-footer">
-          <p>LUMQR - Sistema de Control Interno © 2026</p>
+          <p>STG-AP — Sistema Total de Gestión de Alumbrado Público © 2026</p>
         </div>
       </div>
     </div>

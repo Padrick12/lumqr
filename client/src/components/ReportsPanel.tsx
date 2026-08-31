@@ -194,7 +194,7 @@ export const ReportsPanel: React.FC = () => {
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Reporte Ejecutivo de Entregables - LUMQR Lerdo</title>
+          <title>Reporte Membretado Oficial — STG-AP Lerdo</title>
           <style>
             @page { size: A4; margin: 12mm; }
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #0f172a; background: #fff; margin: 0; padding: 10px; font-size: 11px; }
