@@ -227,24 +227,27 @@ export const ReportsPanel: React.FC = () => {
             .photo-box { width: 100%; height: 110px; object-fit: cover; border-radius: 6px; border: 1px solid #cbd5e1; }
             .photo-label { font-size: 8px; color: #64748b; font-weight: 700; margin-bottom: 2px; }
 
-            .footer-sig { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; text-align: center; page-break-inside: avoid; }
+            .footer-sig { margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; text-align: center; page-break-inside: avoid; }
             .sig-line { border-top: 1px solid #0f172a; padding-top: 6px; font-size: 10px; font-weight: bold; color: #334155; }
+
+            .footer-letterhead { margin-top: 25px; width: 100%; text-align: center; page-break-inside: avoid; }
+            .footer-letterhead img { width: 100%; max-height: 80px; object-fit: contain; }
           </style>
         </head>
         <body>
-          <div class="header-banner">
-            <div class="brand">
-              <div class="badge-logo">LQ</div>
-              <div class="title">
-                <h1>MUNICIPIO DE LERDO, DGO.</h1>
-                <p>Dirección de Servicios Públicos | Reporte Oficial de Alumbrado Público</p>
-              </div>
-            </div>
-            <div class="meta-box">
-              <strong>Fecha Emisión:</strong> ${new Date().toLocaleString('es-MX')}<br/>
-              <strong>Cuadrilla:</strong> ${crewFilter === 'todos' ? 'Todas las Cuadrillas' : crewFilter}<br/>
-              <strong>Rango:</strong> ${startDate || 'Inicio'} al ${endDate || 'Hoy'}
-            </div>
+          <div class="header-letterhead">
+            <img src="${origin}/letterhead/letterhead_header_trimmed.png" alt="Membrete Presidencia Municipal Lerdo" />
+          </div>
+
+          <div class="report-title-box">
+            <h1>DIRECCIÓN DE SERVICIOS PÚBLICOS MUNICIPALES</h1>
+            <h2>DICTAMEN Y REPORTE OFICIAL DE CUSTODIA Y ENTREGABLES — ALUMBRADO PÚBLICO</h2>
+          </div>
+
+          <div class="meta-bar">
+            <div>📅 <strong>Fecha de Emisión:</strong> ${new Date().toLocaleString('es-MX')}</div>
+            <div>👷‍♂️ <strong>Cuadrilla Evaluada:</strong> ${crewFilter === 'todos' ? 'Todas las Cuadrillas' : crewFilter}</div>
+            <div>🗓️ <strong>Período Auditado:</strong> ${startDate || 'Inicio'} al ${endDate || 'Hoy'}</div>
           </div>
 
           <div class="kpi-grid">
@@ -262,7 +265,7 @@ export const ReportsPanel: React.FC = () => {
             </div>
             <div class="kpi-card">
               <h3>${uniqueCrews.length}</h3>
-              <p>Cuadrillas en Trabajo</p>
+              <p>Cuadrillas en Operación</p>
             </div>
           </div>
 
@@ -292,11 +295,11 @@ export const ReportsPanel: React.FC = () => {
                       <div class="photos-grid">
                         <div>
                           <div class="photo-label">📸 1. ESTADO ANTES / POSTE:</div>
-                          ${photoB ? `<img src="${photoB}" class="photo-box" />` : '<div style="height:110px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-size:9px;">Sin foto</div>'}
+                          ${photoB ? `<img src="${photoB}" class="photo-box" />` : '<div style="height:100px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-size:9px;">Sin foto</div>'}
                         </div>
                         <div>
                           <div class="photo-label">📸 2. LÁMPARA LED ENCENDIDA:</div>
-                          ${photoA ? `<img src="${photoA}" class="photo-box" />` : '<div style="height:110px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-size:9px;">Sin foto</div>'}
+                          ${photoA ? `<img src="${photoA}" class="photo-box" />` : '<div style="height:100px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-size:9px;">Sin foto</div>'}
                         </div>
                       </div>
                     ` : ''}
@@ -307,35 +310,35 @@ export const ReportsPanel: React.FC = () => {
           ` : ''}
 
           ${showIncidents && filteredIncidents.length > 0 ? `
-            <div class="section-header" style="color: #d97706; border-color: #fef3c7;">🛠️ Fichas de Incidencias y Cortos Circuito Atendidos (${filteredIncidents.length})</div>
+            <div class="section-header" style="color:#d97706; border-color:#fef3c7;">🛠️ Atención de Cortos Circuitos e Incidencias (${filteredIncidents.length})</div>
             <div class="cards-container">
               ${filteredIncidents.map(inc => {
                 const photoB = inc.photo_before ? (inc.photo_before.startsWith('http') ? inc.photo_before : origin + inc.photo_before) : null;
                 const photoA = inc.photo_after ? (inc.photo_after.startsWith('http') ? inc.photo_after : origin + inc.photo_after) : null;
 
                 return `
-                  <div class="item-card" style="border-color: #fde68a;">
+                  <div class="item-card">
                     <div class="card-top">
                       <span class="card-code">${inc.incident_type}</span>
-                      <span class="card-badge-inc">Atendida</span>
+                      <span class="card-badge-inc">Atendida / Resuelta</span>
                     </div>
                     <div class="info-list">
                       <div>👷‍♂️ <strong>Cuadrilla:</strong> <span>${inc.crew_name || 'N/A'}</span></div>
                       ${inc.operator_name ? `<div>👤 <strong>Responsable:</strong> <span>${inc.operator_name}</span></div>` : ''}
                       <div>📅 <strong>Fecha/Hora:</strong> <span>${new Date(inc.created_at).toLocaleString('es-MX')}</span></div>
-                      <div>📍 <strong>GPS:</strong> <a href="https://maps.google.com/?q=${inc.lat},${inc.lng}" target="_blank" style="color:#d97706;">Ver en Maps</a></div>
-                      <div>📝 <strong>Detalle:</strong> <em>"${inc.notes}"</em></div>
+                      <div>📍 <strong>Ubicación GPS:</strong> <a href="https://maps.google.com/?q=${inc.lat},${inc.lng}" target="_blank" style="color:#0284c7;">Ver en Maps (${inc.lat?.toFixed(5)}, ${inc.lng?.toFixed(5)})</a></div>
+                      <div>📝 <strong>Trabajo Realizado:</strong> <em>"${inc.notes}"</em></div>
                     </div>
 
                     ${(photoB || photoA) ? `
                       <div class="photos-grid">
                         <div>
-                          <div class="photo-label">📸 1. EVIDENCIA ANTES:</div>
-                          ${photoB ? `<img src="${photoB}" class="photo-box" />` : '<div style="height:110px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-size:9px;">Sin foto</div>'}
+                          <div class="photo-label">📸 1. EVIDENCIA ANTES / FALLA:</div>
+                          ${photoB ? `<img src="${photoB}" class="photo-box" />` : '<div style="height:100px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-size:9px;">Sin foto</div>'}
                         </div>
                         <div>
-                          <div class="photo-label">📸 2. TRABAJO REALIZADO:</div>
-                          ${photoA ? `<img src="${photoA}" class="photo-box" />` : '<div style="height:110px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-size:9px;">Sin foto</div>'}
+                          <div class="photo-label">📸 2. REPARACIÓN / SOLUCIÓN:</div>
+                          ${photoA ? `<img src="${photoA}" class="photo-box" />` : '<div style="height:100px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-size:9px;">Sin foto</div>'}
                         </div>
                       </div>
                     ` : ''}
@@ -360,6 +363,10 @@ export const ReportsPanel: React.FC = () => {
                 Municipio de Lerdo, Durango
               </div>
             </div>
+          </div>
+
+          <div class="footer-letterhead">
+            <img src="${origin}/letterhead/letterhead_footer_trimmed.png" alt="Pie de Página Presidencia Municipal Lerdo" />
           </div>
 
           <script>
