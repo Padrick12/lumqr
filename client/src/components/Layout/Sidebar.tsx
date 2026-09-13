@@ -1,6 +1,5 @@
 import React from 'react';
 import { Map, Truck, Users, BarChart3, HelpCircle } from 'lucide-react';
-import { useDemoMode } from '../../utils/demoMode';
 import './layout.css';
 
 interface SidebarProps {
@@ -10,7 +9,6 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userData }) => {
-  const [isDemoMode] = useDemoMode();
 
   return (
     <aside className="app-sidebar">
@@ -53,15 +51,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userD
           <span>Configuración (Admin)</span>
         </button>
 
-        {!isDemoMode && (
-          <button 
-            onClick={() => setActiveTab('reports')}
-            className={`nav-item ${activeTab === 'reports' ? 'active-operator' : ''}`}
-          >
-            <BarChart3 size={20} />
-            <span>Reportes & Auditoría</span>
-          </button>
-        )}
+        <button 
+          onClick={() => setActiveTab('reports')}
+          className={`nav-item ${activeTab === 'reports' ? 'active-operator' : ''}`}
+        >
+          <BarChart3 size={20} />
+          <span>Reportes & Auditoría</span>
+        </button>
       </nav>
 
       <div className="sidebar-footer">

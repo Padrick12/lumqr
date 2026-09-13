@@ -1,7 +1,6 @@
 import { API_BASE_URL } from '../config';
 import React, { useState } from 'react';
-import { ShieldAlert, HardHat, LogIn, ChevronLeft, AlertCircle, EyeOff } from 'lucide-react';
-import { setDemoMode } from '../utils/demoMode';
+import { ShieldAlert, HardHat, LogIn, ChevronLeft, AlertCircle } from 'lucide-react';
 import './RoleSelector.css';
 
 interface RoleSelectorProps {
@@ -36,7 +35,6 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelectRole }) => {
       if (!res.ok) {
         setErrorMsg(data.error || 'Credenciales incorrectas.');
       } else {
-        setDemoMode(false); // Official login activates Full Mode
         if (selectedType === 'admin') {
           onSelectRole('admin', { 
             id: data.admin_id || data.admin?.id || 1, 
@@ -129,86 +127,34 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelectRole }) => {
           </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px', width: '100%' }}>
+        <div className="roles-grid">
           <button 
             className="role-card admin-card"
             onClick={() => setSelectedType('admin')}
-            style={{ margin: 0, height: '100%' }}
           >
             <div className="role-icon-wrapper">
-              <ShieldAlert size={22} />
+              <ShieldAlert size={32} />
             </div>
             <h2>Centro de Control</h2>
             <p>Acceso oficial a métricas, mapas, inventario y reportes de auditoría.</p>
             <div className="role-action">
               <span>Ingresar</span>
-              <LogIn size={14} />
+              <LogIn size={16} />
             </div>
           </button>
 
           <button 
             className="role-card operator-card"
             onClick={() => setSelectedType('operator')}
-            style={{ margin: 0, height: '100%' }}
           >
             <div className="role-icon-wrapper">
-              <HardHat size={22} />
+              <HardHat size={32} />
             </div>
             <h2>Cuadrilla en Campo</h2>
             <p>Acceso móvil oficial para instalación, mantenimiento y lectura QR.</p>
             <div className="role-action">
               <span>Ingresar</span>
-              <LogIn size={14} />
-            </div>
-          </button>
-
-          <button 
-            className="role-card"
-            onClick={() => {
-              setDemoMode(true);
-              onSelectRole('admin', { id: 888, name: 'Admin Demo (Presentación)' });
-            }}
-            style={{
-              margin: 0,
-              height: '100%',
-              background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.1) 0%, rgba(245, 158, 11, 0.03) 100%)',
-              border: '1px solid rgba(234, 179, 8, 0.4)',
-              boxShadow: '0 4px 16px rgba(234, 179, 8, 0.12)'
-            }}
-          >
-            <div className="role-icon-wrapper" style={{ background: 'rgba(234, 179, 8, 0.2)', color: '#eab308' }}>
-              <EyeOff size={22} />
-            </div>
-            <h2 style={{ color: '#eab308' }}>Admin Demo</h2>
-            <p>Vista previa del mapa, despacho y configuración (sin métricas ni respaldos).</p>
-            <div className="role-action" style={{ color: '#eab308' }}>
-              <span>Entrar Admin Demo</span>
-              <LogIn size={14} />
-            </div>
-          </button>
-
-          <button 
-            className="role-card"
-            onClick={() => {
-              setDemoMode(true);
-              onSelectRole('operator', { id: 999, name: 'Cuadrilla Demo (Presentación)' });
-            }}
-            style={{
-              margin: 0,
-              height: '100%',
-              background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.1) 0%, rgba(245, 158, 11, 0.03) 100%)',
-              border: '1px solid rgba(234, 179, 8, 0.4)',
-              boxShadow: '0 4px 16px rgba(234, 179, 8, 0.12)'
-            }}
-          >
-            <div className="role-icon-wrapper" style={{ background: 'rgba(234, 179, 8, 0.2)', color: '#eab308' }}>
-              <EyeOff size={22} />
-            </div>
-            <h2 style={{ color: '#eab308' }}>Cuadrilla Demo</h2>
-            <p>Vista previa básica de escaneo QR y censo (sin WhatsApp ni fotos).</p>
-            <div className="role-action" style={{ color: '#eab308' }}>
-              <span>Entrar Cuadrilla Demo</span>
-              <LogIn size={14} />
+              <LogIn size={16} />
             </div>
           </button>
         </div>

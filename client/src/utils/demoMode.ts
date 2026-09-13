@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 
 export const getDemoMode = (): boolean => {
   const saved = localStorage.getItem('stg_demo_mode');
-  // Default to true (Demo Presentation Mode) as requested by user
-  return saved === null ? true : saved === 'true';
+  // Default to false (Full Production Mode) as requested by user
+  return saved === null ? false : saved === 'true';
 };
 
 export const setDemoMode = (enabled: boolean): void => {
