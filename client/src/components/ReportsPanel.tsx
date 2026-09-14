@@ -280,81 +280,7 @@ export const ReportsPanel: React.FC = () => {
   };
 
   const handleTriggerPrint = () => {
-    const content = document.getElementById('printable-executive-report');
-    if (!content) return;
-
-    let iframe = document.getElementById('pdf-print-iframe') as HTMLIFrameElement;
-    if (!iframe) {
-      iframe = document.createElement('iframe');
-      iframe.id = 'pdf-print-iframe';
-      iframe.style.position = 'fixed';
-      iframe.style.right = '0';
-      iframe.style.bottom = '0';
-      iframe.style.width = '0px';
-      iframe.style.height = '0px';
-      iframe.style.border = 'none';
-      iframe.style.zIndex = '-9999';
-      document.body.appendChild(iframe);
-    }
-
-    const doc = iframe.contentWindow?.document;
-    if (!doc) return;
-
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Dictamen y Reporte Oficial — STG-AP Lerdo</title>
-          <style>
-            @page {
-              size: A4 portrait;
-              margin: 8mm;
-            }
-            @media print {
-              thead { display: table-header-group; }
-              tfoot { display: table-footer-group; }
-              tr, .card-item-box { page-break-inside: avoid; }
-            }
-            * {
-              box-sizing: border-box;
-            }
-            body {
-              font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-              color: #0f172a;
-              background: #ffffff;
-              margin: 0;
-              padding: 0;
-              font-size: 11px;
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-            }
-            a {
-              color: #0284c7;
-              text-decoration: none;
-            }
-            img {
-              max-width: 100%;
-              height: auto;
-            }
-            .no-print {
-              display: none !important;
-            }
-          </style>
-        </head>
-        <body>
-          ${content.innerHTML}
-        </body>
-      </html>
-    `;
-
-    doc.open();
-    doc.write(htmlContent);
-    doc.close();
-
-    setTimeout(() => {
-      iframe.contentWindow?.focus();
-      iframe.contentWindow?.print();
-    }, 200);
+    window.print();
   };
 
   return (
@@ -414,32 +340,96 @@ export const ReportsPanel: React.FC = () => {
           background: rgba(255,255,255,0.02);
         }
 
-        /* PRINT MODAL & STYLES */
+        .pdf-header-repeating {
+          display: block;
+          text-align: center;
+          margin-bottom: 12px;
+        }
+        .pdf-footer-repeating {
+          display: block;
+          text-align: center;
+          margin-top: 20px;
+        }
+
+        /* PRINT STYLES - ULTRA FAST & COMPATIBLE WITH FIREFOX / CHROME / EDGE */
         @media print {
-          body > *:not(.pdf-print-modal-overlay) {
-            display: none !important;
+          @page {
+            size: A4 portrait;
+            margin: 12mm 10mm 15mm 10mm;
           }
-          .panel-section, .navbar, .top-bar, .no-print {
-            display: none !important;
-          }
-          .pdf-print-modal-overlay {
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100% !important;
-            background: white !important;
-            color: black !important;
-            z-index: 9999999 !important;
+
+          html, body {
+            background: #ffffff !important;
+            color: #0f172a !important;
+            margin: 0 !important;
             padding: 0 !important;
+            font-size: 11px !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
-          .pdf-print-modal-content {
-            background: white !important;
-            color: black !important;
+
+          /* Hide UI controls */
+          .navbar, .top-bar, .no-print, .panel-section > *:not(.pdf-print-modal-overlay) {
+            display: none !important;
+          }
+
+          .pdf-print-modal-overlay {
+            position: static !important;
+            background: #ffffff !important;
+            color: #0f172a !important;
+            padding: 0 !important;
+            margin: 0 !important;
             box-shadow: none !important;
             border: none !important;
             width: 100% !important;
+            overflow: visible !important;
+          }
+
+          .pdf-print-modal-content {
+            position: relative !important;
+            background: #ffffff !important;
+            color: #0f172a !important;
+            box-shadow: none !important;
+            border: none !important;
+            width: 100% !important;
+            max-width: 100% !important;
             padding: 0 !important;
             margin: 0 !important;
+          }
+
+          /* FIXED REPEATING HEADER AT TOP OF EVERY PRINTED PAGE */
+          .pdf-header-repeating {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            height: 75px !important;
+            background: #ffffff !important;
+            text-align: center !important;
+            z-index: 1000 !important;
+          }
+
+          /* FIXED REPEATING FOOTER AT BOTTOM OF EVERY PRINTED PAGE */
+          .pdf-footer-repeating {
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            height: 45px !important;
+            background: #ffffff !important;
+            text-align: center !important;
+            z-index: 1000 !important;
+          }
+
+          /* BODY CONTENT FLOW WITH PADDING TO PREVENT OVERLAPPING FIXED HEADER/FOOTER */
+          .pdf-body-content {
+            margin-top: 80px !important;
+            margin-bottom: 50px !important;
+          }
+
+          .card-item-box {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
           }
         }
       `}</style>
@@ -854,303 +844,293 @@ export const ReportsPanel: React.FC = () => {
           {/* PRINTABLE DOCUMENT BODY */}
           <div id="printable-executive-report" className="pdf-print-modal-content" style={{ background: '#ffffff', color: '#0f172a', width: '100%', maxWidth: '850px', padding: '20px', borderRadius: '8px', boxShadow: '0 10px 40px rgba(0,0,0,0.5)', fontFamily: 'system-ui, -apple-system, sans-serif', fontSize: '11px' }}>
             
-            {/* ESTRUCTURA DE TABLA CON THEAD Y TFOOT PARA REPETIR MEMBRETE Y PIE EN CADA PÁGINA */}
-            <table style={{ width: '100%', borderCollapse: 'collapse', margin: 0, padding: 0 }}>
-              <thead>
-                <tr>
-                  <th style={{ fontWeight: 'normal', textAlign: 'center', paddingBottom: '10px' }}>
-                    <img 
-                      src={`${origin}/letterhead/letterhead_header_trimmed.png`} 
-                      alt="Membrete Presidencia Municipal Lerdo" 
-                      width="800" 
-                      height="110" 
-                      decoding="sync"
-                      style={{ width: '100%', maxHeight: '95px', objectFit: 'contain', display: 'block', margin: '0 auto' }} 
-                      onError={(e: any) => e.target.style.display='none'} 
-                    />
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>
-                    <div style={{ textAlign: 'center', marginBottom: '14px', borderBottom: '2px solid #0284c7', paddingBottom: '8px' }}>
-                      <h1 style={{ margin: 0, fontSize: '16px', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>DIRECCIÓN DE SERVICIOS PÚBLICOS MUNICIPALES</h1>
-                      <h2 style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#0284c7', fontWeight: 700, textTransform: 'uppercase' }}>DICTAMEN Y REPORTE OFICIAL DE CUSTODIA Y ENTREGABLES — ALUMBRADO PÚBLICO</h2>
-                    </div>
+            {/* REPEATING HEADER AT TOP OF EVERY PRINTED PAGE */}
+            <div className="pdf-header-repeating">
+              <img 
+                src={`${origin}/letterhead/letterhead_header_trimmed.png`} 
+                alt="Membrete Presidencia Municipal Lerdo" 
+                width="800" 
+                height="110" 
+                decoding="sync"
+                style={{ width: '100%', maxHeight: '75px', objectFit: 'contain', display: 'block', margin: '0 auto' }} 
+                onError={(e: any) => e.target.style.display='none'} 
+              />
+            </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '8px 12px', fontSize: '10px', marginBottom: '14px' }}>
-                      <div>📅 <strong>Fecha de Emisión:</strong> {new Date().toLocaleString('es-MX')}</div>
-                      <div>👷‍♂️ <strong>Cuadrilla Evaluada:</strong> {crewFilter === 'todos' ? 'Todas las Cuadrillas' : crewFilter}</div>
-                      <div>🗓️ <strong>Período Auditado:</strong> {startDate || 'Inicio'} al {endDate || 'Hoy'}</div>
-                    </div>
+            {/* MAIN DOCUMENT BODY WITH TOP/BOTTOM PADDING TO PREVENT OVERLAPPING FIXED HEADERS/FOOTERS */}
+            <div className="pdf-body-content">
+              <div style={{ textAlign: 'center', marginBottom: '14px', borderBottom: '2px solid #0284c7', paddingBottom: '8px' }}>
+                <h1 style={{ margin: 0, fontSize: '16px', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>DIRECCIÓN DE SERVICIOS PÚBLICOS MUNICIPALES</h1>
+                <h2 style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#0284c7', fontWeight: 700, textTransform: 'uppercase' }}>DICTAMEN Y REPORTE OFICIAL DE CUSTODIA Y ENTREGABLES — ALUMBRADO PÚBLICO</h2>
+              </div>
 
-                    {/* SECCIÓN AUDITORÍA ENERGÉTICA CFE (DAP) */}
-                    <div style={{ background: '#f0f9ff', border: '1.5px solid #0284c7', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px' }}>
-                      <div style={{ fontWeight: 800, fontSize: '12px', color: '#0369a1', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #bae6fd', paddingBottom: '4px' }}>
-                        <span>⚡ AUDITORÍA DE CONSUMO ENERGÉTICO CFE (DAP MUNICIPAL)</span>
-                        <span>Dictamen Técnico Alumbrado</span>
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', textAlign: 'center' }}>
-                        <div style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '6px', borderRadius: '6px' }}>
-                          <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 700 }}>CARGA CONECTADA COMBINADA</div>
-                          <div style={{ fontSize: '15px', fontWeight: 800, color: '#d97706', marginTop: '2px' }}>{totalWattsCombined.toLocaleString()} Watts</div>
-                          <div style={{ fontSize: '8px', color: '#94a3b8' }}>({totalKwCombined} kW)</div>
-                        </div>
-                        <div style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '6px', borderRadius: '6px' }}>
-                          <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 700 }}>CONSUMO DIARIO (12 HRS/NOCHE)</div>
-                          <div style={{ fontSize: '15px', fontWeight: 800, color: '#059669', marginTop: '2px' }}>{dailyKwh} kWh / día</div>
-                          <div style={{ fontSize: '8px', color: '#94a3b8' }}>Operación Nocturna Regular</div>
-                        </div>
-                        <div style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '6px', borderRadius: '6px' }}>
-                          <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 700 }}>CONSUMO MENSUAL FACTURABLE CFE</div>
-                          <div style={{ fontSize: '15px', fontWeight: 800, color: '#0284c7', marginTop: '2px' }}>{monthlyKwh} kWh / mes</div>
-                          <div style={{ fontSize: '8px', color: '#94a3b8' }}>Período 30 días lectivos</div>
-                        </div>
-                      </div>
-                      <div style={{ fontSize: '9px', color: '#475569', marginTop: '8px', fontStyle: 'italic' }}>
-                        * Nota para trámite de Bonificación CFE: Cálculo exacto basado en {filteredInstallations.length} luminarias QR LED registradas ({totalWattsQR.toLocaleString()}W) + {filteredPoles.length} puntos de iluminación censados ({totalWattsPoles.toLocaleString()}W).
-                      </div>
-                    </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '8px 12px', fontSize: '10px', marginBottom: '14px' }}>
+                <div>📅 <strong>Fecha de Emisión:</strong> {new Date().toLocaleString('es-MX')}</div>
+                <div>👷‍♂️ <strong>Cuadrilla Evaluada:</strong> {crewFilter === 'todos' ? 'Todas las Cuadrillas' : crewFilter}</div>
+                <div>🗓️ <strong>Período Auditado:</strong> {startDate || 'Inicio'} al {endDate || 'Hoy'}</div>
+              </div>
 
-                    {/* KPI METRICS GRID */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '16px' }}>
-                      <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
-                        <h3 style={{ margin: 0, fontSize: '18px', color: '#0284c7', fontWeight: 800 }}>{filteredInstallations.length}</h3>
-                        <p style={{ margin: '2px 0 0 0', fontSize: '9px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Luminarias QR Registradas</p>
-                      </div>
-                      <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
-                        <h3 style={{ margin: 0, fontSize: '18px', color: '#0284c7', fontWeight: 800 }}>{filteredPoles.length}</h3>
-                        <p style={{ margin: '2px 0 0 0', fontSize: '9px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Puntos de Iluminación Censados</p>
-                      </div>
-                      <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
-                        <h3 style={{ margin: 0, fontSize: '18px', color: '#0284c7', fontWeight: 800 }}>{totalWattsCombined.toLocaleString()} W</h3>
-                        <p style={{ margin: '2px 0 0 0', fontSize: '9px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Carga Potencia Instalada</p>
-                      </div>
-                      <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
-                        <h3 style={{ margin: 0, fontSize: '18px', color: '#0284c7', fontWeight: 800 }}>{filteredIncidents.length}</h3>
-                        <p style={{ margin: '2px 0 0 0', fontSize: '9px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Incidencias Atendidas</p>
-                      </div>
-                    </div>
+              {/* SECCIÓN AUDITORÍA ENERGÉTICA CFE (DAP) */}
+              <div style={{ background: '#f0f9ff', border: '1.5px solid #0284c7', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px' }}>
+                <div style={{ fontWeight: 800, fontSize: '12px', color: '#0369a1', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #bae6fd', paddingBottom: '4px' }}>
+                  <span>⚡ AUDITORÍA DE CONSUMO ENERGÉTICO CFE (DAP MUNICIPAL)</span>
+                  <span>Dictamen Técnico Alumbrado</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', textAlign: 'center' }}>
+                  <div style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '6px', borderRadius: '6px' }}>
+                    <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 700 }}>CARGA CONECTADA COMBINADA</div>
+                    <div style={{ fontSize: '15px', fontWeight: 800, color: '#d97706', marginTop: '2px' }}>{totalWattsCombined.toLocaleString()} Watts</div>
+                    <div style={{ fontSize: '8px', color: '#94a3b8' }}>({totalKwCombined} kW)</div>
+                  </div>
+                  <div style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '6px', borderRadius: '6px' }}>
+                    <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 700 }}>CONSUMO DIARIO (12 HRS/NOCHE)</div>
+                    <div style={{ fontSize: '15px', fontWeight: 800, color: '#059669', marginTop: '2px' }}>{dailyKwh} kWh / día</div>
+                    <div style={{ fontSize: '8px', color: '#94a3b8' }}>Operación Nocturna Regular</div>
+                  </div>
+                  <div style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '6px', borderRadius: '6px' }}>
+                    <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 700 }}>CONSUMO MENSUAL FACTURABLE CFE</div>
+                    <div style={{ fontSize: '15px', fontWeight: 800, color: '#0284c7', marginTop: '2px' }}>{monthlyKwh} kWh / mes</div>
+                    <div style={{ fontSize: '8px', color: '#94a3b8' }}>Período 30 días lectivos</div>
+                  </div>
+                </div>
+                <div style={{ fontSize: '9px', color: '#475569', marginTop: '8px', fontStyle: 'italic' }}>
+                  * Nota para trámite de Bonificación CFE: Cálculo exacto basado en {filteredInstallations.length} luminarias QR LED registradas ({totalWattsQR.toLocaleString()}W) + {filteredPoles.length} puntos de iluminación censados ({totalWattsPoles.toLocaleString()}W).
+                </div>
+              </div>
 
-                    {/* TABLA RESUMEN DE ENTREGABLES */}
-                    {(filteredInstallations.length > 0 || filteredPoles.length > 0 || filteredIncidents.length > 0) && (
-                      <>
-                        <div style={{ fontWeight: 700, color: '#0f172a', borderBottom: '2px solid #0284c7', paddingBottom: '4px', marginTop: '16px', marginBottom: '8px', fontSize: '12px' }}>
-                          📊 Resumen Tabular de Operativa y Entregables
-                        </div>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px', marginBottom: '20px' }}>
-                          <thead>
-                            <tr style={{ background: '#e2e8f0', color: '#0f172a', textAlign: 'left' }}>
-                              <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>#</th>
-                              <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Código / Identificador</th>
-                              <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Tipo Registro</th>
-                              <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Cuadrilla</th>
-                              <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Responsable en Turno</th>
-                              <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Potencia / Tecnología</th>
-                              <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Fecha y Hora</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {filteredInstallations.map((inst, idx) => (
-                              <tr key={`inst-${idx}`} style={{ borderBottom: '1px solid #cbd5e1' }}>
-                                <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>{idx + 1}</td>
-                                <td style={{ padding: '5px', border: '1px solid #cbd5e1', fontWeight: 'bold' }}>{inst.fixture_code}</td>
-                                <td style={{ padding: '5px', border: '1px solid #cbd5e1', color: '#059669', fontWeight: 'bold' }}>💡 Luminaria QR</td>
-                                <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>{inst.crew_name || 'N/A'}</td>
-                                <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>{inst.operator_name || 'Sin asignar'}</td>
-                                <td style={{ padding: '5px', border: '1px solid #cbd5e1', color: '#d97706', fontWeight: 'bold' }}>{inst.wattage || 70}W LED</td>
-                                <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>{new Date(inst.installed_at).toLocaleString('es-MX')}</td>
-                              </tr>
-                            ))}
-                            {filteredPoles.map((p, idx) => (
-                              <tr key={`pole-${idx}`} style={{ borderBottom: '1px solid #cbd5e1' }}>
-                                <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>{filteredInstallations.length + idx + 1}</td>
-                                <td style={{ padding: '5px', border: '1px solid #cbd5e1', fontWeight: 'bold' }}>{p.pole_code}</td>
-                                <td style={{ padding: '5px', border: '1px solid #cbd5e1', color: '#0284c7', fontWeight: 'bold' }}>📍 Punto Iluminación</td>
-                                <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>{p.crew_name || 'N/A'}</td>
-                                <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>{p.operator_name || 'Sin asignar'}</td>
-                                <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>{p.lamp_type || p.pole_type || 'Punto Iluminación'}</td>
-                                <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>{new Date(p.created_at || p.installed_at || Date.now()).toLocaleString('es-MX')}</td>
-                              </tr>
-                            ))}
-                            {filteredIncidents.map((inc, idx) => (
-                              <tr key={`inc-${idx}`} style={{ borderBottom: '1px solid #cbd5e1' }}>
-                                <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>{filteredInstallations.length + filteredPoles.length + idx + 1}</td>
-                                <td style={{ padding: '5px', border: '1px solid #cbd5e1', fontWeight: 'bold' }}>{inc.incident_type}</td>
-                                <td style={{ padding: '5px', border: '1px solid #cbd5e1', color: '#d97706', fontWeight: 'bold' }}>🛠️ Incidencia</td>
-                                <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>{inc.crew_name || 'N/A'}</td>
-                                <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>{inc.operator_name || 'Sin asignar'}</td>
-                                <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>Reparada / Resuelta</td>
-                                <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>{new Date(inc.created_at).toLocaleString('es-MX')}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </>
-                    )}
+              {/* KPI METRICS GRID */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '16px' }}>
+                <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', color: '#0284c7', fontWeight: 800 }}>{filteredInstallations.length}</h3>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '9px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Luminarias QR Registradas</p>
+                </div>
+                <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', color: '#0284c7', fontWeight: 800 }}>{filteredPoles.length}</h3>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '9px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Puntos de Iluminación Censados</p>
+                </div>
+                <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', color: '#0284c7', fontWeight: 800 }}>{totalWattsCombined.toLocaleString()} W</h3>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '9px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Carga Potencia Instalada</p>
+                </div>
+                <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', color: '#0284c7', fontWeight: 800 }}>{filteredIncidents.length}</h3>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '9px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Incidencias Atendidas</p>
+                </div>
+              </div>
 
-                    {/* FICHAS TÉCNICAS CON FOTOS DE LUMINARIAS QR */}
-                    {showQR && filteredInstallations.length > 0 && (
-                      <>
-                        <div style={{ fontWeight: 700, color: '#0f172a', borderBottom: '2px solid #059669', paddingBottom: '4px', marginTop: '20px', marginBottom: '12px', fontSize: '12px' }}>
-                          💡 Fichas Técnicas de Registro de Luminarias QR ({filteredInstallations.length})
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                          {filteredInstallations.map((inst, idx) => {
-                            const photoB = getPhotoUrl(inst.photo_before);
-                            const photoA = getPhotoUrl(inst.photo_after);
+              {/* TABLA RESUMEN DE ENTREGABLES */}
+              {(filteredInstallations.length > 0 || filteredPoles.length > 0 || filteredIncidents.length > 0) && (
+                <>
+                  <div style={{ fontWeight: 700, color: '#0f172a', borderBottom: '2px solid #0284c7', paddingBottom: '4px', marginTop: '16px', marginBottom: '8px', fontSize: '12px' }}>
+                    📊 Resumen Tabular de Operativa y Entregables
+                  </div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px', marginBottom: '20px' }}>
+                    <thead>
+                      <tr style={{ background: '#e2e8f0', color: '#0f172a', textAlign: 'left' }}>
+                        <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>#</th>
+                        <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Código / Identificador</th>
+                        <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Tipo Registro</th>
+                        <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Cuadrilla</th>
+                        <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Responsable en Turno</th>
+                        <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Potencia / Tecnología</th>
+                        <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Fecha y Hora</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredInstallations.map((inst, idx) => (
+                        <tr key={`inst-${idx}`} style={{ borderBottom: '1px solid #cbd5e1' }}>
+                          <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>{idx + 1}</td>
+                          <td style={{ padding: '5px', border: '1px solid #cbd5e1', fontWeight: 'bold' }}>{inst.fixture_code}</td>
+                          <td style={{ padding: '5px', border: '1px solid #cbd5e1', color: '#059669', fontWeight: 'bold' }}>💡 Luminaria QR</td>
+                          <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>{inst.crew_name || 'N/A'}</td>
+                          <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>{inst.operator_name || 'Sin asignar'}</td>
+                          <td style={{ padding: '5px', border: '1px solid #cbd5e1', color: '#d97706', fontWeight: 'bold' }}>{inst.wattage || 70}W LED</td>
+                          <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>{new Date(inst.installed_at).toLocaleString('es-MX')}</td>
+                        </tr>
+                      ))}
+                      {filteredPoles.map((p, idx) => (
+                        <tr key={`pole-${idx}`} style={{ borderBottom: '1px solid #cbd5e1' }}>
+                          <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>{filteredInstallations.length + idx + 1}</td>
+                          <td style={{ padding: '5px', border: '1px solid #cbd5e1', fontWeight: 'bold' }}>{p.pole_code}</td>
+                          <td style={{ padding: '5px', border: '1px solid #cbd5e1', color: '#0284c7', fontWeight: 'bold' }}>📍 Punto Iluminación</td>
+                          <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>{p.crew_name || 'N/A'}</td>
+                          <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>{p.operator_name || 'Sin asignar'}</td>
+                          <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>{p.lamp_type || p.pole_type || 'Punto Iluminación'}</td>
+                          <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>{new Date(p.created_at || p.installed_at || Date.now()).toLocaleString('es-MX')}</td>
+                        </tr>
+                      ))}
+                      {filteredIncidents.map((inc, idx) => (
+                        <tr key={`inc-${idx}`} style={{ borderBottom: '1px solid #cbd5e1' }}>
+                          <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>{filteredInstallations.length + filteredPoles.length + idx + 1}</td>
+                          <td style={{ padding: '5px', border: '1px solid #cbd5e1', fontWeight: 'bold' }}>{inc.incident_type}</td>
+                          <td style={{ padding: '5px', border: '1px solid #cbd5e1', color: '#d97706', fontWeight: 'bold' }}>🛠️ Incidencia</td>
+                          <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>{inc.crew_name || 'N/A'}</td>
+                          <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>{inc.operator_name || 'Sin asignar'}</td>
+                          <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>Reparada / Resuelta</td>
+                          <td style={{ padding: '5px', border: '1px solid #cbd5e1' }}>{new Date(inc.created_at).toLocaleString('es-MX')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
+              )}
 
-                            return (
-                              <div key={`inst-card-${idx}`} className="card-item-box" style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px', background: '#ffffff', pageBreakInside: 'avoid' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px', marginBottom: '6px' }}>
-                                  <span style={{ fontWeight: 'bold', fontFamily: 'monospace', fontSize: '13px', color: '#0f172a' }}>{inst.fixture_code}</span>
-                                  <span style={{ background: '#d1fae5', color: '#047857', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', fontSize: '9px' }}>{inst.current_status || inst.status || 'Instalada'}</span>
-                                </div>
-                                <div style={{ fontSize: '10px', display: 'flex', flexDirection: 'column', gap: '3px', marginBottom: '8px' }}>
-                                  <div>👷‍♂️ <strong>Cuadrilla:</strong> {inst.crew_name || 'N/A'}</div>
-                                  {inst.operator_name && <div>👤 <strong>Responsable en Turno:</strong> {inst.operator_name}</div>}
-                                  <div>⚡ <strong>Potencia:</strong> <strong style={{ color: '#d97706' }}>{inst.wattage || 70} Watts LED</strong></div>
-                                  <div>📅 <strong>Fecha/Hora:</strong> {new Date(inst.installed_at).toLocaleString('es-MX')}</div>
-                                  <div>📍 <strong>Ubicación GPS:</strong> <a href={`https://maps.google.com/?q=${inst.lat},${inst.lng}`} target="_blank" rel="noreferrer" style={{ color: '#0284c7', textDecoration: 'none' }}>📍 Ver Mapa ({inst.lat?.toFixed(5)}, {inst.lng?.toFixed(5)})</a></div>
-                                  {inst.notes && <div>📝 <strong>Notas:</strong> <em>"{inst.notes}"</em></div>}
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                                  <div>
-                                    <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#64748b', marginBottom: '2px' }}>📸 1. EVIDENCIA PUNTO:</div>
-                                    {photoB ? <img src={photoB} alt="Evidencia Antes" width="350" height="180" decoding="sync" style={{ width: '100%', height: '95px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #cbd5e1' }} /> : <div style={{ height: '95px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '9px' }}>Sin foto adjunta</div>}
-                                  </div>
-                                  <div>
-                                    <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#64748b', marginBottom: '2px' }}>📸 2. LÁMPARA LED ENCENDIDA:</div>
-                                    {photoA ? <img src={photoA} alt="Evidencia Encendida" width="350" height="180" decoding="sync" style={{ width: '100%', height: '95px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #cbd5e1' }} /> : <div style={{ height: '95px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '9px' }}>Sin foto adjunta</div>}
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </>
-                    )}
+              {/* FICHAS TÉCNICAS CON FOTOS DE LUMINARIAS QR */}
+              {showQR && filteredInstallations.length > 0 && (
+                <>
+                  <div style={{ fontWeight: 700, color: '#0f172a', borderBottom: '2px solid #059669', paddingBottom: '4px', marginTop: '20px', marginBottom: '12px', fontSize: '12px' }}>
+                    💡 Fichas Técnicas de Registro de Luminarias QR ({filteredInstallations.length})
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                    {filteredInstallations.map((inst, idx) => {
+                      const photoB = getPhotoUrl(inst.photo_before);
+                      const photoA = getPhotoUrl(inst.photo_after);
 
-                    {/* FICHAS TÉCNICAS CON FOTOS DE PUNTOS DE ILUMINACIÓN CENSADOS */}
-                    {showPoles && filteredPoles.length > 0 && (
-                      <>
-                        <div style={{ fontWeight: 700, color: '#0f172a', borderBottom: '2px solid #0284c7', paddingBottom: '4px', marginTop: '20px', marginBottom: '12px', fontSize: '12px' }}>
-                          📍 Fichas Técnicas de Censo de Puntos de Iluminación ({filteredPoles.length})
+                      return (
+                        <div key={`inst-card-${idx}`} className="card-item-box" style={{ width: '48%', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px', background: '#ffffff', breakInside: 'avoid' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px', marginBottom: '6px' }}>
+                            <span style={{ fontWeight: 'bold', fontFamily: 'monospace', fontSize: '13px', color: '#0f172a' }}>{inst.fixture_code}</span>
+                            <span style={{ background: '#d1fae5', color: '#047857', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', fontSize: '9px' }}>{inst.current_status || inst.status || 'Instalada'}</span>
+                          </div>
+                          <div style={{ fontSize: '10px', display: 'flex', flexDirection: 'column', gap: '3px', marginBottom: '8px' }}>
+                            <div>👷‍♂️ <strong>Cuadrilla:</strong> {inst.crew_name || 'N/A'}</div>
+                            {inst.operator_name && <div>👤 <strong>Responsable en Turno:</strong> {inst.operator_name}</div>}
+                            <div>⚡ <strong>Potencia:</strong> <strong style={{ color: '#d97706' }}>{inst.wattage || 70} Watts LED</strong></div>
+                            <div>📅 <strong>Fecha/Hora:</strong> {new Date(inst.installed_at).toLocaleString('es-MX')}</div>
+                            <div>📍 <strong>Ubicación GPS:</strong> <a href={`https://maps.google.com/?q=${inst.lat},${inst.lng}`} target="_blank" rel="noreferrer" style={{ color: '#0284c7', textDecoration: 'none' }}>📍 Ver Mapa ({inst.lat?.toFixed(5)}, {inst.lng?.toFixed(5)})</a></div>
+                            {inst.notes && <div>📝 <strong>Notas:</strong> <em>"{inst.notes}"</em></div>}
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                            <div>
+                              <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#64748b', marginBottom: '2px' }}>📸 1. EVIDENCIA PUNTO:</div>
+                              {photoB ? <img src={photoB} alt="Evidencia Antes" width="350" height="180" decoding="sync" style={{ width: '100%', height: '95px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #cbd5e1' }} /> : <div style={{ height: '95px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '9px' }}>Sin foto adjunta</div>}
+                            </div>
+                            <div>
+                              <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#64748b', marginBottom: '2px' }}>📸 2. LÁMPARA LED ENCENDIDA:</div>
+                              {photoA ? <img src={photoA} alt="Evidencia Encendida" width="350" height="180" decoding="sync" style={{ width: '100%', height: '95px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #cbd5e1' }} /> : <div style={{ height: '95px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '9px' }}>Sin foto adjunta</div>}
+                            </div>
+                          </div>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                          {filteredPoles.map((p, idx) => {
-                            const photoB = getPhotoUrl(p.photo_before);
-                            const photoA = getPhotoUrl(p.photo_after);
+                      );
+                    })}
+                  </div>
+                </>
+              )}
 
-                            return (
-                              <div key={`pole-card-${idx}`} className="card-item-box" style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px', background: '#ffffff', pageBreakInside: 'avoid' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px', marginBottom: '6px' }}>
-                                  <span style={{ fontWeight: 'bold', fontFamily: 'monospace', fontSize: '13px', color: '#0f172a' }}>{p.pole_code}</span>
-                                  <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', fontSize: '9px' }}>Punto de Iluminación</span>
-                                </div>
-                                <div style={{ fontSize: '10px', display: 'flex', flexDirection: 'column', gap: '3px', marginBottom: '8px' }}>
-                                  <div>👷‍♂️ <strong>Cuadrilla:</strong> {p.crew_name || 'N/A'}</div>
-                                  {p.operator_name && <div>👤 <strong>Responsable en Turno:</strong> {p.operator_name}</div>}
-                                  <div>🏗️ <strong>Estructura / Lámpara:</strong> {p.pole_type || 'Punto'} — {p.lamp_type || 'Sin especificar'}</div>
-                                  <div>📅 <strong>Fecha/Hora:</strong> {new Date(p.created_at || p.installed_at || Date.now()).toLocaleString('es-MX')}</div>
-                                  <div>📍 <strong>Ubicación GPS:</strong> <a href={`https://maps.google.com/?q=${p.lat},${p.lng}`} target="_blank" rel="noreferrer" style={{ color: '#0284c7', textDecoration: 'none' }}>📍 Ver Mapa ({p.lat?.toFixed(5)}, {p.lng?.toFixed(5)})</a></div>
-                                  {p.notes && <div>📝 <strong>Notas:</strong> <em>"{p.notes}"</em></div>}
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                                  <div>
-                                    <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#64748b', marginBottom: '2px' }}>📸 1. EVIDENCIA PUNTO:</div>
-                                    {photoB ? <img src={photoB} alt="Evidencia Punto" width="350" height="180" decoding="sync" style={{ width: '100%', height: '95px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #cbd5e1' }} /> : <div style={{ height: '95px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '9px' }}>Sin foto adjunta</div>}
-                                  </div>
-                                  <div>
-                                    <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#64748b', marginBottom: '2px' }}>📸 2. EVIDENCIA ENCENDIDO:</div>
-                                    {photoA ? <img src={photoA} alt="Evidencia Encendido" width="350" height="180" decoding="sync" style={{ width: '100%', height: '95px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #cbd5e1' }} /> : <div style={{ height: '95px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '9px' }}>Sin foto adjunta</div>}
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </>
-                    )}
+              {/* FICHAS TÉCNICAS CON FOTOS DE PUNTOS DE ILUMINACIÓN CENSADOS */}
+              {showPoles && filteredPoles.length > 0 && (
+                <>
+                  <div style={{ fontWeight: 700, color: '#0f172a', borderBottom: '2px solid #0284c7', paddingBottom: '4px', marginTop: '20px', marginBottom: '12px', fontSize: '12px' }}>
+                    📍 Fichas Técnicas de Censo de Puntos de Iluminación ({filteredPoles.length})
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                    {filteredPoles.map((p, idx) => {
+                      const photoB = getPhotoUrl(p.photo_before);
+                      const photoA = getPhotoUrl(p.photo_after);
 
-                    {/* FICHAS TÉCNICAS CON FOTOS DE INCIDENCIAS ATENDIDAS */}
-                    {showIncidents && filteredIncidents.length > 0 && (
-                      <>
-                        <div style={{ fontWeight: 700, color: '#0f172a', borderBottom: '2px solid #d97706', paddingBottom: '4px', marginTop: '20px', marginBottom: '12px', fontSize: '12px' }}>
-                          🛠️ Atención de Cortos Circuitos e Incidencias ({filteredIncidents.length})
+                      return (
+                        <div key={`pole-card-${idx}`} className="card-item-box" style={{ width: '48%', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px', background: '#ffffff', breakInside: 'avoid' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px', marginBottom: '6px' }}>
+                            <span style={{ fontWeight: 'bold', fontFamily: 'monospace', fontSize: '13px', color: '#0f172a' }}>{p.pole_code}</span>
+                            <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', fontSize: '9px' }}>Punto de Iluminación</span>
+                          </div>
+                          <div style={{ fontSize: '10px', display: 'flex', flexDirection: 'column', gap: '3px', marginBottom: '8px' }}>
+                            <div>👷‍♂️ <strong>Cuadrilla:</strong> {p.crew_name || 'N/A'}</div>
+                            {p.operator_name && <div>👤 <strong>Responsable en Turno:</strong> {p.operator_name}</div>}
+                            <div>🏗️ <strong>Estructura / Lámpara:</strong> {p.pole_type || 'Punto'} — {p.lamp_type || 'Sin especificar'}</div>
+                            <div>📅 <strong>Fecha/Hora:</strong> {new Date(p.created_at || p.installed_at || Date.now()).toLocaleString('es-MX')}</div>
+                            <div>📍 <strong>Ubicación GPS:</strong> <a href={`https://maps.google.com/?q=${p.lat},${p.lng}`} target="_blank" rel="noreferrer" style={{ color: '#0284c7', textDecoration: 'none' }}>📍 Ver Mapa ({p.lat?.toFixed(5)}, {p.lng?.toFixed(5)})</a></div>
+                            {p.notes && <div>📝 <strong>Notas:</strong> <em>"{p.notes}"</em></div>}
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                            <div>
+                              <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#64748b', marginBottom: '2px' }}>📸 1. EVIDENCIA PUNTO:</div>
+                              {photoB ? <img src={photoB} alt="Evidencia Punto" width="350" height="180" decoding="sync" style={{ width: '100%', height: '95px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #cbd5e1' }} /> : <div style={{ height: '95px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '9px' }}>Sin foto adjunta</div>}
+                            </div>
+                            <div>
+                              <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#64748b', marginBottom: '2px' }}>📸 2. EVIDENCIA ENCENDIDO:</div>
+                              {photoA ? <img src={photoA} alt="Evidencia Encendido" width="350" height="180" decoding="sync" style={{ width: '100%', height: '95px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #cbd5e1' }} /> : <div style={{ height: '95px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '9px' }}>Sin foto adjunta</div>}
+                            </div>
+                          </div>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                          {filteredIncidents.map((inc, idx) => {
-                            const photoB = getPhotoUrl(inc.photo_before);
-                            const photoA = getPhotoUrl(inc.photo_after);
+                      );
+                    })}
+                  </div>
+                </>
+              )}
 
-                            return (
-                              <div key={`inc-card-${idx}`} className="card-item-box" style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px', background: '#ffffff', pageBreakInside: 'avoid' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px', marginBottom: '6px' }}>
-                                  <span style={{ fontWeight: 'bold', fontSize: '12px', color: '#d97706' }}>{inc.incident_type}</span>
-                                  <span style={{ background: '#fef3c7', color: '#b45309', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', fontSize: '9px' }}>Atendida / Resuelta</span>
-                                </div>
-                                <div style={{ fontSize: '10px', display: 'flex', flexDirection: 'column', gap: '3px', marginBottom: '8px' }}>
-                                  <div>👷‍♂️ <strong>Cuadrilla:</strong> {inc.crew_name || 'N/A'}</div>
-                                  {inc.operator_name && <div>👤 <strong>Responsable en Turno:</strong> {inc.operator_name}</div>}
-                                  <div>📅 <strong>Fecha/Hora Atención:</strong> {new Date(inc.created_at).toLocaleString('es-MX')}</div>
-                                  <div>📍 <strong>Ubicación GPS:</strong> <a href={`https://maps.google.com/?q=${inc.lat},${inc.lng}`} target="_blank" rel="noreferrer" style={{ color: '#0284c7', textDecoration: 'none' }}>📍 Ver Mapa ({inc.lat?.toFixed(5)}, {inc.lng?.toFixed(5)})</a></div>
-                                  <div>📝 <strong>Trabajo Realizado:</strong> <em>"{inc.notes}"</em></div>
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                                  <div>
-                                    <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#64748b', marginBottom: '2px' }}>📸 1. EVIDENCIA ANTES / FALLA:</div>
-                                    {photoB ? <img src={photoB} alt="Antes Falla" width="350" height="180" decoding="sync" style={{ width: '100%', height: '95px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #cbd5e1' }} /> : <div style={{ height: '95px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '9px' }}>Sin foto adjunta</div>}
-                                  </div>
-                                  <div>
-                                    <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#64748b', marginBottom: '2px' }}>📸 2. REPARACIÓN / SOLUCIÓN:</div>
-                                    {photoA ? <img src={photoA} alt="Solucion" width="350" height="180" decoding="sync" style={{ width: '100%', height: '95px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #cbd5e1' }} /> : <div style={{ height: '95px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '9px' }}>Sin foto adjunta</div>}
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </>
-                    )}
+              {/* FICHAS TÉCNICAS CON FOTOS DE INCIDENCIAS ATENDIDAS */}
+              {showIncidents && filteredIncidents.length > 0 && (
+                <>
+                  <div style={{ fontWeight: 700, color: '#0f172a', borderBottom: '2px solid #d97706', paddingBottom: '4px', marginTop: '20px', marginBottom: '12px', fontSize: '12px' }}>
+                    🛠️ Atención de Cortos Circuitos e Incidencias ({filteredIncidents.length})
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                    {filteredIncidents.map((inc, idx) => {
+                      const photoB = getPhotoUrl(inc.photo_before);
+                      const photoA = getPhotoUrl(inc.photo_after);
 
-                    {/* SECCIÓN FIRMAS */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px', marginTop: '30px', textAlign: 'center', pageBreakInside: 'avoid' }}>
-                      <div>
-                        <div style={{ height: '35px' }}></div>
-                        <div style={{ borderTop: '1px solid #0f172a', paddingTop: '6px', fontWeight: 'bold', fontSize: '10px' }}>
-                          RESPONSABLE DE CUADRILLA DE CAMPO<br/>
-                          {crewFilter === 'todos' ? 'Supervisión General' : crewFilter}
+                      return (
+                        <div key={`inc-card-${idx}`} className="card-item-box" style={{ width: '48%', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px', background: '#ffffff', breakInside: 'avoid' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px', marginBottom: '6px' }}>
+                            <span style={{ fontWeight: 'bold', fontSize: '12px', color: '#d97706' }}>{inc.incident_type}</span>
+                            <span style={{ background: '#fef3c7', color: '#b45309', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', fontSize: '9px' }}>Atendida / Resuelta</span>
+                          </div>
+                          <div style={{ fontSize: '10px', display: 'flex', flexDirection: 'column', gap: '3px', marginBottom: '8px' }}>
+                            <div>👷‍♂️ <strong>Cuadrilla:</strong> {inc.crew_name || 'N/A'}</div>
+                            {inc.operator_name && <div>👤 <strong>Responsable en Turno:</strong> {inc.operator_name}</div>}
+                            <div>📅 <strong>Fecha/Hora Atención:</strong> {new Date(inc.created_at).toLocaleString('es-MX')}</div>
+                            <div>📍 <strong>Ubicación GPS:</strong> <a href={`https://maps.google.com/?q=${inc.lat},${inc.lng}`} target="_blank" rel="noreferrer" style={{ color: '#0284c7', textDecoration: 'none' }}>📍 Ver Mapa ({inc.lat?.toFixed(5)}, {inc.lng?.toFixed(5)})</a></div>
+                            <div>📝 <strong>Trabajo Realizado:</strong> <em>"{inc.notes}"</em></div>
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                            <div>
+                              <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#64748b', marginBottom: '2px' }}>📸 1. EVIDENCIA ANTES / FALLA:</div>
+                              {photoB ? <img src={photoB} alt="Antes Falla" width="350" height="180" decoding="sync" style={{ width: '100%', height: '95px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #cbd5e1' }} /> : <div style={{ height: '95px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '9px' }}>Sin foto adjunta</div>}
+                            </div>
+                            <div>
+                              <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#64748b', marginBottom: '2px' }}>📸 2. REPARACIÓN / SOLUCIÓN:</div>
+                              {photoA ? <img src={photoA} alt="Solucion" width="350" height="180" decoding="sync" style={{ width: '100%', height: '95px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #cbd5e1' }} /> : <div style={{ height: '95px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '9px' }}>Sin foto adjunta</div>}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      <div>
-                        <div style={{ height: '35px' }}></div>
-                        <div style={{ borderTop: '1px solid #0f172a', paddingTop: '6px', fontWeight: 'bold', fontSize: '10px' }}>
-                          DIRECCIÓN DE SERVICIOS PÚBLICOS MUNICIPALES<br/>
-                          Municipio de Lerdo, Durango
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td style={{ paddingTop: '10px', textAlign: 'center' }}>
-                    <img 
-                      src={`${origin}/letterhead/letterhead_footer_trimmed.png`} 
-                      alt="Pie de Página Presidencia Municipal Lerdo" 
-                      width="800" 
-                      height="60" 
-                      decoding="sync"
-                      style={{ width: '100%', maxHeight: '55px', objectFit: 'contain', display: 'block', margin: '0 auto' }} 
-                      onError={(e: any) => e.target.style.display='none'} 
-                    />
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+
+              {/* SECCIÓN FIRMAS */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px', marginTop: '30px', textAlign: 'center', breakInside: 'avoid' }}>
+                <div>
+                  <div style={{ height: '35px' }}></div>
+                  <div style={{ borderTop: '1px solid #0f172a', paddingTop: '6px', fontWeight: 'bold', fontSize: '10px' }}>
+                    RESPONSABLE DE CUADRILLA DE CAMPO<br/>
+                    {crewFilter === 'todos' ? 'Supervisión General' : crewFilter}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ height: '35px' }}></div>
+                  <div style={{ borderTop: '1px solid #0f172a', paddingTop: '6px', fontWeight: 'bold', fontSize: '10px' }}>
+                    DIRECCIÓN DE SERVICIOS PÚBLICOS MUNICIPALES<br/>
+                    Municipio de Lerdo, Durango
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* FIXED REPEATING FOOTER AT BOTTOM OF EVERY PRINTED PAGE */}
+            <div className="pdf-footer-repeating">
+              <img 
+                src={`${origin}/letterhead/letterhead_footer_trimmed.png`} 
+                alt="Pie de Página Presidencia Municipal Lerdo" 
+                width="800" 
+                height="60" 
+                decoding="sync"
+                style={{ width: '100%', maxHeight: '45px', objectFit: 'contain', display: 'block', margin: '0 auto' }} 
+                onError={(e: any) => e.target.style.display='none'} 
+              />
+            </div>
 
           </div>
         </div>
