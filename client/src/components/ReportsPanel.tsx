@@ -540,22 +540,32 @@ export const ReportsPanel: React.FC = () => {
           </div>
 
           <div class="footer-letterhead">
-            <img src="${origin}/letterhead/letterhead_footer_trimmed.png" alt="Pie de Página Presidencia Municipal Lerdo" />
+            <img src="${origin}/letterhead/letterhead_footer_trimmed.png" alt="Pie de Página Presidencia Municipal Lerdo" loading="eager" onerror="this.style.display='none'" />
           </div>
 
-          <script>
-            window.onload = function() {
-              setTimeout(function() {
-                window.print();
-              }, 500);
-            };
-          </script>
+          <!-- BOTÓN FLOTANTE PARA RE-DISPARAR IMPRESIÓN SI CHROME HACE PAUSA -->
+          <div class="no-print" style="position: fixed; top: 12px; right: 16px; z-index: 999999; display: flex; gap: 10px; background: rgba(15, 23, 42, 0.92); padding: 8px 14px; border-radius: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2);">
+            <button onclick="window.print()" style="background: #0284c7; color: white; border: none; padding: 7px 14px; border-radius: 16px; font-weight: bold; cursor: pointer; font-size: 11px; display: flex; align-items: center; gap: 6px;">🖨️ Imprimir / Guardar PDF</button>
+            <button onclick="window.close()" style="background: #475569; color: white; border: none; padding: 7px 12px; border-radius: 16px; font-weight: bold; cursor: pointer; font-size: 11px;">❌ Cerrar</button>
+          </div>
+
+          <style>
+            @media print {
+              .no-print { display: none !important; }
+            }
+          </style>
         </body>
       </html>
     `;
 
     printWindow.document.write(htmlContent);
     printWindow.document.close();
+
+    // Trigger print safely once DOM is ready
+    setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+    }, 400);
   };
 
   const getStatusClass = (status: string) => {
