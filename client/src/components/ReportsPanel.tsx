@@ -279,6 +279,78 @@ export const ReportsPanel: React.FC = () => {
     }
   };
 
+  const handleTriggerPrint = () => {
+    const content = document.getElementById('printable-executive-report');
+    if (!content) return;
+
+    let iframe = document.getElementById('pdf-print-iframe') as HTMLIFrameElement;
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.id = 'pdf-print-iframe';
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0px';
+      iframe.style.height = '0px';
+      iframe.style.border = 'none';
+      iframe.style.zIndex = '-9999';
+      document.body.appendChild(iframe);
+    }
+
+    const doc = iframe.contentWindow?.document;
+    if (!doc) return;
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Dictamen y Reporte Oficial — STG-AP Lerdo</title>
+          <style>
+            @page {
+              size: A4 portrait;
+              margin: 8mm;
+            }
+            * {
+              box-sizing: border-box;
+            }
+            body {
+              font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+              color: #0f172a;
+              background: #ffffff;
+              margin: 0;
+              padding: 10px;
+              font-size: 11px;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            a {
+              color: #0284c7;
+              text-decoration: none;
+            }
+            img {
+              max-width: 100%;
+            }
+            .no-print {
+              display: none !important;
+            }
+          </style>
+        </head>
+        <body>
+          ${content.innerHTML}
+        </body>
+      </html>
+    `;
+
+    doc.open();
+    doc.write(htmlContent);
+    doc.close();
+
+    setTimeout(() => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+    }, 250);
+  };
+
   return (
     <div className="panel-section">
       <style>{`
@@ -760,7 +832,7 @@ export const ReportsPanel: React.FC = () => {
           {/* FLOATING ACTION BAR FOR USER */}
           <div className="no-print" style={{ position: 'sticky', top: '10px', zIndex: 1000000, display: 'flex', gap: '12px', background: '#0f172a', padding: '12px 24px', borderRadius: '30px', boxShadow: '0 8px 32px rgba(0,0,0,0.6)', border: '1px solid #0284c7', marginBottom: '20px' }}>
             <button 
-              onClick={() => window.print()}
+              onClick={handleTriggerPrint}
               style={{ background: '#0284c7', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '20px', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 2px 8px rgba(2, 132, 199, 0.4)' }}
             >
               🖨️ Imprimir / Guardar en PDF
@@ -774,7 +846,7 @@ export const ReportsPanel: React.FC = () => {
           </div>
 
           {/* PRINTABLE DOCUMENT BODY */}
-          <div className="pdf-print-modal-content" style={{ background: '#ffffff', color: '#0f172a', width: '100%', maxWidth: '850px', padding: '25px', borderRadius: '8px', boxShadow: '0 10px 40px rgba(0,0,0,0.5)', fontFamily: 'system-ui, -apple-system, sans-serif', fontSize: '11px' }}>
+          <div id="printable-executive-report" className="pdf-print-modal-content" style={{ background: '#ffffff', color: '#0f172a', width: '100%', maxWidth: '850px', padding: '25px', borderRadius: '8px', boxShadow: '0 10px 40px rgba(0,0,0,0.5)', fontFamily: 'system-ui, -apple-system, sans-serif', fontSize: '11px' }}>
             
             {/* MEMBRETE SUPERIOR */}
             <div style={{ textAlign: 'center', marginBottom: '12px' }}>
