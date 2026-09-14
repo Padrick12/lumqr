@@ -62,6 +62,7 @@ export const ReportsPanel: React.FC = () => {
 
   const [incidents, setIncidents] = useState<any[]>([]);
   const [installations, setInstallations] = useState<any[]>([]);
+  const [poles, setPoles] = useState<any[]>([]);
 
   // Advanced Filters for PDF Reports
   const [startDate, setStartDate] = useState<string>('');
@@ -71,6 +72,8 @@ export const ReportsPanel: React.FC = () => {
   const fetchReportData = async () => {
     setLoading(true);
     try {
+      const crewsSet = new Set<string>();
+
       const res = await fetch(`${API_BASE_URL}/api/reports`);
       if (res.ok) {
         const data = await res.json();
@@ -78,22 +81,39 @@ export const ReportsPanel: React.FC = () => {
         setFixtures(data.fixtures);
         setCrewPerformance(data.crew_performance || []);
 
-        const crewsSet = new Set<string>();
         data.fixtures.forEach((f: Fixture) => {
-          if (f.crew_name) crewsSet.add(f.crew_name);
+          if (f.crew_name && f.crew_name.trim()) crewsSet.add(f.crew_name.trim());
         });
-        setUniqueCrews(Array.from(crewsSet));
       }
 
       const resIncidents = await fetch(`${API_BASE_URL}/api/incidents`);
       if (resIncidents.ok) {
-        setIncidents(await resIncidents.json());
+        const incData = await resIncidents.json();
+        setIncidents(incData);
+        incData.forEach((i: any) => {
+          if (i.crew_name && i.crew_name.trim()) crewsSet.add(i.crew_name.trim());
+        });
       }
 
       const resInst = await fetch(`${API_BASE_URL}/api/installations`);
       if (resInst.ok) {
-        setInstallations(await resInst.json());
+        const instData = await resInst.json();
+        setInstallations(instData);
+        instData.forEach((i: any) => {
+          if (i.crew_name && i.crew_name.trim()) crewsSet.add(i.crew_name.trim());
+        });
       }
+
+      const resPoles = await fetch(`${API_BASE_URL}/api/poles`);
+      if (resPoles.ok) {
+        const polesData = await resPoles.json();
+        setPoles(polesData);
+        polesData.forEach((p: any) => {
+          if (p.crew_name && p.crew_name.trim()) crewsSet.add(p.crew_name.trim());
+        });
+      }
+
+      setUniqueCrews(Array.from(crewsSet));
     } catch (err) {
       console.error('Error fetching report data:', err);
     } finally {
@@ -109,7 +129,7 @@ export const ReportsPanel: React.FC = () => {
     if (crewFilter === 'libres') {
       matchesCrew = f.crew_name === null;
     } else if (crewFilter !== 'todos') {
-      matchesCrew = f.crew_name === crewFilter;
+      matchesCrew = f.crew_name?.trim().toLowerCase() === crewFilter.trim().toLowerCase();
     }
 
     return matchesSearch && matchesStatus && matchesCrew;
@@ -144,17 +164,24 @@ export const ReportsPanel: React.FC = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    // Filter items based on user criteria
+    const normCrewFilter = crewFilter.trim().toLowerCase();
+    const searchLower = searchTerm.toLowerCase().trim();
+
+    // Filter installations (Luminarias QR)
     const filteredInstallations = installations.filter(inst => {
-      const matchSearch = inst.fixture_code.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchCrew = crewFilter === 'todos' || inst.crew_name === crewFilter;
-      const matchStatus = statusFilter === 'todos' || inst.status === statusFilter;
+      const matchSearch = !searchLower || 
+        (inst.fixture_code && inst.fixture_code.toLowerCase().includes(searchLower)) ||
+        (inst.notes && inst.notes.toLowerCase().includes(searchLower));
+      
+      const instCrew = (inst.crew_name || '').trim().toLowerCase();
+      const matchCrew = crewFilter === 'todos' || instCrew === normCrewFilter;
+      const matchStatus = statusFilter === 'todos' || inst.current_status === statusFilter || inst.status === statusFilter;
       
       let matchDate = true;
-      if (startDate) {
+      if (startDate && inst.installed_at) {
         matchDate = matchDate && new Date(inst.installed_at) >= new Date(startDate);
       }
-      if (endDate) {
+      if (endDate && inst.installed_at) {
         const endDateTime = new Date(endDate);
         endDateTime.setHours(23, 59, 59);
         matchDate = matchDate && new Date(inst.installed_at) <= endDateTime;
@@ -163,15 +190,45 @@ export const ReportsPanel: React.FC = () => {
       return matchSearch && matchCrew && matchStatus && matchDate;
     });
 
-    const filteredIncidents = incidents.filter(inc => {
-      const matchSearch = inc.incident_type.toLowerCase().includes(searchTerm.toLowerCase()) || (inc.notes && inc.notes.toLowerCase().includes(searchTerm.toLowerCase()));
-      const matchCrew = crewFilter === 'todos' || inc.crew_name === crewFilter;
+    // Filter poles (Censo de Postes)
+    const filteredPoles = poles.filter(p => {
+      const matchSearch = !searchLower || 
+        (p.pole_code && p.pole_code.toLowerCase().includes(searchLower)) ||
+        (p.pole_type && p.pole_type.toLowerCase().includes(searchLower)) ||
+        (p.lamp_type && p.lamp_type.toLowerCase().includes(searchLower)) ||
+        (p.notes && p.notes.toLowerCase().includes(searchLower));
+      
+      const poleCrew = (p.crew_name || '').trim().toLowerCase();
+      const matchCrew = crewFilter === 'todos' || poleCrew === normCrewFilter;
       
       let matchDate = true;
-      if (startDate) {
+      const poleDate = p.created_at || p.installed_at;
+      if (startDate && poleDate) {
+        matchDate = matchDate && new Date(poleDate) >= new Date(startDate);
+      }
+      if (endDate && poleDate) {
+        const endDateTime = new Date(endDate);
+        endDateTime.setHours(23, 59, 59);
+        matchDate = matchDate && new Date(poleDate) <= endDateTime;
+      }
+
+      return matchSearch && matchCrew && matchDate;
+    });
+
+    // Filter incidents
+    const filteredIncidents = incidents.filter(inc => {
+      const matchSearch = !searchLower || 
+        (inc.incident_type && inc.incident_type.toLowerCase().includes(searchLower)) || 
+        (inc.notes && inc.notes.toLowerCase().includes(searchLower));
+      
+      const incCrew = (inc.crew_name || '').trim().toLowerCase();
+      const matchCrew = crewFilter === 'todos' || incCrew === normCrewFilter;
+      
+      let matchDate = true;
+      if (startDate && inc.created_at) {
         matchDate = matchDate && new Date(inc.created_at) >= new Date(startDate);
       }
-      if (endDate) {
+      if (endDate && inc.created_at) {
         const endDateTime = new Date(endDate);
         endDateTime.setHours(23, 59, 59);
         matchDate = matchDate && new Date(inc.created_at) <= endDateTime;
@@ -186,9 +243,15 @@ export const ReportsPanel: React.FC = () => {
     });
 
     const showQR = recordTypeFilter === 'all' || recordTypeFilter === 'qr';
+    const showPoles = recordTypeFilter === 'all' || recordTypeFilter === 'poles';
     const showIncidents = recordTypeFilter === 'all' || recordTypeFilter === 'incidents';
 
     const origin = window.location.origin;
+    const getPhotoUrl = (url: string | null) => {
+      if (!url) return null;
+      if (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://')) return url;
+      return origin + (url.startsWith('/') ? url : '/' + url);
+    };
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -196,42 +259,57 @@ export const ReportsPanel: React.FC = () => {
         <head>
           <title>Reporte Membretado Oficial — STG-AP Lerdo</title>
           <style>
-            @page { size: A4; margin: 12mm; }
+            @page { size: A4; margin: 10mm; }
+            * { box-sizing: border-box; }
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #0f172a; background: #fff; margin: 0; padding: 10px; font-size: 11px; }
-            .header-banner { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #0284c7; padding-bottom: 12px; margin-bottom: 20px; }
-            .brand { display: flex; align-items: center; gap: 12px; }
-            .badge-logo { background: #0284c7; color: #fff; font-weight: 900; padding: 6px 12px; border-radius: 6px; font-size: 18px; letter-spacing: 1px; }
-            .title h1 { margin: 0; font-size: 18px; color: #0f172a; text-transform: uppercase; }
-            .title p { margin: 2px 0 0 0; font-size: 11px; color: #475569; font-weight: 600; }
-            .meta-box { text-align: right; font-size: 10px; color: #475569; line-height: 1.4; }
             
-            .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
-            .kpi-card { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; text-align: center; }
-            .kpi-card h3 { margin: 0; font-size: 18px; color: #0284c7; }
+            .header-letterhead { width: 100%; text-align: center; margin-bottom: 10px; }
+            .header-letterhead img { width: 100%; max-width: 100%; height: auto; max-height: 110px; object-fit: contain; }
+
+            .report-title-box { text-align: center; margin-bottom: 12px; border-bottom: 2px solid #0284c7; padding-bottom: 8px; }
+            .report-title-box h1 { margin: 0; font-size: 16px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; }
+            .report-title-box h2 { margin: 4px 0 0 0; font-size: 12px; color: #0284c7; font-weight: 700; text-transform: uppercase; }
+
+            .meta-bar { display: flex; justify-content: space-between; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; font-size: 10px; margin-bottom: 14px; }
+            .meta-bar strong { color: #0f172a; }
+
+            .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px; }
+            .kpi-card { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px; text-align: center; }
+            .kpi-card h3 { margin: 0; font-size: 18px; color: #0284c7; font-weight: 800; }
             .kpi-card p { margin: 2px 0 0 0; font-size: 9px; color: #64748b; font-weight: 700; text-transform: uppercase; }
 
-            .section-header { font-size: 13px; font-weight: 800; color: #0284c7; text-transform: uppercase; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; margin: 24px 0 12px 0; }
+            .section-header { font-size: 12px; font-weight: 800; color: #0284c7; text-transform: uppercase; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; margin: 20px 0 10px 0; }
 
-            .cards-container { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-            .item-card { background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; page-break-inside: avoid; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-            .card-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; }
-            .card-code { font-family: monospace; font-size: 14px; font-weight: 800; color: #0f172a; }
-            .card-badge { background: #d1fae5; color: #065f46; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; }
-            .card-badge-inc { background: #fef3c7; color: #92400e; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; }
+            /* Tabla General de Entregables */
+            .summary-table { width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 10px; }
+            .summary-table th { background: #0284c7; color: #fff; padding: 6px 8px; text-align: left; font-weight: 700; font-size: 9px; text-transform: uppercase; }
+            .summary-table td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; }
+            .summary-table tr:nth-child(even) { background: #f8fafc; }
 
-            .info-list { display: flex; flex-direction: column; gap: 3px; font-size: 10px; color: #334155; }
+            /* Fichas Técnicas en Cuadrícula */
+            .cards-container { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+            .item-card { background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; page-break-inside: avoid; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+            .card-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px; }
+            .card-code { font-family: monospace; font-size: 13px; font-weight: 800; color: #0f172a; }
+            .card-badge { background: #d1fae5; color: #065f46; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; border: 1px solid #a7f3d0; }
+            .card-badge-pole { background: #e0f2fe; color: #0369a1; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; border: 1px solid #bae6fd; }
+            .card-badge-inc { background: #fef3c7; color: #92400e; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; border: 1px solid #fde68a; }
+
+            .info-list { display: flex; flex-direction: column; gap: 3px; font-size: 9.5px; color: #334155; }
             .info-list span { color: #0f172a; font-weight: 600; }
             .watts-highlight { color: #d97706; font-weight: 800; }
 
-            .photos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
-            .photo-box { width: 100%; height: 110px; object-fit: cover; border-radius: 6px; border: 1px solid #cbd5e1; }
-            .photo-label { font-size: 8px; color: #64748b; font-weight: 700; margin-bottom: 2px; }
+            .photos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px; }
+            .photo-box { width: 100%; height: 95px; object-fit: cover; border-radius: 6px; border: 1px solid #cbd5e1; background: #f8fafc; }
+            .photo-label { font-size: 8px; color: #475569; font-weight: 700; margin-bottom: 2px; }
 
-            .footer-sig { margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; text-align: center; page-break-inside: avoid; }
-            .sig-line { border-top: 1px solid #0f172a; padding-top: 6px; font-size: 10px; font-weight: bold; color: #334155; }
+            .footer-sig { margin-top: 25px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; text-align: center; page-break-inside: avoid; }
+            .sig-line { border-top: 1px solid #0f172a; padding-top: 6px; font-size: 9.5px; font-weight: bold; color: #334155; }
 
-            .footer-letterhead { margin-top: 25px; width: 100%; text-align: center; page-break-inside: avoid; }
-            .footer-letterhead img { width: 100%; max-height: 80px; object-fit: contain; }
+            .footer-letterhead { margin-top: 20px; width: 100%; text-align: center; page-break-inside: avoid; }
+            .footer-letterhead img { width: 100%; max-width: 100%; height: auto; max-height: 70px; object-fit: contain; }
+            
+            .no-data-box { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; padding: 14px; border-radius: 8px; text-align: center; font-size: 11px; margin: 20px 0; }
           </style>
         </head>
         <body>
@@ -256,65 +334,163 @@ export const ReportsPanel: React.FC = () => {
               <p>Luminarias QR Registradas</p>
             </div>
             <div class="kpi-card">
+              <h3>${filteredPoles.length}</h3>
+              <p>Postes Censados</p>
+            </div>
+            <div class="kpi-card">
               <h3>${totalWatts.toLocaleString()} W</h3>
-              <p>Potencia Total LED Instalada</p>
+              <p>Potencia LED Instalada</p>
             </div>
             <div class="kpi-card">
               <h3>${filteredIncidents.length}</h3>
-              <p>Incidencias / Cortos Atendidos</p>
-            </div>
-            <div class="kpi-card">
-              <h3>${uniqueCrews.length}</h3>
-              <p>Cuadrillas en Operación</p>
+              <p>Incidencias Atendidas</p>
             </div>
           </div>
 
+          ${(filteredInstallations.length === 0 && filteredPoles.length === 0 && filteredIncidents.length === 0) ? `
+            <div class="no-data-box">
+              ⚠️ <strong>Sin Registros en el Período:</strong> No se encontraron registros de instalaciones, censo ni incidencias para los filtros seleccionados (Cuadrilla: <em>${crewFilter}</em>, Período: <em>${startDate || 'Inicio'} al ${endDate || 'Hoy'}</em>).
+            </div>
+          ` : ''}
+
+          <!-- TABLA RESUMEN CONSOLIDADA DE ENTREGABLES -->
+          ${(filteredInstallations.length > 0 || filteredPoles.length > 0 || filteredIncidents.length > 0) ? `
+            <div class="section-header">📊 Resumen Tabular de Operativa y Entregables</div>
+            <table class="summary-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Código / Identificador</th>
+                  <th>Tipo Registro</th>
+                  <th>Cuadrilla</th>
+                  <th>Responsable en Turno</th>
+                  <th>Potencia / Tipo</th>
+                  <th>Fecha y Hora</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filteredInstallations.map((inst, idx) => `
+                  <tr>
+                    <td>${idx + 1}</td>
+                    <td><strong>${inst.fixture_code}</strong></td>
+                    <td><span style="color:#059669; font-weight:bold;">💡 Luminaria QR</span></td>
+                    <td>${inst.crew_name || 'N/A'}</td>
+                    <td>${inst.operator_name || 'Sin asignar'}</td>
+                    <td><strong style="color:#d97706;">${inst.wattage || 70}W LED</strong></td>
+                    <td>${new Date(inst.installed_at).toLocaleString('es-MX')}</td>
+                  </tr>
+                `).join('')}
+                ${filteredPoles.map((p, idx) => `
+                  <tr>
+                    <td>${filteredInstallations.length + idx + 1}</td>
+                    <td><strong>${p.pole_code}</strong></td>
+                    <td><span style="color:#0284c7; font-weight:bold;">📍 Censo Poste</span></td>
+                    <td>${p.crew_name || 'N/A'}</td>
+                    <td>${p.operator_name || 'Sin asignar'}</td>
+                    <td>${p.lamp_type || p.pole_type || 'Poste'}</td>
+                    <td>${new Date(p.created_at || p.installed_at || Date.now()).toLocaleString('es-MX')}</td>
+                  </tr>
+                `).join('')}
+                ${filteredIncidents.map((inc, idx) => `
+                  <tr>
+                    <td>${filteredInstallations.length + filteredPoles.length + idx + 1}</td>
+                    <td><strong>${inc.incident_type}</strong></td>
+                    <td><span style="color:#d97706; font-weight:bold;">🛠️ Incidencia</span></td>
+                    <td>${inc.crew_name || 'N/A'}</td>
+                    <td>${inc.operator_name || 'Sin asignar'}</td>
+                    <td>Reparada / Resuelta</td>
+                    <td>${new Date(inc.created_at).toLocaleString('es-MX')}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          ` : ''}
+
+          <!-- FICHAS TÉCNICAS DE LUMINARIAS QR -->
           ${showQR && filteredInstallations.length > 0 ? `
-            <div class="section-header">💡 Fichas de Registro de Luminarias QR (${filteredInstallations.length})</div>
+            <div class="section-header">💡 Fichas Técnicas de Registro de Luminarias QR (${filteredInstallations.length})</div>
             <div class="cards-container">
               ${filteredInstallations.map(inst => {
-                const photoB = inst.photo_before ? (inst.photo_before.startsWith('http') ? inst.photo_before : origin + inst.photo_before) : null;
-                const photoA = inst.photo_after ? (inst.photo_after.startsWith('http') ? inst.photo_after : origin + inst.photo_after) : null;
+                const photoB = getPhotoUrl(inst.photo_before);
+                const photoA = getPhotoUrl(inst.photo_after);
 
                 return `
                   <div class="item-card">
                     <div class="card-top">
                       <span class="card-code">${inst.fixture_code}</span>
-                      <span class="card-badge">${inst.status || 'Nueva'}</span>
+                      <span class="card-badge">${inst.current_status || inst.status || 'Instalada'}</span>
                     </div>
                     <div class="info-list">
                       <div>👷‍♂️ <strong>Cuadrilla:</strong> <span>${inst.crew_name || 'N/A'}</span></div>
-                      ${inst.operator_name ? `<div>👤 <strong>Responsable:</strong> <span>${inst.operator_name}</span></div>` : ''}
-                      <div>⚡ <strong>Potencia:</strong> <span class="watts-highlight">${inst.wattage || 70} Watts LED</span></div>
-                      <div>📅 <strong>Fecha/Hora:</strong> <span>${new Date(inst.installed_at).toLocaleString('es-MX')}</span></div>
-                      <div>📍 <strong>GPS:</strong> <a href="https://maps.google.com/?q=${inst.lat},${inst.lng}" target="_blank" style="color:#0284c7;">Ver en Maps (${inst.lat?.toFixed(5)}, ${inst.lng?.toFixed(5)})</a></div>
-                      ${inst.notes ? `<div>📝 <strong>Notas:</strong> <em>"${inst.notes}"</em></div>` : ''}
+                      ${inst.operator_name ? `<div>👤 <strong>Responsable en Turno:</strong> <span>${inst.operator_name}</span></div>` : ''}
+                      <div>⚡ <strong>Potencia / Tipo:</strong> <span class="watts-highlight">${inst.wattage || 70} Watts LED</span></div>
+                      <div>📅 <strong>Fecha/Hora Instalación:</strong> <span>${new Date(inst.installed_at).toLocaleString('es-MX')}</span></div>
+                      <div>📍 <strong>Ubicación GPS:</strong> <a href="https://maps.google.com/?q=${inst.lat},${inst.lng}" target="_blank" style="color:#0284c7; text-decoration:none;">📍 Ver Mapa (${inst.lat?.toFixed(5)}, ${inst.lng?.toFixed(5)})</a></div>
+                      ${inst.notes ? `<div>📝 <strong>Observaciones:</strong> <em>"${inst.notes}"</em></div>` : ''}
                     </div>
 
-                    ${(photoB || photoA) ? `
-                      <div class="photos-grid">
-                        <div>
-                          <div class="photo-label">📸 1. ESTADO ANTES / POSTE:</div>
-                          ${photoB ? `<img src="${photoB}" class="photo-box" />` : '<div style="height:100px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-size:9px;">Sin foto</div>'}
-                        </div>
-                        <div>
-                          <div class="photo-label">📸 2. LÁMPARA LED ENCENDIDA:</div>
-                          ${photoA ? `<img src="${photoA}" class="photo-box" />` : '<div style="height:100px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-size:9px;">Sin foto</div>'}
-                        </div>
+                    <div class="photos-grid">
+                      <div>
+                        <div class="photo-label">📸 1. ESTADO ANTES / POSTE:</div>
+                        ${photoB ? `<img src="${photoB}" class="photo-box" />` : '<div style="height:95px; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-size:9px;">Sin foto adjunta</div>'}
                       </div>
-                    ` : ''}
+                      <div>
+                        <div class="photo-label">📸 2. LÁMPARA LED ENCENDIDA:</div>
+                        ${photoA ? `<img src="${photoA}" class="photo-box" />` : '<div style="height:95px; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-size:9px;">Sin foto adjunta</div>'}
+                      </div>
+                    </div>
                   </div>
                 `;
               }).join('')}
             </div>
           ` : ''}
 
+          <!-- FICHAS TÉCNICAS DE POSTES CENSADOS -->
+          ${showPoles && filteredPoles.length > 0 ? `
+            <div class="section-header" style="color:#0369a1; border-color:#bae6fd;">📍 Fichas Técnicas de Censo de Postes (${filteredPoles.length})</div>
+            <div class="cards-container">
+              ${filteredPoles.map(p => {
+                const photoB = getPhotoUrl(p.photo_before);
+                const photoA = getPhotoUrl(p.photo_after);
+
+                return `
+                  <div class="item-card">
+                    <div class="card-top">
+                      <span class="card-code">${p.pole_code}</span>
+                      <span class="card-badge-pole">Poste Censado</span>
+                    </div>
+                    <div class="info-list">
+                      <div>👷‍♂️ <strong>Cuadrilla Censadora:</strong> <span>${p.crew_name || 'N/A'}</span></div>
+                      ${p.operator_name ? `<div>👤 <strong>Responsable en Turno:</strong> <span>${p.operator_name}</span></div>` : ''}
+                      <div>🏗️ <strong>Estructura / Lámpara:</strong> <span>${p.pole_type || 'Poste'} — ${p.lamp_type || 'Sin especificar'}</span></div>
+                      <div>📅 <strong>Fecha/Hora Censo:</strong> <span>${new Date(p.created_at || p.installed_at || Date.now()).toLocaleString('es-MX')}</span></div>
+                      <div>📍 <strong>Ubicación GPS:</strong> <a href="https://maps.google.com/?q=${p.lat},${p.lng}" target="_blank" style="color:#0284c7; text-decoration:none;">📍 Ver Mapa (${p.lat?.toFixed(5)}, ${p.lng?.toFixed(5)})</a></div>
+                      ${p.notes ? `<div>📝 <strong>Notas:</strong> <em>"${p.notes}"</em></div>` : ''}
+                    </div>
+
+                    <div class="photos-grid">
+                      <div>
+                        <div class="photo-label">📸 1. EVIDENCIA POSTE:</div>
+                        ${photoB ? `<img src="${photoB}" class="photo-box" />` : '<div style="height:95px; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-size:9px;">Sin foto adjunta</div>'}
+                      </div>
+                      <div>
+                        <div class="photo-label">📸 2. EVIDENCIA ENCENDIDO:</div>
+                        ${photoA ? `<img src="${photoA}" class="photo-box" />` : '<div style="height:95px; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-size:9px;">Sin foto adjunta</div>'}
+                      </div>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          ` : ''}
+
+          <!-- FICHAS TÉCNICAS DE INCIDENCIAS ATENDIDAS -->
           ${showIncidents && filteredIncidents.length > 0 ? `
             <div class="section-header" style="color:#d97706; border-color:#fef3c7;">🛠️ Atención de Cortos Circuitos e Incidencias (${filteredIncidents.length})</div>
             <div class="cards-container">
               ${filteredIncidents.map(inc => {
-                const photoB = inc.photo_before ? (inc.photo_before.startsWith('http') ? inc.photo_before : origin + inc.photo_before) : null;
-                const photoA = inc.photo_after ? (inc.photo_after.startsWith('http') ? inc.photo_after : origin + inc.photo_after) : null;
+                const photoB = getPhotoUrl(inc.photo_before);
+                const photoA = getPhotoUrl(inc.photo_after);
 
                 return `
                   <div class="item-card">
@@ -324,24 +500,22 @@ export const ReportsPanel: React.FC = () => {
                     </div>
                     <div class="info-list">
                       <div>👷‍♂️ <strong>Cuadrilla:</strong> <span>${inc.crew_name || 'N/A'}</span></div>
-                      ${inc.operator_name ? `<div>👤 <strong>Responsable:</strong> <span>${inc.operator_name}</span></div>` : ''}
-                      <div>📅 <strong>Fecha/Hora:</strong> <span>${new Date(inc.created_at).toLocaleString('es-MX')}</span></div>
-                      <div>📍 <strong>Ubicación GPS:</strong> <a href="https://maps.google.com/?q=${inc.lat},${inc.lng}" target="_blank" style="color:#0284c7;">Ver en Maps (${inc.lat?.toFixed(5)}, ${inc.lng?.toFixed(5)})</a></div>
+                      ${inc.operator_name ? `<div>👤 <strong>Responsable en Turno:</strong> <span>${inc.operator_name}</span></div>` : ''}
+                      <div>📅 <strong>Fecha/Hora Atención:</strong> <span>${new Date(inc.created_at).toLocaleString('es-MX')}</span></div>
+                      <div>📍 <strong>Ubicación GPS:</strong> <a href="https://maps.google.com/?q=${inc.lat},${inc.lng}" target="_blank" style="color:#0284c7; text-decoration:none;">📍 Ver Mapa (${inc.lat?.toFixed(5)}, ${inc.lng?.toFixed(5)})</a></div>
                       <div>📝 <strong>Trabajo Realizado:</strong> <em>"${inc.notes}"</em></div>
                     </div>
 
-                    ${(photoB || photoA) ? `
-                      <div class="photos-grid">
-                        <div>
-                          <div class="photo-label">📸 1. EVIDENCIA ANTES / FALLA:</div>
-                          ${photoB ? `<img src="${photoB}" class="photo-box" />` : '<div style="height:100px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-size:9px;">Sin foto</div>'}
-                        </div>
-                        <div>
-                          <div class="photo-label">📸 2. REPARACIÓN / SOLUCIÓN:</div>
-                          ${photoA ? `<img src="${photoA}" class="photo-box" />` : '<div style="height:100px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-size:9px;">Sin foto</div>'}
-                        </div>
+                    <div class="photos-grid">
+                      <div>
+                        <div class="photo-label">📸 1. EVIDENCIA ANTES / FALLA:</div>
+                        ${photoB ? `<img src="${photoB}" class="photo-box" />` : '<div style="height:95px; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-size:9px;">Sin foto adjunta</div>'}
                       </div>
-                    ` : ''}
+                      <div>
+                        <div class="photo-label">📸 2. REPARACIÓN / SOLUCIÓN:</div>
+                        ${photoA ? `<img src="${photoA}" class="photo-box" />` : '<div style="height:95px; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-size:9px;">Sin foto adjunta</div>'}
+                      </div>
+                    </div>
                   </div>
                 `;
               }).join('')}
@@ -642,8 +816,9 @@ export const ReportsPanel: React.FC = () => {
               value={recordTypeFilter} 
               onChange={(e) => setRecordTypeFilter(e.target.value as any)}
             >
-              <option value="all">Todos los Registros</option>
+              <option value="all">Todos los Registros (QR, Censo e Incidencias)</option>
               <option value="qr">💡 Solo Luminarias QR</option>
+              <option value="poles">📍 Solo Censo de Postes</option>
               <option value="incidents">🛠️ Solo Incidencias / Cortos</option>
             </select>
           </div>
