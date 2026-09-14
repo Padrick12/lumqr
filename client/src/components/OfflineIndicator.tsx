@@ -1,7 +1,7 @@
 import { API_BASE_URL } from '../config';
 import React, { useState, useEffect } from 'react';
 import { Wifi, RefreshCw, AlertTriangle, CloudOff } from 'lucide-react';
-import { getQueue } from '../utils/offlineStore';
+import { getQueue, removeFromQueue } from '../utils/offlineStore';
 
 interface OfflineIndicatorProps {
   isSimulatedOffline?: boolean;
@@ -83,7 +83,6 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
       const data = await response.json();
       
       const { succeeded } = data.results;
-      const { removeFromQueue } = await import('../utils/offlineStore');
       
       for (const code of succeeded) {
         await removeFromQueue(code);
