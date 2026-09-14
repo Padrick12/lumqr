@@ -65,6 +65,7 @@ export const ReportsPanel: React.FC = () => {
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [recordTypeFilter, setRecordTypeFilter] = useState<'all' | 'qr' | 'poles' | 'incidents'>('all');
+  const [includeDapAudit, setIncludeDapAudit] = useState<boolean>(true);
 
   useEffect(() => {
     fetchReportData();
@@ -400,6 +401,7 @@ export const ReportsPanel: React.FC = () => {
               <div>🗓️ <strong>Período Auditado:</strong> ${startDate || 'Inicio'} al ${endDate || 'Hoy'}</div>
             </div>
 
+            ${includeDapAudit ? `
             <!-- SECCIÓN AUDITORÍA ENERGÉTICA CFE (DAP) -->
             <div style="background: #f0f9ff; border: 1.5px solid #0284c7; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
               <div style="font-weight: 800; font-size: 12px; color: #0369a1; margin-bottom: 8px; display: flex; justify-content: space-between; border-bottom: 1px solid #bae6fd; padding-bottom: 4px;">
@@ -427,6 +429,7 @@ export const ReportsPanel: React.FC = () => {
                 * Nota para trámite de Bonificación CFE: Cálculo exacto basado en ${filteredInstallations.length} luminarias QR LED registradas (${totalWattsQR.toLocaleString()}W) + ${filteredPoles.length} puntos de iluminación censados (${totalWattsPoles.toLocaleString()}W).
               </div>
             </div>
+            ` : ''}
 
             <!-- KPI METRICS GRID -->
             <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px;">
@@ -976,6 +979,20 @@ export const ReportsPanel: React.FC = () => {
               onChange={(e) => setEndDate(e.target.value)}
               style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-color)', borderRadius: '6px', color: '#fff', padding: '8px', fontSize: '12px' }}
             />
+          </div>
+
+          <div className="form-group" style={{ gap: '8px', justifyContent: 'flex-end' }}>
+            <label style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', background: includeDapAudit ? 'rgba(56, 189, 248, 0.12)' : 'rgba(255,255,255,0.05)', padding: '8px 12px', borderRadius: '8px', border: includeDapAudit ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid var(--border-color)', marginTop: '16px', transition: 'all 0.2s ease' }}>
+              <input
+                type="checkbox"
+                checked={includeDapAudit}
+                onChange={(e) => setIncludeDapAudit(e.target.checked)}
+                style={{ width: '16px', height: '16px', accentColor: 'var(--neon-blue)', cursor: 'pointer' }}
+              />
+              <span style={{ fontSize: '12px', fontWeight: 700, color: includeDapAudit ? 'var(--neon-blue)' : 'var(--text-muted)' }}>
+                ⚡ Incluir Auditoría CFE (DAP)
+              </span>
+            </label>
           </div>
         </div>
 
