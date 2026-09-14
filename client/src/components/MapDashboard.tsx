@@ -464,7 +464,7 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
 
       const photoHTML = (inst.photo_before || inst.photo_after) ? `
         <div style="display: flex; gap: 6px; margin-top: 8px;">
-          ${inst.photo_before ? `<div style="flex: 1;"><span style="font-size: 8px; color: #94a3b8; display: block; margin-bottom: 2px;">Foto Antes / Poste:</span><img src="${inst.photo_before}" onclick="window.openPhotoModal('${inst.photo_before}', 'Foto Antes / Poste - ${inst.fixture_code}')" style="cursor: pointer; width: 100%; height: 65px; object-fit: cover; border-radius: 4px; border: 1px solid #38bdf8;" /></div>` : ''}
+          ${inst.photo_before ? `<div style="flex: 1;"><span style="font-size: 8px; color: #94a3b8; display: block; margin-bottom: 2px;">Foto Evidencia / Punto:</span><img src="${inst.photo_before}" onclick="window.openPhotoModal('${inst.photo_before}', 'Foto Evidencia / Punto - ${inst.fixture_code}')" style="cursor: pointer; width: 100%; height: 65px; object-fit: cover; border-radius: 4px; border: 1px solid #38bdf8;" /></div>` : ''}
           ${inst.photo_after ? `<div style="flex: 1;"><span style="font-size: 8px; color: #94a3b8; display: block; margin-bottom: 2px;">Foto Encendida:</span><img src="${inst.photo_after}" onclick="window.openPhotoModal('${inst.photo_after}', 'Foto Encendida - ${inst.fixture_code}')" style="cursor: pointer; width: 100%; height: 65px; object-fit: cover; border-radius: 4px; border: 1px solid #34d399;" /></div>` : ''}
         </div>
       ` : '';
@@ -518,7 +518,7 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
 
         const polePhotoHTML = (p.photo_before || p.photo_after) ? `
           <div style="display: flex; gap: 6px; margin-top: 8px;">
-            ${p.photo_before ? `<div style="flex: 1;"><span style="font-size: 8px; color: #94a3b8; display: block; margin-bottom: 2px;">Foto Antes / Poste:</span><img src="${p.photo_before}" onclick="window.openPhotoModal('${p.photo_before}', 'Foto Antes / Poste - ${p.pole_code}')" style="cursor: pointer; width: 100%; height: 65px; object-fit: cover; border-radius: 4px; border: 1px solid #38bdf8;" /></div>` : ''}
+            ${p.photo_before ? `<div style="flex: 1;"><span style="font-size: 8px; color: #94a3b8; display: block; margin-bottom: 2px;">Foto Evidencia / Punto:</span><img src="${p.photo_before}" onclick="window.openPhotoModal('${p.photo_before}', 'Foto Evidencia / Punto - ${p.pole_code}')" style="cursor: pointer; width: 100%; height: 65px; object-fit: cover; border-radius: 4px; border: 1px solid #38bdf8;" /></div>` : ''}
             ${p.photo_after ? `<div style="flex: 1;"><span style="font-size: 8px; color: #94a3b8; display: block; margin-bottom: 2px;">Foto Encendida:</span><img src="${p.photo_after}" onclick="window.openPhotoModal('${p.photo_after}', 'Foto Encendida - ${p.pole_code}')" style="cursor: pointer; width: 100%; height: 65px; object-fit: cover; border-radius: 4px; border: 1px solid #34d399;" /></div>` : ''}
           </div>
         ` : '';
@@ -527,7 +527,7 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
           <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px; color: #f1f5f9; min-width: 210px; padding: 4px;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 6px; margin-bottom: 6px;">
               <span style="font-family: monospace; font-weight: bold; font-size: 13px; color: #38bdf8;">${p.pole_code}</span>
-              <span style="padding: 2px 6px; border-radius: 4px; font-weight: 600; font-size: 10px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3);">Poste Censado</span>
+              <span style="padding: 2px 6px; border-radius: 4px; font-weight: 600; font-size: 10px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3);">Punto de Iluminación</span>
             </div>
             <div style="display: flex; flex-direction: column; gap: 4px;">
               <p style="margin: 2px 0;"><strong>Cuadrilla Censadora:</strong> ${p.crew_name || 'Almacén / Sistema'}</p>

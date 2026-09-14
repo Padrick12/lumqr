@@ -304,7 +304,7 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
         ctx.strokeRect(10, 50, halfW, imgH);
         ctx.fillStyle = '#38bdf8';
         ctx.font = 'bold 16px sans-serif';
-        ctx.fillText('📸 1. EVIDENCIA ANTES / POSTE', 15, 35);
+        ctx.fillText('📸 1. EVIDENCIA ANTES / PUNTO DE ILUMINACIÓN', 15, 35);
 
         // Foto 2
         ctx.drawImage(img2, 20 + halfW, 50, halfW, imgH);
@@ -388,8 +388,8 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
     let typeLine = `🆔 *Luminaria QR:* ${dataToShare.code}`;
     
     if (dataToShare.type === 'pole') {
-      header = '📍 *REPORTE DE CENSO DE POSTE - LERDO, DGO.*';
-      typeLine = `📍 *Poste Censado:* ${dataToShare.code}`;
+      header = '📍 *REPORTE DE CENSO DE PUNTO DE ILUMINACIÓN - LERDO, DGO.*';
+      typeLine = `📍 *Punto de Iluminación Censado:* ${dataToShare.code}`;
     } else if (dataToShare.type === 'incident') {
       header = '🛠️ *REPORTE DE ATENCIÓN DE INCIDENCIA / TRABAJO ESPECIAL*';
       typeLine = `📋 *Trabajo Realizado:* ${dataToShare.code}`;
@@ -459,7 +459,7 @@ ${typeLine}
       const origin = window.location.origin;
       if (dataToShare.photoBefore && !dataToShare.photoBefore.startsWith('data:')) {
         const urlBefore = dataToShare.photoBefore.startsWith('http') ? dataToShare.photoBefore : origin + dataToShare.photoBefore;
-        photoSection += `\n🖼️ *Foto Antes/Poste:* ${urlBefore}`;
+        photoSection += `\n🖼️ *Foto Evidencia/Punto:* ${urlBefore}`;
       }
       if (dataToShare.photoAfter && !dataToShare.photoAfter.startsWith('data:')) {
         const urlAfter = dataToShare.photoAfter.startsWith('http') ? dataToShare.photoAfter : origin + dataToShare.photoAfter;
@@ -603,7 +603,7 @@ ${typeLine}
       const distMeters = getDistanceInMeters(lat, lng, nearbyPole.lat, nearbyPole.lng).toFixed(1);
       const poleDate = nearbyPole.created_at ? new Date(nearbyPole.created_at).toLocaleDateString('es-MX') : 'previamente';
       setPoleSubmitMsg({
-        text: `🚫 PREVENCIÓN DE DUPLICADO POR GPS: Ya existe un poste censado a sólo ${distMeters}m de esta ubicación (${nearbyPole.pole_code} censado el ${poleDate} por ${nearbyPole.crew_name || 'otra cuadrilla'}).`,
+        text: `🚫 PREVENCIÓN DE DUPLICADO POR GPS: Ya existe un punto de iluminación censado a sólo ${distMeters}m de esta ubicación (${nearbyPole.pole_code} censado el ${poleDate} por ${nearbyPole.crew_name || 'otra cuadrilla'}).`,
         isError: true
       });
       setLoadingPole(false);
@@ -632,9 +632,9 @@ ${typeLine}
       });
       const data = await res.json();
       if (!res.ok) {
-        setPoleSubmitMsg({ text: data.error || 'Error al censar poste.', isError: true });
+        setPoleSubmitMsg({ text: data.error || 'Error al censar punto de iluminación.', isError: true });
       } else {
-        setPoleSubmitMsg({ text: `¡Poste ${data.pole_code} censado con éxito en ${zoneType}!`, isError: false });
+        setPoleSubmitMsg({ text: `¡Punto de iluminación ${data.pole_code} censado con éxito en ${zoneType}!`, isError: false });
         registerSuccessAndQueueWhatsApp({
           type: 'pole',
           code: data.pole_code,
@@ -1148,7 +1148,7 @@ ${typeLine}
           }}
         >
           <Save size={18} />
-          <span>Censar Poste</span>
+          <span>Censar Punto de Iluminación</span>
         </button>
 
         <button
@@ -1280,20 +1280,20 @@ ${typeLine}
           </form>
         </div>
       ) : panelMode === 'census' ? (
-        /* MÓDULO DE CENSO DE POSTES */
+        /* MÓDULO DE CENSO DE PUNTOS DE ILUMINACIÓN */
         <div className="glass-panel" style={{ maxWidth: '600px', margin: '0 auto', width: '100%' }}>
           <h2 className="panel-header" style={{ color: 'var(--neon-blue)' }}>
             <Save color="var(--neon-blue)" />
-            <span>Levantamiento de Censo de Poste</span>
+            <span>Levantamiento de Censo de Puntos de Iluminación</span>
           </h2>
           <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '20px' }}>
-            Registre cualquier poste de la red municipal indicando tecnología, potencia y estado operativo actual.
+            Registre cualquier punto de iluminación de la red municipal indicando tecnología, potencia y estado operativo actual.
           </p>
 
           <form onSubmit={handleRegisterPole} className="form-group">
             <div>
               <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
-                TECNOLOGÍA DE LÁMPARA EN POSTE:
+                TECNOLOGÍA DE LÁMPARA EN PUNTO DE ILUMINACIÓN:
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <button
@@ -1430,9 +1430,9 @@ ${typeLine}
                   onChange={(e: any) => setPoleType(e.target.value)}
                   style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', color: '#fff', fontSize: '13px' }}
                 >
-                  <option value="Concreto">Poste de Concreto</option>
-                  <option value="Metálico">Poste Metálico / Cónica</option>
-                  <option value="Madera">Poste de Madera</option>
+                  <option value="Concreto">Estructura de Concreto</option>
+                  <option value="Metálico">Estructura Metálica / Cónica</option>
+                  <option value="Madera">Estructura de Madera</option>
                   <option value="Brazo en Fachada">Brazo en Fachada</option>
                 </select>
               </div>
@@ -1460,7 +1460,7 @@ ${typeLine}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <div>
                   <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
-                    📸 1. Estado / Poste
+                    📸 1. Estado / Punto
                   </label>
                   <input 
                     type="file" 
@@ -1513,7 +1513,7 @@ ${typeLine}
                 cursor: 'pointer'
               }}
             >
-              {loadingPole ? 'Capturando GPS y Guardando...' : '📍 Registrar Poste en Censo (Captura GPS)'}
+              {loadingPole ? 'Capturando GPS y Guardando...' : '📍 Registrar Punto de Iluminación en Censo (Captura GPS)'}
             </button>
             {renderWhatsAppSuccessCard()}
           </form>
@@ -1682,7 +1682,7 @@ ${typeLine}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <div>
                     <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
-                      📸 1. Estado / Poste / Código
+                      📸 1. Estado / Punto / Código
                     </label>
                     <input 
                       type="file" 
@@ -1780,7 +1780,7 @@ ${typeLine}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <strong style={{ fontFamily: 'monospace', fontSize: '15px', color: '#fff' }}>{msg.code}</strong>
                     <span style={{ fontSize: '10px', padding: '3px 8px', borderRadius: '4px', background: 'rgba(37, 211, 102, 0.15)', color: '#25D366', fontWeight: 800 }}>
-                      {msg.type === 'pole' ? '📍 Censo Poste' : msg.type === 'incident' ? '🛠️ Incidencia' : '💡 Lámpara QR'}
+                      {msg.type === 'pole' ? '📍 Censo Punto de Iluminación' : msg.type === 'incident' ? '🛠️ Incidencia' : '💡 Lámpara QR'}
                     </span>
                   </div>
 
