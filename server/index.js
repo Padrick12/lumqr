@@ -763,8 +763,97 @@ app.get('/api/reports', async (req, res) => {
     const assignedCount = await db.get('SELECT COUNT(*) as count FROM fixtures WHERE crew_id IS NOT NULL');
     const unassignedCount = await db.get('SELECT COUNT(*) as count FROM fixtures WHERE crew_id IS NULL');
 
-    // Installations count
+    // Installations count (unique QR fixtures installed)
     const installedCount = await db.get('SELECT COUNT(DISTINCT fixture_code) as count FROM installations');
+
+    // Fetch latest installation coordinates & details for deduplication
+    const latestInstallations = await db.all(`
+      SELECT i.*, f.status as current_status, c.name as crew_name
+      FROM installations i
+      JOIN (
+        SELECT fixture_code, MAX(installed_at) as max_date
+        FROM installations
+        GROUP BY fixture_code
+      ) latest ON i.fixture_code = latest.fixture_code AND i.installed_at = latest.max_date
+      JOIN fixtures f ON i.fixture_code = f.code
+      LEFT JOIN crews c ON i.crew_id = c.id
+    `);
+
+    // Fetch all poles
+    const allPoles = await db.all(`
+      SELECT p.*, c.name as crew_name
+      FROM poles p
+      LEFT JOIN crews c ON p.crew_id = c.id
+    `);
+
+    // Distance helper for 15-meter physical point deduplication
+    function getDistanceInMeters(lat1, lon1, lat2, lon2) {
+      if (!lat1 || !lon1 || !lat2 || !lon2) return 999999;
+      const R = 6371e3;
+      const rad = Math.PI / 180;
+      const dLat = (lat2 - lat1) * rad;
+      const dLon = (lon2 - lon1) * rad;
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * rad) * Math.cos(lat2 * rad) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    // Filter standalone poles (poles that do NOT have a QR installation within 15 meters)
+    const standalonePoles = allPoles.filter(pole => {
+      return !latestInstallations.some(inst => getDistanceInMeters(pole.lat, pole.lng, inst.lat, inst.lng) <= 15);
+    });
+
+    // Deduplicated Total Puntos de Iluminación
+    const totalLightingPoints = latestInstallations.length + standalonePoles.length;
+
+    // Poles by Lamp (Standalone poles by lamp_type)
+    const polesByLamp = {
+      'Vapor de Sodio': 0,
+      'LED Antiguo': 0,
+      'LED Nueva (Sin QR)': 0,
+      'Sin Lámpara': 0
+    };
+    standalonePoles.forEach(p => {
+      const type = p.lamp_type || 'Vapor de Sodio';
+      if (polesByLamp[type] !== undefined) polesByLamp[type]++;
+      else polesByLamp[type] = 1;
+    });
+
+    // Poles by Zone (Deduplicated physical lighting points per zone)
+    const combinedZones = { Urbana: 0, Rural: 0, 'Trayectos Seguros': 0 };
+
+    latestInstallations.forEach(inst => {
+      const z = inst.zone_type || 'Urbana';
+      if (combinedZones[z] !== undefined) combinedZones[z]++;
+      else combinedZones['Urbana']++;
+    });
+
+    standalonePoles.forEach(pole => {
+      const z = pole.zone_type || 'Urbana';
+      if (combinedZones[z] !== undefined) combinedZones[z]++;
+      else combinedZones['Urbana']++;
+    });
+
+    // Fetch all crews
+    const crews = await db.all('SELECT id, name as crew_name, active_operator FROM crews');
+
+    // Compute crew performance with deduplication
+    const crewPerformance = crews.map(c => {
+      const crewInsts = latestInstallations.filter(i => i.crew_id === c.id);
+      const crewPoles = standalonePoles.filter(p => p.crew_id === c.id);
+
+      return {
+        id: c.id,
+        crew_name: c.crew_name,
+        active_operator: c.active_operator,
+        total_installations: crewInsts.length,
+        total_poles: crewPoles.length
+      };
+    });
+
+    crewPerformance.sort((a, b) => (b.total_installations + b.total_poles) - (a.total_installations + a.total_poles));
 
     // List of all fixtures with crew name and current status
     const allFixtures = await db.all(`
@@ -773,28 +862,6 @@ app.get('/api/reports', async (req, res) => {
       LEFT JOIN crews c ON f.crew_id = c.id
       JOIN batches b ON f.batch_id = b.id
       ORDER BY f.code ASC
-    `);
-
-    const polesCount = await db.get('SELECT COUNT(*) as count FROM poles');
-    const polesByLamp = await db.all('SELECT lamp_type, COUNT(*) as count FROM poles GROUP BY lamp_type');
-    const polesByZone = await db.all('SELECT zone_type, COUNT(*) as count FROM poles GROUP BY zone_type');
-    const instByZone = await db.all('SELECT zone_type, COUNT(*) as count FROM installations WHERE zone_type IS NOT NULL GROUP BY zone_type');
-
-    // Combine zone counts from poles and installations
-    const combinedZones = { Urbana: 0, Rural: 0, 'Trayectos Seguros': 0 };
-    polesByZone.forEach(curr => { if (curr.zone_type && combinedZones[curr.zone_type] !== undefined) combinedZones[curr.zone_type] += curr.count; });
-    instByZone.forEach(curr => { if (curr.zone_type && combinedZones[curr.zone_type] !== undefined) combinedZones[curr.zone_type] += curr.count; });
-
-    // Crew Performance Metrics
-    const crewPerformance = await db.all(`
-      SELECT 
-        c.id, 
-        c.name as crew_name, 
-        c.active_operator,
-        (SELECT COUNT(*) FROM installations i WHERE i.crew_id = c.id) as total_installations,
-        (SELECT COUNT(*) FROM poles p WHERE p.crew_id = c.id) as total_poles
-      FROM crews c
-      ORDER BY (total_installations + total_poles) DESC
     `);
 
     res.json({
@@ -807,11 +874,8 @@ app.get('/api/reports', async (req, res) => {
           acc[curr.status] = curr.count;
           return acc;
         }, { Nueva: 0, Reparada: 0, Rehabilitada: 0, Robo: 0 }),
-        total_poles: (polesCount ? polesCount.count : 0) + (installedCount ? installedCount.count : 0),
-        poles_by_lamp: polesByLamp.reduce((acc, curr) => {
-          acc[curr.lamp_type] = curr.count;
-          return acc;
-        }, { 'Vapor de Sodio': 0, 'LED Antiguo': 0, 'LED Nueva (Sin QR)': 0, 'Sin Lámpara': 0 }),
+        total_poles: totalLightingPoints,
+        poles_by_lamp: polesByLamp,
         poles_by_zone: combinedZones
       },
       crew_performance: crewPerformance,
