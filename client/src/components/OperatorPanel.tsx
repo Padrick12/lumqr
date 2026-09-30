@@ -678,10 +678,10 @@ ${typeLine}
       return dist <= 15;
     });
 
-    if (nearbyInstallation) {
+    if (nearbyInstallation && operatingStatus === 'Funcionando') {
       const distMeters = getDistanceInMeters(lat, lng, nearbyInstallation.lat, nearbyInstallation.lng).toFixed(1);
       setPoleSubmitMsg({
-        text: `🚫 PUNTO YA REGISTRADO POR LUMINARIA QR: Ya existe una luminaria QR instalada en esta ubicación a sólo ${distMeters}m (${nearbyInstallation.fixture_code} instalada por ${nearbyInstallation.crew_name || 'otra cuadrilla'}). No requiere censarse de nuevo.`,
+        text: `🚫 PUNTO YA REGISTRADO CON LUMINARIA QR: Ya existe la luminaria QR ${nearbyInstallation.fixture_code} instalada en esta ubicación a sólo ${distMeters}m (${nearbyInstallation.crew_name || 'cuadrilla'}). No requiere volver a censarse en estado 'Funcionando'. Si la luminaria presenta una falla, seleccione el estado 'Apagada' o 'Prendida 24/7' para registrar la observación.`,
         isError: true
       });
       setLoadingPole(false);

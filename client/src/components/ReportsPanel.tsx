@@ -166,7 +166,18 @@ export const ReportsPanel: React.FC = () => {
   const normCrewFilter = crewFilter.trim().toLowerCase();
   const searchLower = searchTerm.toLowerCase().trim();
 
-  const filteredInstallations = installations.filter(inst => {
+  // Deduplicate installations by unique fixture_code
+  const uniqueInstallationsMap = new Map<string, any>();
+  installations.forEach(inst => {
+    if (inst && inst.fixture_code) {
+      if (!uniqueInstallationsMap.has(inst.fixture_code)) {
+        uniqueInstallationsMap.set(inst.fixture_code, inst);
+      }
+    }
+  });
+  const uniqueInstallations = Array.from(uniqueInstallationsMap.values());
+
+  const filteredInstallations = uniqueInstallations.filter(inst => {
     const matchSearch = !searchLower || 
       (inst.fixture_code && inst.fixture_code.toLowerCase().includes(searchLower)) ||
       (inst.notes && inst.notes.toLowerCase().includes(searchLower));

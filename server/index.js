@@ -654,10 +654,10 @@ app.get('/api/installations', async (req, res) => {
       SELECT i.*, f.status as current_status, c.name as crew_name, b.arrival_date, b.code_prefix
       FROM installations i
       JOIN (
-        SELECT fixture_code, MAX(installed_at) as max_date
+        SELECT MAX(id) as max_id
         FROM installations
         GROUP BY fixture_code
-      ) latest ON i.fixture_code = latest.fixture_code AND i.installed_at = latest.max_date
+      ) latest ON i.id = latest.max_id
       JOIN fixtures f ON i.fixture_code = f.code
       JOIN crews c ON i.crew_id = c.id
       JOIN batches b ON f.batch_id = b.id
@@ -771,10 +771,10 @@ app.get('/api/reports', async (req, res) => {
       SELECT i.*, f.status as current_status, c.name as crew_name
       FROM installations i
       JOIN (
-        SELECT fixture_code, MAX(installed_at) as max_date
+        SELECT MAX(id) as max_id
         FROM installations
         GROUP BY fixture_code
-      ) latest ON i.fixture_code = latest.fixture_code AND i.installed_at = latest.max_date
+      ) latest ON i.id = latest.max_id
       JOIN fixtures f ON i.fixture_code = f.code
       LEFT JOIN crews c ON i.crew_id = c.id
     `);
