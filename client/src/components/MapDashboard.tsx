@@ -193,12 +193,13 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
   const polygonsGroupRef = useRef<L.LayerGroup | null>(null);
 
   const getColoniaName = (lat: number, lng: number): string => {
+    if (typeof lat !== 'number' || typeof lng !== 'number') return 'Coordenadas GPS no disponibles';
     for (const col of COLONIAS) {
       if (isPointInPolygon(lat, lng, col.coords)) {
         return col.name;
       }
     }
-    return 'Fuera de Sector';
+    return `Coordenadas GPS (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
   };
 
   // Run predictive maintenance calculations (30,000 hours lifespan)
