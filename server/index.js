@@ -415,14 +415,19 @@ app.post('/api/installations', async (req, res) => {
       return res.status(404).json({ error: `La luminaria con código ${code} no está registrada en el inventario.` });
     }
 
+    if (!fixture.crew_id) {
+      await db.run('ROLLBACK;');
+      return res.status(403).json({ error: `⛔ LUMINARIA NO DISPONIBLE: El código ${code} aún no ha sido asignado a ninguna cuadrilla en Almacén.` });
+    }
+
+    if (crew_id && fixture.crew_id !== Number(crew_id)) {
+      const assignedCrew = await db.get('SELECT name FROM crews WHERE id = ?', [fixture.crew_id]);
+      await db.run('ROLLBACK;');
+      return res.status(403).json({ error: `⛔ ACCESO DENEGADO: La luminaria ${code} está asignada a la cuadrilla "${assignedCrew?.name || 'otra cuadrilla'}". Su perfil no puede registrarla.` });
+    }
+
     // Determine final crew_id
     const finalCrewId = crew_id || fixture.crew_id;
-    if (!finalCrewId) {
-      await db.run('ROLLBACK;');
-      return res.status(400).json({
-        error: `La luminaria ${code} no tiene una cuadrilla asignada. Asigne la luminaria a una cuadrilla primero.`
-      });
-    }
 
     // Insert installation log
     const dateStr = installed_at || new Date().toISOString();
@@ -484,10 +489,12 @@ app.post('/api/installations/sync', async (req, res) => {
       }
 
       const dateStr = item.installed_at || new Date().toISOString().slice(0, 19).replace('T', ' ');
+      const syncWattage = item.wattage ? Number(item.wattage) : 70;
+
       await db.run(
-        `INSERT INTO installations (fixture_code, crew_id, operator_name, lat, lng, installed_at, status_at_install, notes, photo_before, photo_after)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [item.code, finalCrewId, item.operator_name || null, item.lat, item.lng, dateStr, item.status, item.notes || 'Sincronizado Offline', item.photo_before || null, item.photo_after || null]
+        `INSERT INTO installations (fixture_code, crew_id, operator_name, lat, lng, installed_at, status_at_install, notes, photo_before, photo_after, wattage)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [item.code, finalCrewId, item.operator_name || null, item.lat, item.lng, dateStr, item.status, item.notes || 'Sincronizado Offline', item.photo_before || null, item.photo_after || null, syncWattage]
       );
 
       await db.run(

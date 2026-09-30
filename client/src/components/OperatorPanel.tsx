@@ -951,6 +951,16 @@ ${typeLine}
       if (!res.ok) {
         setSearchError(data.error || 'Código no encontrado en el sistema.');
       } else {
+        if (!data.fixture || !data.fixture.crew_id) {
+          setSearchError(`⛔ LUMINARIA NO DISPONIBLE: El código ${code} aún no ha sido asignado a ninguna cuadrilla en Almacén.`);
+          return;
+        }
+
+        if (data.fixture.crew_id !== crewId) {
+          setSearchError(`⛔ ACCESO DENEGADO: La luminaria ${code} está asignada a la cuadrilla "${data.fixture.crew_name || 'otra cuadrilla'}". Su perfil no puede registrarla.`);
+          return;
+        }
+
         setFixtureDetails({
           code: data.fixture.code,
           status: data.fixture.status,
