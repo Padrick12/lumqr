@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lumqr-cache-v2';
+const CACHE_NAME = 'lumqr-cache-v3';
 const ASSETS = [
   '/',
   '/index.html',
@@ -40,7 +40,6 @@ self.addEventListener('fetch', (e) => {
   if (e.request.url.includes('/api/')) {
     e.respondWith(
       fetch(e.request).catch(() => {
-        // Safe fallback for API failure
         return new Response(JSON.stringify({ error: 'Offline API access. Connection lost.' }), {
           headers: { 'Content-Type': 'application/json' }
         });
@@ -49,7 +48,7 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Network-first strategy with robust cache fallback
+  // Network-first strategy with robust cache & SPA navigation fallback
   e.respondWith(
     fetch(e.request)
       .then((networkResponse) => {
@@ -64,8 +63,13 @@ self.addEventListener('fetch', (e) => {
       .catch(async () => {
         const cached = await caches.match(e.request);
         if (cached) return cached;
+
+        // For navigation requests (HTML pages) when offline, return the cached SPA shell index.html
+        if (e.request.mode === 'navigate' || (e.request.headers.get('accept') && e.request.headers.get('accept').includes('text/html'))) {
+          const indexPage = await caches.match('/index.html') || await caches.match('/');
+          if (indexPage) return indexPage;
+        }
         
-        // Return valid empty response instead of undefined if not in cache & network down
         return new Response('', { status: 404, statusText: 'Offline or Not Found' });
       })
   );
