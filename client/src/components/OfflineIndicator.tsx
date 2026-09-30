@@ -1,7 +1,7 @@
 import { API_BASE_URL } from '../config';
 import React, { useState, useEffect } from 'react';
 import { Wifi, RefreshCw, AlertTriangle, CloudOff } from 'lucide-react';
-import { getQueue, removeFromQueue } from '../utils/offlineStore';
+import { getQueue, removeFromQueue, getPolesQueue, removeFromPolesQueue, getIncidentsQueue, removeFromIncidentsQueue } from '../utils/offlineStore';
 
 interface OfflineIndicatorProps {
   isSimulatedOffline?: boolean;
@@ -38,7 +38,9 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
   const updateQueueCount = async () => {
     try {
       const q = await getQueue();
-      setQueueCount(q.length);
+      const p = await getPolesQueue();
+      const inc = await getIncidentsQueue();
+      setQueueCount(q.length + p.length + inc.length);
     } catch (err) {
       console.error(err);
     }
@@ -60,35 +62,66 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
   const triggerSync = async () => {
     if (isSyncing) return;
     setIsSyncing(true);
-    setSyncStatusMsg('Sincronizando...');
+    setSyncStatusMsg('Sincronizando registros offline...');
+
+    let totalSynced = 0;
 
     try {
+      // 1. Sync QR Installations
       const queue = await getQueue();
-      if (queue.length === 0) {
-        setIsSyncing(false);
-        setSyncStatusMsg('');
-        return;
+      if (queue.length > 0) {
+        const response = await fetch(`${API_BASE_URL}/api/installations/sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ queue })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const { succeeded } = data.results;
+          for (const code of succeeded) {
+            await removeFromQueue(code);
+          }
+          totalSynced += succeeded.length;
+        }
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/installations/sync`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ queue })
-      });
-
-      if (!response.ok) {
-        throw new Error('Error al sincronizar con el servidor.');
+      // 2. Sync Poles Censo
+      const polesQueue = await getPolesQueue();
+      if (polesQueue.length > 0) {
+        const responsePoles = await fetch(`${API_BASE_URL}/api/poles/sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ queue: polesQueue })
+        });
+        if (responsePoles.ok) {
+          const dataPoles = await responsePoles.json();
+          const { succeeded } = dataPoles.results;
+          for (const id of succeeded) {
+            await removeFromPolesQueue(id);
+          }
+          totalSynced += succeeded.length;
+        }
       }
 
-      const data = await response.json();
-      
-      const { succeeded } = data.results;
-      
-      for (const code of succeeded) {
-        await removeFromQueue(code);
+      // 3. Sync Incidents
+      const incidentsQueue = await getIncidentsQueue();
+      if (incidentsQueue.length > 0) {
+        const responseInc = await fetch(`${API_BASE_URL}/api/incidents/sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ queue: incidentsQueue })
+        });
+        if (responseInc.ok) {
+          const dataInc = await responseInc.json();
+          const { succeeded } = dataInc.results;
+          for (const id of succeeded) {
+            await removeFromIncidentsQueue(id);
+          }
+          totalSynced += succeeded.length;
+        }
       }
 
-      setSyncStatusMsg(`¡Éxito! ${succeeded.length} registros cargados.`);
+      setSyncStatusMsg(`¡Éxito! ${totalSynced} registros sincronizados.`);
       setTimeout(() => setSyncStatusMsg(''), 4000);
       await updateQueueCount();
       onSyncComplete();

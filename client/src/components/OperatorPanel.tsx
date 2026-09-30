@@ -2,7 +2,7 @@ import { API_BASE_URL } from '../config';
 import React, { useState, useEffect, useRef } from 'react';
 import { Camera, Search, Calendar, History, ShieldCheck, AlertCircle, Save, WifiOff, UserCheck, MessageCircle, Image as ImageIcon, Navigation, RefreshCw } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { addToQueue, addPendingWhatsApp, getPendingWhatsAppList, removePendingWhatsApp, type PendingWhatsAppMsg } from '../utils/offlineStore';
+import { addToQueue, addToPolesQueue, addToIncidentsQueue, addPendingWhatsApp, getPendingWhatsAppList, removePendingWhatsApp, type PendingWhatsAppMsg } from '../utils/offlineStore';
 import { formatFixtureCode } from '../utils/codeFormatter';
 import { ImageModal } from './ImageModal';
 import './shared-panels.css';
@@ -673,7 +673,47 @@ ${typeLine}
         onSyncComplete();
       }
     } catch (err) {
-      setPoleSubmitMsg({ text: 'Error de conexión con el servidor.', isError: true });
+      try {
+        const poleId = `POLE_OFFLINE_${Date.now()}`;
+        await addToPolesQueue({
+          id: poleId,
+          crew_id: crewId,
+          operator_name: operatorName.trim() || null,
+          lat,
+          lng,
+          pole_type: poleType,
+          lamp_type: lampType,
+          zone_type: zoneType,
+          wattage: wattage ? Number(wattage) : null,
+          operating_status: operatingStatus,
+          notes: poleNotes,
+          photo_before: photoBefore,
+          photo_after: photoAfter,
+          created_at: new Date().toISOString()
+        });
+        setPoleSubmitMsg({
+          text: `¡Punto de iluminación censado y guardado localmente en Modo Offline!`,
+          isError: false
+        });
+        registerSuccessAndQueueWhatsApp({
+          type: 'pole',
+          code: `PUNTO-OFFLINE-${Date.now().toString().slice(-4)}`,
+          status: `${lampType} | ${operatingStatus}`,
+          wattage: wattage || null,
+          lat,
+          lng,
+          date: new Date().toISOString(),
+          notes: poleNotes,
+          photoBefore,
+          photoAfter
+        });
+        setPoleNotes('');
+        setWattage('');
+        setPhotoBefore(null);
+        setPhotoAfter(null);
+      } catch (localErr) {
+        setPoleSubmitMsg({ text: 'Error de red y fallo al guardar censo de forma local.', isError: true });
+      }
     } finally {
       setLoadingPole(false);
       setIsSubmittingPole(false);
@@ -754,7 +794,41 @@ ${typeLine}
         onSyncComplete();
       }
     } catch (err) {
-      setIncidentSubmitMsg({ text: 'Error de red al guardar la incidencia.', isError: true });
+      try {
+        const incId = `INC_OFFLINE_${Date.now()}`;
+        await addToIncidentsQueue({
+          id: incId,
+          crew_id: crewId,
+          operator_name: operatorName.trim() || null,
+          incident_type: incidentType,
+          lat,
+          lng,
+          notes: incidentNotes,
+          photo_before: photoBefore,
+          photo_after: photoAfter,
+          created_at: new Date().toISOString()
+        });
+        setIncidentSubmitMsg({
+          text: `¡Trabajo especial / incidencia guardada localmente en Modo Offline!`,
+          isError: false
+        });
+        registerSuccessAndQueueWhatsApp({
+          type: 'incident',
+          code: incidentType,
+          status: 'Atendida / Finalizada',
+          lat,
+          lng,
+          date: new Date().toISOString(),
+          notes: incidentNotes,
+          photoBefore,
+          photoAfter
+        });
+        setIncidentNotes('');
+        setPhotoBefore(null);
+        setPhotoAfter(null);
+      } catch (localErr) {
+        setIncidentSubmitMsg({ text: 'Error de red al guardar la incidencia localmente.', isError: true });
+      }
     } finally {
       setLoadingIncident(false);
       setIsSubmittingIncident(false);

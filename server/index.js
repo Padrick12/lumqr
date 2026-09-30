@@ -511,6 +511,83 @@ app.post('/api/installations/sync', async (req, res) => {
   });
 });
 
+// Bulk sync for offline Poles Censo queue
+app.post('/api/poles/sync', async (req, res) => {
+  const { queue } = req.body;
+  if (!queue || !Array.isArray(queue)) {
+    return res.status(400).json({ error: 'Cola de sincronización inválida.' });
+  }
+
+  const results = { succeeded: [], failed: [] };
+
+  for (const item of queue) {
+    try {
+      await db.run('BEGIN TRANSACTION;');
+
+      const countRes = await db.get('SELECT COUNT(*) as count FROM poles');
+      const nextNum = (countRes?.count || 0) + 1;
+      const poleCode = item.pole_code || `PUNTO-LER-${String(nextNum).padStart(4, '0')}`;
+      const dateStr = item.created_at || new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+      await db.run(
+        `INSERT INTO poles (pole_code, crew_id, operator_name, lat, lng, pole_type, lamp_type, zone_type, wattage, operating_status, notes, photo_before, photo_after, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [poleCode, item.crew_id, item.operator_name || null, item.lat, item.lng, item.pole_type || 'Concreto', item.lamp_type || 'Vapor de Sodio', item.zone_type || 'Urbana', item.wattage || null, item.operating_status || 'Funcionando', item.notes || 'Censo Offline', item.photo_before || null, item.photo_after || null, dateStr]
+      );
+
+      await db.run('COMMIT;');
+      results.succeeded.push(item.id);
+    } catch (err) {
+      await db.run('ROLLBACK;');
+      results.failed.push({ id: item.id, error: err.message });
+    }
+  }
+
+  res.json({
+    message: 'Sincronización de Censo finalizada.',
+    succeeded_count: results.succeeded.length,
+    failed_count: results.failed.length,
+    results
+  });
+});
+
+// Bulk sync for offline Incidents queue
+app.post('/api/incidents/sync', async (req, res) => {
+  const { queue } = req.body;
+  if (!queue || !Array.isArray(queue)) {
+    return res.status(400).json({ error: 'Cola de sincronización inválida.' });
+  }
+
+  const results = { succeeded: [], failed: [] };
+
+  for (const item of queue) {
+    try {
+      await db.run('BEGIN TRANSACTION;');
+
+      const dateStr = item.created_at || new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+      await db.run(
+        `INSERT INTO incidents (crew_id, operator_name, incident_type, lat, lng, notes, photo_before, photo_after, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [item.crew_id, item.operator_name || null, item.incident_type || 'Reparación de Corto Circuito', item.lat, item.lng, item.notes || 'Incidencia Offline', item.photo_before || null, item.photo_after || null, dateStr]
+      );
+
+      await db.run('COMMIT;');
+      results.succeeded.push(item.id);
+    } catch (err) {
+      await db.run('ROLLBACK;');
+      results.failed.push({ id: item.id, error: err.message });
+    }
+  }
+
+  res.json({
+    message: 'Sincronización de Incidencias finalizada.',
+    succeeded_count: results.succeeded.length,
+    failed_count: results.failed.length,
+    results
+  });
+});
+
 // Get installations for map dashboard
 app.get('/api/installations', async (req, res) => {
   try {
