@@ -142,7 +142,19 @@ async function initializeDatabase() {
     await db.run('ALTER TABLE poles ADD COLUMN operating_status TEXT');
   } catch (e) {}
   try {
+    await db.run('ALTER TABLE poles ADD COLUMN offline_code TEXT');
+  } catch (e) {}
+  try {
     await db.run('ALTER TABLE crews ADD COLUMN active_operator TEXT');
+  } catch (e) {}
+  try {
+    await db.run('ALTER TABLE batches ADD COLUMN default_wattage INTEGER');
+  } catch (e) {}
+  try {
+    await db.run('ALTER TABLE fixtures ADD COLUMN default_wattage INTEGER');
+  } catch (e) {}
+  try {
+    await db.run('ALTER TABLE installations ADD COLUMN offline_code TEXT');
   } catch (e) {}
 
   // Seed default admin if no admin exists

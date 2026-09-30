@@ -27,6 +27,7 @@ interface Installation {
   wattage?: number;
   current_status: 'Nueva' | 'Reparada' | 'Rehabilitada' | 'Robo';
   arrival_date: string;
+  offline_code?: string;
 }
 
 interface InstallationWithUsage extends Installation {
@@ -50,6 +51,7 @@ interface CensusPole {
   photo_before?: string;
   photo_after?: string;
   created_at: string;
+  offline_code?: string;
 }
 
 interface MapDashboardProps {
@@ -110,6 +112,20 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
   const [incidents, setIncidents] = useState<any[]>([]);
 
   useEffect(() => {
+    (window as any).updatePoleZone = async (id: number, newZone: string) => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/poles/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ zone_type: newZone })
+        });
+        if (res.ok) {
+          fetchPoles();
+        }
+      } catch (err) {
+        console.error('Error updating pole zone classification:', err);
+      }
+    };
     fetchInstallations();
     fetchPoles();
     fetchIncidents();
@@ -524,6 +540,12 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
           </div>
         ` : '';
 
+        const offlineTagHTML = p.offline_code ? `
+          <p style="margin: 4px 0; font-size: 10px; color: #f59e0b; background: rgba(245, 158, 11, 0.12); padding: 4px 6px; border-radius: 4px; border: 1px dashed rgba(245, 158, 11, 0.5);">
+            <strong>📱 Folio Offline Capturado:</strong> ${p.offline_code}
+          </p>
+        ` : '';
+
         const polePopupHTML = `
           <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px; color: #f1f5f9; min-width: 210px; padding: 4px;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 6px; margin-bottom: 6px;">
@@ -531,13 +553,21 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
               <span style="padding: 2px 6px; border-radius: 4px; font-weight: 600; font-size: 10px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3);">Punto de Iluminación</span>
             </div>
             <div style="display: flex; flex-direction: column; gap: 4px;">
+              ${offlineTagHTML}
               <p style="margin: 2px 0;"><strong>Cuadrilla Censadora:</strong> ${p.crew_name || 'Almacén / Sistema'}</p>
               ${p.operator_name ? `<p style="margin: 2px 0; color: #38bdf8;"><strong>Responsable en Turno:</strong> ${p.operator_name}</p>` : ''}
               <p style="margin: 2px 0;"><strong>Estructura:</strong> ${p.pole_type}</p>
               <p style="margin: 2px 0;"><strong>Tecnología Lámpara:</strong> ${p.lamp_type}</p>
               ${p.wattage ? `<p style="margin: 2px 0;"><strong>Potencia:</strong> ${p.wattage} Watts</p>` : ''}
               ${p.operating_status ? `<p style="margin: 2px 0; color: #f59e0b;"><strong>Estado Operativo:</strong> ${p.operating_status}</p>` : ''}
-              <p style="margin: 2px 0;"><strong>Clasificación Zona:</strong> ${p.zone_type}</p>
+              <p style="margin: 4px 0; display: flex; align-items: center; justify-content: space-between;">
+                <strong>Clasificación Zona:</strong>
+                <select onchange="window.updatePoleZone(${p.id}, this.value)" style="background: rgba(15, 23, 42, 0.9); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.5); border-radius: 4px; padding: 2px 4px; font-size: 10px; font-weight: 700; cursor: pointer;">
+                  <option value="Urbana" ${p.zone_type === 'Urbana' ? 'selected' : ''}>Urbana</option>
+                  <option value="Rural" ${p.zone_type === 'Rural' ? 'selected' : ''}>Rural</option>
+                  <option value="Trayectos Seguros" ${p.zone_type === 'Trayectos Seguros' ? 'selected' : ''}>Trayectos Seguros</option>
+                </select>
+              </p>
               <p style="margin: 2px 0;"><strong>Fecha Censo:</strong> ${formatLocalDateTime(p.created_at)}</p>
               ${p.notes ? `<p style="margin: 6px 0 0 0; font-style: italic; background: rgba(255,255,255,0.04); padding: 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.04);">"${p.notes}"</p>` : ''}
               ${polePhotoHTML}

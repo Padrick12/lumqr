@@ -46,6 +46,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
   const [batchPrefix, setBatchPrefix] = useState('LUM-LERDO');
   const [batchQty, setBatchQty] = useState(50);
   const [batchDate, setBatchDate] = useState(new Date().toISOString().split('T')[0]);
+  const [batchWattage, setBatchWattage] = useState<number>(100);
 
   const [backups, setBackups] = useState<any[]>([]);
   const [backupLoading, setBackupLoading] = useState(false);
@@ -320,7 +321,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
         body: JSON.stringify({
           code_prefix: batchPrefix.trim().toUpperCase(),
           total_quantity: batchQty,
-          arrival_date: batchDate
+          arrival_date: batchDate,
+          default_wattage: batchWattage
         })
       });
 
@@ -328,7 +330,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
       if (!res.ok) {
         setBatchMsg({ text: data.error || 'Error al guardar el lote.', isError: true });
       } else {
-        setBatchMsg({ text: `Lote ${data.code_prefix} de ${data.total_quantity} luminarias registrado con éxito.`, isError: false });
+        setBatchMsg({ text: `Lote ${data.code_prefix} de ${data.total_quantity} luminarias (${batchWattage}W) registrado con éxito.`, isError: false });
         setBatchPrefix('LUM-LERDO');
         setBatchQty(50);
         fetchBatches();
@@ -713,6 +715,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
                   />
                 </div>
                 <div className="form-group">
+                  <label>Potencia / Watts del Lote</label>
+                  <select 
+                    value={batchWattage} 
+                    onChange={(e) => setBatchWattage(Number(e.target.value))}
+                    style={{ background: 'rgba(0,0,0,0.4)', color: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)' }}
+                  >
+                    <option value={50}>50 Watts</option>
+                    <option value={70}>70 Watts</option>
+                    <option value={100}>100 Watts</option>
+                    <option value={150}>150 Watts</option>
+                    <option value={200}>200 Watts</option>
+                  </select>
+                </div>
+                <div className="form-group">
                   <label>Fecha de Llegada</label>
                   <input 
                     type="date" 
@@ -751,8 +767,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onDataChange }) => {
                   <div key={batch.id} style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <h4 style={{ fontSize: '14px', fontWeight: 700, margin: 0, color: 'var(--neon-blue)' }}>{batch.code_prefix}</h4>
-                      <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                         <span>Total: <strong>{batch.total_quantity} piezas</strong></span>
+                        <span style={{ color: 'var(--neon-green)', fontWeight: 700 }}>⚡ {(batch as any).default_wattage || 100} Watts</span>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px' }}><Calendar size={12}/> {batch.arrival_date}</span>
                       </p>
                     </div>

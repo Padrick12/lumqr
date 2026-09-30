@@ -271,18 +271,20 @@ app.get('/api/batches', async (req, res) => {
 });
 
 app.post('/api/batches', async (req, res) => {
-  const { code_prefix, total_quantity, arrival_date } = req.body;
+  const { code_prefix, total_quantity, arrival_date, default_wattage } = req.body;
   if (!code_prefix || !total_quantity || !arrival_date) {
     return res.status(400).json({ error: 'Faltan parámetros requeridos para el lote.' });
   }
+
+  const parsedWattage = default_wattage ? Number(default_wattage) : null;
 
   try {
     // Start transaction
     await db.run('BEGIN TRANSACTION;');
 
     const batchResult = await db.run(
-      'INSERT INTO batches (code_prefix, total_quantity, arrival_date) VALUES (?, ?, ?)',
-      [code_prefix.toUpperCase(), total_quantity, arrival_date]
+      'INSERT INTO batches (code_prefix, total_quantity, arrival_date, default_wattage) VALUES (?, ?, ?, ?)',
+      [code_prefix.toUpperCase(), total_quantity, arrival_date, parsedWattage]
     );
     const batchId = batchResult.lastID;
 
@@ -307,8 +309,8 @@ app.post('/api/batches', async (req, res) => {
       const currentNum = startNum + i;
       const code = `${code_prefix.toUpperCase()}-${String(currentNum).padStart(4, '0')}`;
       await db.run(
-        'INSERT INTO fixtures (code, batch_id, crew_id, status) VALUES (?, ?, NULL, "Nueva")',
-        [code, batchId]
+        'INSERT INTO fixtures (code, batch_id, crew_id, status, default_wattage) VALUES (?, ?, NULL, "Nueva", ?)',
+        [code, batchId, parsedWattage]
       );
     }
 
@@ -317,7 +319,8 @@ app.post('/api/batches', async (req, res) => {
       id: batchId,
       code_prefix: code_prefix.toUpperCase(),
       total_quantity,
-      arrival_date
+      arrival_date,
+      default_wattage: parsedWattage
     });
   } catch (error) {
     await db.run('ROLLBACK;');
@@ -490,11 +493,12 @@ app.post('/api/installations/sync', async (req, res) => {
 
       const dateStr = item.installed_at || new Date().toISOString().slice(0, 19).replace('T', ' ');
       const syncWattage = item.wattage ? Number(item.wattage) : 70;
+      const offlineCode = item.offline_code || item.code || null;
 
       await db.run(
-        `INSERT INTO installations (fixture_code, crew_id, operator_name, lat, lng, installed_at, status_at_install, notes, photo_before, photo_after, wattage)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [item.code, finalCrewId, item.operator_name || null, item.lat, item.lng, dateStr, item.status, item.notes || 'Sincronizado Offline', item.photo_before || null, item.photo_after || null, syncWattage]
+        `INSERT INTO installations (fixture_code, crew_id, operator_name, lat, lng, installed_at, status_at_install, notes, photo_before, photo_after, wattage, offline_code)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [item.code, finalCrewId, item.operator_name || null, item.lat, item.lng, dateStr, item.status, item.notes || 'Sincronizado Offline', item.photo_before || null, item.photo_after || null, syncWattage, offlineCode]
       );
 
       await db.run(
@@ -537,11 +541,12 @@ app.post('/api/poles/sync', async (req, res) => {
         ? item.pole_code
         : `PST-${String(nextNum).padStart(5, '0')}`;
       const dateStr = item.created_at || new Date().toISOString().slice(0, 19).replace('T', ' ');
+      const offlineCode = item.pole_code || item.id || null;
 
       await db.run(
-        `INSERT INTO poles (pole_code, crew_id, operator_name, lat, lng, pole_type, lamp_type, zone_type, wattage, operating_status, notes, photo_before, photo_after, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [poleCode, item.crew_id, item.operator_name || null, item.lat, item.lng, item.pole_type || 'Concreto', item.lamp_type || 'Vapor de Sodio', item.zone_type || 'Urbana', item.wattage || null, item.operating_status || 'Funcionando', item.notes || 'Censo Offline', item.photo_before || null, item.photo_after || null, dateStr]
+        `INSERT INTO poles (pole_code, crew_id, operator_name, lat, lng, pole_type, lamp_type, zone_type, wattage, operating_status, notes, photo_before, photo_after, created_at, offline_code)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [poleCode, item.crew_id, item.operator_name || null, item.lat, item.lng, item.pole_type || 'Concreto', item.lamp_type || 'Vapor de Sodio', item.zone_type || 'Urbana', item.wattage || null, item.operating_status || 'Funcionando', item.notes || 'Censo Offline', item.photo_before || null, item.photo_after || null, dateStr, offlineCode]
       );
 
       await db.run('COMMIT;');
@@ -558,6 +563,33 @@ app.post('/api/poles/sync', async (req, res) => {
     failed_count: results.failed.length,
     results
   });
+});
+
+// Update pole details (Zone classification, lamp type, wattage, operating status)
+app.put('/api/poles/:id', async (req, res) => {
+  const { id } = req.params;
+  const { zone_type, lamp_type, wattage, operating_status, notes } = req.body;
+  try {
+    const existing = await db.get('SELECT * FROM poles WHERE id = ?', [id]);
+    if (!existing) {
+      return res.status(404).json({ error: 'Punto de iluminación no encontrado.' });
+    }
+
+    await db.run(
+      `UPDATE poles 
+       SET zone_type = COALESCE(?, zone_type), 
+           lamp_type = COALESCE(?, lamp_type), 
+           wattage = COALESCE(?, wattage), 
+           operating_status = COALESCE(?, operating_status), 
+           notes = COALESCE(?, notes) 
+       WHERE id = ?`,
+      [zone_type || null, lamp_type || null, wattage ? Number(wattage) : null, operating_status || null, notes || null, id]
+    );
+
+    res.json({ message: 'Punto de iluminación actualizado correctamente.', id: Number(id) });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Bulk sync for offline Incidents queue
