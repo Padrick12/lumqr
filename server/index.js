@@ -541,7 +541,12 @@ app.post('/api/poles/sync', async (req, res) => {
         ? item.pole_code
         : `PST-${String(nextNum).padStart(5, '0')}`;
       const dateStr = item.created_at || new Date().toISOString().slice(0, 19).replace('T', ' ');
-      const offlineCode = item.pole_code || item.id || null;
+      const rawOffline = item.pole_code || item.id || null;
+      const offlineCode = rawOffline 
+        ? (String(rawOffline).startsWith('PUNTO-OFFLINE-') 
+            ? String(rawOffline) 
+            : `PUNTO-OFFLINE-${String(rawOffline).split('_').pop()}`) 
+        : null;
 
       await db.run(
         `INSERT INTO poles (pole_code, crew_id, operator_name, lat, lng, pole_type, lamp_type, zone_type, wattage, operating_status, notes, photo_before, photo_after, created_at, offline_code)
@@ -587,6 +592,18 @@ app.put('/api/poles/:id', async (req, res) => {
     );
 
     res.json({ message: 'Punto de iluminación actualizado correctamente.', id: Number(id) });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update installation zone classification
+app.put('/api/installations/code/:code', async (req, res) => {
+  const { code } = req.params;
+  const { zone_type } = req.body;
+  try {
+    await db.run('UPDATE installations SET zone_type = ? WHERE fixture_code = ?', [zone_type || 'Urbana', code]);
+    res.json({ message: 'Clasificación de zona de instalación actualizada.' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -744,6 +761,12 @@ app.get('/api/reports', async (req, res) => {
     const polesCount = await db.get('SELECT COUNT(*) as count FROM poles');
     const polesByLamp = await db.all('SELECT lamp_type, COUNT(*) as count FROM poles GROUP BY lamp_type');
     const polesByZone = await db.all('SELECT zone_type, COUNT(*) as count FROM poles GROUP BY zone_type');
+    const instByZone = await db.all('SELECT zone_type, COUNT(*) as count FROM installations WHERE zone_type IS NOT NULL GROUP BY zone_type');
+
+    // Combine zone counts from poles and installations
+    const combinedZones = { Urbana: 0, Rural: 0, 'Trayectos Seguros': 0 };
+    polesByZone.forEach(curr => { if (curr.zone_type && combinedZones[curr.zone_type] !== undefined) combinedZones[curr.zone_type] += curr.count; });
+    instByZone.forEach(curr => { if (curr.zone_type && combinedZones[curr.zone_type] !== undefined) combinedZones[curr.zone_type] += curr.count; });
 
     // Crew Performance Metrics
     const crewPerformance = await db.all(`
@@ -767,15 +790,12 @@ app.get('/api/reports', async (req, res) => {
           acc[curr.status] = curr.count;
           return acc;
         }, { Nueva: 0, Reparada: 0, Rehabilitada: 0, Robo: 0 }),
-        total_poles: polesCount ? polesCount.count : 0,
+        total_poles: (polesCount ? polesCount.count : 0) + (installedCount ? installedCount.count : 0),
         poles_by_lamp: polesByLamp.reduce((acc, curr) => {
           acc[curr.lamp_type] = curr.count;
           return acc;
         }, { 'Vapor de Sodio': 0, 'LED Antiguo': 0, 'LED Nueva (Sin QR)': 0, 'Sin Lámpara': 0 }),
-        poles_by_zone: polesByZone.reduce((acc, curr) => {
-          acc[curr.zone_type] = curr.count;
-          return acc;
-        }, { Urbana: 0, Rural: 0, 'Trayectos Seguros': 0 })
+        poles_by_zone: combinedZones
       },
       crew_performance: crewPerformance,
       fixtures: allFixtures

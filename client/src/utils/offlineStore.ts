@@ -14,6 +14,7 @@ export interface OfflineInstallation {
 
 export interface OfflinePole {
   id: string; // unique code or timestamp
+  pole_code?: string;
   crew_id: number;
   operator_name?: string | null;
   lat: number;

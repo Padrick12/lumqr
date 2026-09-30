@@ -156,6 +156,9 @@ async function initializeDatabase() {
   try {
     await db.run('ALTER TABLE installations ADD COLUMN offline_code TEXT');
   } catch (e) {}
+  try {
+    await db.run("ALTER TABLE installations ADD COLUMN zone_type TEXT DEFAULT 'Urbana'");
+  } catch (e) {}
 
   // Seed default admin if no admin exists
   const adminCount = await db.get('SELECT COUNT(*) as count FROM admins');

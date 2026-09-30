@@ -276,6 +276,8 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
     return R * c;
   };
 
+  const [existingInstallationsList, setExistingInstallationsList] = useState<any[]>([]);
+
   const fetchPolesList = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/poles`);
@@ -288,8 +290,21 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
     }
   };
 
+  const fetchInstallationsList = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/installations`);
+      if (res.ok) {
+        const data = await res.json();
+        setExistingInstallationsList(Array.isArray(data) ? data : []);
+      }
+    } catch (e) {
+      console.warn("Error fetching existing installations list:", e);
+    }
+  };
+
   useEffect(() => {
     fetchPolesList();
+    fetchInstallationsList();
   }, []);
 
   const base64ToFile = async (dataUrl: string, filename: string): Promise<File> => {
@@ -624,7 +639,7 @@ ${typeLine}
       lng = -103.524;
     }
 
-    // GEO-PROXIMITY DUPLICATE CENSUS CHECK (< 15 METERS)
+    // GEO-PROXIMITY DUPLICATE CHECK (< 15 METERS) AGAINST CENSUS POLES
     const nearbyPole = (existingPolesList || []).find(p => {
       if (!p || typeof p.lat !== 'number' || typeof p.lng !== 'number') return false;
       const dist = getDistanceInMeters(lat, lng, p.lat, p.lng);
@@ -635,7 +650,25 @@ ${typeLine}
       const distMeters = getDistanceInMeters(lat, lng, nearbyPole.lat, nearbyPole.lng).toFixed(1);
       const poleDate = nearbyPole.created_at ? new Date(nearbyPole.created_at).toLocaleDateString('es-MX') : 'previamente';
       setPoleSubmitMsg({
-        text: `🚫 PREVENCIÓN DE DUPLICADO POR GPS: Ya existe un punto de iluminación censado a sólo ${distMeters}m de esta ubicación (${nearbyPole.pole_code} censado el ${poleDate} por ${nearbyPole.crew_name || 'otra cuadrilla'}).`,
+        text: `🚫 PREVENCIÓN DE DUPLICADO POR GPS: Ya existe un punto censado a sólo ${distMeters}m de esta ubicación (${nearbyPole.pole_code} censado el ${poleDate} por ${nearbyPole.crew_name || 'otra cuadrilla'}).`,
+        isError: true
+      });
+      setLoadingPole(false);
+      setIsSubmittingPole(false);
+      return;
+    }
+
+    // GEO-PROXIMITY DUPLICATE CHECK (< 15 METERS) AGAINST INSTALLED QR FIXTURES
+    const nearbyInstallation = (existingInstallationsList || []).find(i => {
+      if (!i || typeof i.lat !== 'number' || typeof i.lng !== 'number') return false;
+      const dist = getDistanceInMeters(lat, lng, i.lat, i.lng);
+      return dist <= 15;
+    });
+
+    if (nearbyInstallation) {
+      const distMeters = getDistanceInMeters(lat, lng, nearbyInstallation.lat, nearbyInstallation.lng).toFixed(1);
+      setPoleSubmitMsg({
+        text: `🚫 PUNTO YA REGISTRADO POR LUMINARIA QR: Ya existe una luminaria QR instalada en esta ubicación a sólo ${distMeters}m (${nearbyInstallation.fixture_code} instalada por ${nearbyInstallation.crew_name || 'otra cuadrilla'}). No requiere censarse de nuevo.`,
         isError: true
       });
       setLoadingPole(false);
@@ -652,6 +685,7 @@ ${typeLine}
 
       await addToPolesQueue({
         id: poleId,
+        pole_code: tempCode,
         crew_id: crewId,
         operator_name: operatorName.trim() || null,
         lat,
@@ -1197,13 +1231,13 @@ ${typeLine}
       )}
 
       {/* TARJETA DE RESPONSABLE EN TURNO Y SEMÁFORO GPS */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '12px', alignItems: 'center' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', alignItems: 'stretch' }}>
         <div className="glass-panel" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '14px', border: '1px solid rgba(5, 243, 162, 0.3)', background: 'rgba(5, 243, 162, 0.04)' }}>
-          <UserCheck color="var(--neon-green)" size={22} />
-          <div style={{ flex: 1 }}>
-            <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-              Responsable en Turno / Operador ({displayCrewName}):
-              {isAdminAssigned && <span style={{ fontSize: '10px', color: 'var(--neon-green)', background: 'rgba(5,243,162,0.15)', padding: '2px 6px', borderRadius: '4px' }}>🟢 Oficial (Designado por Admin)</span>}
+          <UserCheck color="var(--neon-green)" size={22} style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', flexWrap: 'wrap' }}>
+              Responsable ({displayCrewName}):
+              {isAdminAssigned && <span style={{ fontSize: '9px', color: 'var(--neon-green)', background: 'rgba(5,243,162,0.15)', padding: '2px 5px', borderRadius: '4px' }}>🟢 Oficial</span>}
             </label>
             
             <div 
@@ -1215,20 +1249,23 @@ ${typeLine}
                 width: '100%', 
                 fontSize: '13px', 
                 fontWeight: 700, 
-                padding: '9px 12px',
+                padding: '8px 10px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                userSelect: 'none'
+                userSelect: 'none',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
               }}
             >
-              <span>👤 {operatorName.trim() || 'Sin asignar (Designar en Panel Admin)'}</span>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>👤 {operatorName.trim() || 'Sin asignar'}</span>
             </div>
           </div>
         </div>
 
         {/* SEMÁFORO DE PRECISIÓN GPS */}
-        <div className="glass-panel" style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center', minWidth: '160px', border: gpsAccuracy === null ? '1px solid var(--border-color)' : gpsAccuracy <= 15 ? '1px solid var(--neon-green)' : gpsAccuracy <= 50 ? '1px solid var(--neon-amber)' : '1px solid var(--neon-rose)', background: gpsAccuracy === null ? 'rgba(0,0,0,0.2)' : gpsAccuracy <= 15 ? 'rgba(5,243,162,0.08)' : gpsAccuracy <= 50 ? 'rgba(245,158,11,0.08)' : 'rgba(244,63,94,0.08)' }}>
+        <div className="glass-panel" style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center', justifyContent: 'center', border: gpsAccuracy === null ? '1px solid var(--border-color)' : gpsAccuracy <= 15 ? '1px solid var(--neon-green)' : gpsAccuracy <= 50 ? '1px solid var(--neon-amber)' : '1px solid var(--neon-rose)', background: gpsAccuracy === null ? 'rgba(0,0,0,0.2)' : gpsAccuracy <= 15 ? 'rgba(5,243,162,0.08)' : gpsAccuracy <= 50 ? 'rgba(245,158,11,0.08)' : 'rgba(244,63,94,0.08)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 800 }}>
             <Navigation size={14} color={gpsAccuracy === null ? 'var(--text-muted)' : gpsAccuracy <= 15 ? 'var(--neon-green)' : gpsAccuracy <= 50 ? 'var(--neon-amber)' : 'var(--neon-rose)'} />
             <span>GPS: {gpsAccuracy === null ? 'Midiendo...' : `± ${gpsAccuracy} m`}</span>
@@ -1248,7 +1285,7 @@ ${typeLine}
       </div>
 
       {/* Selector de Modo: Registro QR vs Censo de Postes vs Incidencias / Cortos */}
-      <div style={{ display: 'flex', gap: '8px', background: 'rgba(13, 20, 38, 0.8)', padding: '6px', borderRadius: '12px', border: '1px solid var(--border-color)', flexWrap: 'wrap' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px', background: 'rgba(13, 20, 38, 0.8)', padding: '6px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
         <button
           onClick={() => handleModeChange('qr')}
           style={{

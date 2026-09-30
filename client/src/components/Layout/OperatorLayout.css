@@ -110,13 +110,25 @@
 
 @media (max-width: 768px) {
   .operator-header {
-    padding: 0 16px;
+    height: 70px;
+    padding: 0 12px;
   }
-  .operator-content {
-    padding: 16px;
+  .operator-brand {
+    gap: 8px;
+  }
+  .logo-badge-small {
+    width: 32px;
+    height: 32px;
+    font-size: 13px;
+  }
+  .brand-text p {
+    display: none;
   }
   .brand-text h2 {
-    font-size: 16px;
+    font-size: 15px;
+  }
+  .operator-content {
+    padding: 12px 10px;
   }
   .logout-btn {
     width: 36px;
