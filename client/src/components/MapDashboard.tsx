@@ -486,14 +486,21 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
       ` : '';
 
       const usageStat = maintenanceStats.find(m => m.fixture_code === inst.fixture_code);
+      const usagePercentText = usageStat
+        ? (usageStat.lifePercentage < 0.1 && usageStat.usedHours > 0 ? usageStat.lifePercentage.toFixed(2) : usageStat.lifePercentage.toFixed(1))
+        : '0.0';
+      const usageVisualWidth = usageStat
+        ? (usageStat.usedHours > 0 ? Math.max(2, Math.min(100, usageStat.lifePercentage)) : 0)
+        : 0;
+
       const usageHTML = usageStat ? `
         <div style="margin-top: 6px;">
           <div style="display: flex; justify-content: space-between; font-size: 9px; color: #94a3b8; margin-bottom: 2px;">
             <span>Vida Útil (30k hrs)</span>
-            <span>${usageStat.usedHours.toLocaleString()} hrs (${usageStat.lifePercentage.toFixed(1)}%)</span>
+            <span>${usageStat.usedHours.toLocaleString()} hrs (${usagePercentText}%)</span>
           </div>
           <div style="width: 100%; background: rgba(255,255,255,0.1); border-radius: 2px; height: 4px;">
-            <div style="width: ${usageStat.lifePercentage}%; background: ${usageStat.lifePercentage > 90 ? '#f59e0b' : '#05f3a2'}; height: 100%; border-radius: 2px;"></div>
+            <div style="width: ${usageVisualWidth}%; background: ${usageStat.lifePercentage > 90 ? '#f59e0b' : '#05f3a2'}; height: 100%; border-radius: 2px;"></div>
           </div>
         </div>
       ` : '';
@@ -757,28 +764,37 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
             <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '12px' }}>
               Basado en una vida útil estándar de 30,000 horas (aprox. 12h/día de uso).
             </p>
-            {maintenanceStats.slice(0, 5).map(stat => (
-              <div key={stat.fixture_code} style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)', marginBottom: '8px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <strong style={{ fontSize: '13px', fontFamily: 'monospace', color: 'var(--text-main)' }}>{stat.fixture_code}</strong>
-                  <span style={{ fontSize: '11px', color: stat.lifePercentage > 90 ? 'var(--neon-amber)' : 'var(--neon-blue)', fontWeight: 600 }}>
-                    {stat.usedHours.toLocaleString()} hrs
-                  </span>
+            {maintenanceStats.slice(0, 5).map(stat => {
+              const displayPercent = stat.lifePercentage < 0.1 && stat.usedHours > 0
+                ? stat.lifePercentage.toFixed(2)
+                : stat.lifePercentage.toFixed(1);
+              const visualWidth = stat.usedHours > 0
+                ? Math.max(3, Math.min(100, stat.lifePercentage))
+                : 0;
+
+              return (
+                <div key={stat.fixture_code} style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <strong style={{ fontSize: '13px', fontFamily: 'monospace', color: 'var(--text-main)' }}>{stat.fixture_code}</strong>
+                    <span style={{ fontSize: '11px', color: stat.lifePercentage > 90 ? 'var(--neon-amber)' : 'var(--neon-blue)', fontWeight: 600 }}>
+                      {stat.usedHours.toLocaleString()} hrs
+                    </span>
+                  </div>
+                  <div style={{ width: '100%', background: 'rgba(0,0,0,0.5)', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{ 
+                      width: `${visualWidth}%`, 
+                      background: stat.lifePercentage > 90 ? 'var(--neon-amber)' : 'linear-gradient(90deg, var(--neon-blue), var(--neon-emerald))', 
+                      height: '100%', 
+                      borderRadius: '3px' 
+                    }}></div>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '9px', color: 'var(--text-muted)' }}>
+                    <span>{displayPercent}% consumido</span>
+                    <span>Max: 30k hrs</span>
+                  </div>
                 </div>
-                <div style={{ width: '100%', background: 'rgba(0,0,0,0.5)', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
-                  <div style={{ 
-                    width: `${stat.lifePercentage}%`, 
-                    background: stat.lifePercentage > 90 ? 'var(--neon-amber)' : 'linear-gradient(90deg, var(--neon-blue), var(--neon-emerald))', 
-                    height: '100%', 
-                    borderRadius: '3px' 
-                  }}></div>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '9px', color: 'var(--text-muted)' }}>
-                  <span>{stat.lifePercentage.toFixed(1)}% consumido</span>
-                  <span>Max: 30k hrs</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
