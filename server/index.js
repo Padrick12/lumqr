@@ -803,6 +803,15 @@ app.post('/api/poles', async (req, res) => {
   }
 });
 
+app.delete('/api/poles/reset/all', async (req, res) => {
+  try {
+    const result = await db.run('DELETE FROM poles;');
+    res.json({ message: `Se eliminaron todos los puntos de iluminación del censo de prueba (${result.changes} registros borrados).` });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.delete('/api/poles/:id', async (req, res) => {
   const { id } = req.params;
   try {
@@ -811,15 +820,6 @@ app.delete('/api/poles/:id', async (req, res) => {
       return res.status(404).json({ error: 'Poste no encontrado.' });
     }
     res.json({ message: 'Poste eliminado del censo.' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.delete('/api/poles/reset/all', async (req, res) => {
-  try {
-    const result = await db.run('DELETE FROM poles;');
-    res.json({ message: `Se eliminaron todos los puntos de iluminación del censo de prueba (${result.changes} registros borrados).` });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
