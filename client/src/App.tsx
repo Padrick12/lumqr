@@ -13,6 +13,8 @@ function App() {
   const [role, setRole] = useState<'admin' | 'operator' | null>(() => {
     const savedAdmin = localStorage.getItem('lumqr_admin_session');
     if (savedAdmin) return 'admin';
+    const savedOperator = localStorage.getItem('lumqr_operator_session');
+    if (savedOperator) return 'operator';
     return null;
   });
 
@@ -21,6 +23,12 @@ function App() {
     if (savedAdmin) {
       try {
         return JSON.parse(savedAdmin);
+      } catch (e) {}
+    }
+    const savedOperator = localStorage.getItem('lumqr_operator_session');
+    if (savedOperator) {
+      try {
+        return JSON.parse(savedOperator);
       } catch (e) {}
     }
     return null;
@@ -36,6 +44,7 @@ function App() {
 
   const handleLogout = () => {
     localStorage.removeItem('lumqr_admin_session');
+    localStorage.removeItem('lumqr_operator_session');
     setRole(null);
     setUserData(null);
     setActiveTab('map');
@@ -48,6 +57,8 @@ function App() {
     }
     if (selectedRole === 'admin') {
       localStorage.setItem('lumqr_admin_session', JSON.stringify(data || { id: 1, name: 'Administrador' }));
+    } else if (selectedRole === 'operator') {
+      localStorage.setItem('lumqr_operator_session', JSON.stringify(data || { id: 1, name: 'Cuadrilla' }));
     }
   };
 
