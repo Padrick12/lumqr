@@ -224,11 +224,30 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
     const MAX_HOURS = 30000;
     const WARNING_HOURS = 27000; // 90%
 
+    const parseDateHelper = (dateStr: string): Date => {
+      if (!dateStr) return new Date();
+      let safeStr = dateStr;
+      if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}$/.test(dateStr)) {
+        safeStr = dateStr.replace(' ', 'T') + 'Z';
+      } else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(dateStr)) {
+        safeStr = dateStr + 'Z';
+      }
+      const d = new Date(safeStr);
+      return isNaN(d.getTime()) ? new Date() : d;
+    };
+
     const withUsage: InstallationWithUsage[] = installations.map(inst => {
-      const installDate = new Date(inst.installed_at);
-      const diffDays = Math.max(0, (currentDate.getTime() - installDate.getTime()) / (1000 * 60 * 60 * 24));
-      // Assume 12 hours of usage per day (night time)
-      const usedHours = Math.round(diffDays * 12);
+      const installDate = parseDateHelper(inst.installed_at);
+      const diffMs = Math.max(0, currentDate.getTime() - installDate.getTime());
+      const diffHoursTotal = diffMs / (1000 * 60 * 60);
+
+      let usedHours = 0;
+      if (diffHoursTotal <= 24) {
+        usedHours = Math.min(12, Math.max(1, Math.round(diffHoursTotal)));
+      } else {
+        const diffDays = diffHoursTotal / 24;
+        usedHours = Math.round(diffDays * 12);
+      }
       const lifePercentage = Math.min((usedHours / MAX_HOURS) * 100, 100);
       
       return { ...inst, usedHours, lifePercentage };
