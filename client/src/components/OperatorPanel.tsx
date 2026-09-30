@@ -155,6 +155,8 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
   };
 
   const handleModeChange = (mode: 'qr' | 'census' | 'incident') => {
+    setIsScannerActive(false);
+    stopScannerSafely();
     setPanelMode(mode);
     setPhotoBefore(null);
     setPhotoAfter(null);
@@ -623,7 +625,8 @@ ${typeLine}
     }
 
     // GEO-PROXIMITY DUPLICATE CENSUS CHECK (< 15 METERS)
-    const nearbyPole = existingPolesList.find(p => {
+    const nearbyPole = (existingPolesList || []).find(p => {
+      if (!p || typeof p.lat !== 'number' || typeof p.lng !== 'number') return false;
       const dist = getDistanceInMeters(lat, lng, p.lat, p.lng);
       return dist <= 15;
     });
