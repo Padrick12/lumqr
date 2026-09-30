@@ -661,6 +661,17 @@ app.delete('/api/fixtures/:code/reset', async (req, res) => {
   }
 });
 
+// Reset all installations back to fresh state
+app.delete('/api/installations/reset/all', async (req, res) => {
+  try {
+    await db.run('DELETE FROM installations;');
+    await db.run('UPDATE fixtures SET status = "Nueva";');
+    res.json({ message: 'Todas las instalaciones fueron eliminadas de la base de datos y el inventario volvió a estado Nueva.' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Delete a fixture completely
 app.delete('/api/fixtures/:code', async (req, res) => {
   const { code } = req.params;
