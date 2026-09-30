@@ -816,6 +816,15 @@ app.delete('/api/poles/:id', async (req, res) => {
   }
 });
 
+app.delete('/api/poles/reset/all', async (req, res) => {
+  try {
+    const result = await db.run('DELETE FROM poles;');
+    res.json({ message: `Se eliminaron todos los puntos de iluminación del censo de prueba (${result.changes} registros borrados).` });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.delete('/api/poles/code/:code', async (req, res) => {
   const { code } = req.params;
   try {
