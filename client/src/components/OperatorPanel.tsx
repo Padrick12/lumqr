@@ -128,6 +128,10 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
     loadPendingWhatsAppList();
   }, []);
 
+  const [displayCrewName, setDisplayCrewName] = useState<string>(() => {
+    return (crewId && localStorage.getItem(`lumqr_crew_name_${crewId}`)) || crewName || 'Cuadrilla';
+  });
+
   const registerSuccessAndQueueWhatsApp = async (successObj: any) => {
     setLastSuccessData(successObj);
     const pendingMsg: PendingWhatsAppMsg = {
@@ -143,7 +147,7 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
       photoBefore: successObj.photoBefore,
       photoAfter: successObj.photoAfter,
       operatorName: operatorName.trim(),
-      crewName,
+      crewName: displayCrewName,
       created_at: new Date().toISOString()
     };
     await addPendingWhatsApp(pendingMsg);
@@ -162,6 +166,13 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
       .then(crews => {
         const currentCrew = Array.isArray(crews) ? crews.find((c: any) => c.id === crewId) : null;
         if (currentCrew) {
+          if (currentCrew.name) {
+            setDisplayCrewName(currentCrew.name);
+            if (crewId) {
+              localStorage.setItem(`lumqr_crew_name_${crewId}`, currentCrew.name);
+              localStorage.setItem('lumqr_operator_session', JSON.stringify({ id: crewId, name: currentCrew.name }));
+            }
+          }
           if (currentCrew.active_operator) {
             setOperatorName(currentCrew.active_operator);
             setIsAdminAssigned(true);
@@ -176,6 +187,10 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
       })
       .catch(err => {
         console.error("Error loading crew details (offline fallback):", err);
+        const savedCrewName = crewId && localStorage.getItem(`lumqr_crew_name_${crewId}`);
+        if (savedCrewName) {
+          setDisplayCrewName(savedCrewName);
+        }
         const saved = (crewId && localStorage.getItem(`lumqr_operator_name_${crewId}`)) || localStorage.getItem('lumqr_operator_name');
         if (saved) {
           setOperatorName(saved);
@@ -1144,7 +1159,7 @@ ${typeLine}
           <UserCheck color="var(--neon-green)" size={22} />
           <div style={{ flex: 1 }}>
             <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-              Responsable en Turno / Operador ({crewName}):
+              Responsable en Turno / Operador ({displayCrewName}):
               {isAdminAssigned && <span style={{ fontSize: '10px', color: 'var(--neon-green)', background: 'rgba(5,243,162,0.15)', padding: '2px 6px', borderRadius: '4px' }}>🟢 Oficial (Designado por Admin)</span>}
             </label>
             
