@@ -643,6 +643,70 @@ ${typeLine}
       return;
     }
 
+    const isOnline = navigator.onLine && !isSimulatedOffline;
+
+    const savePoleLocally = async () => {
+      const randSuffix = Math.floor(1000 + Math.random() * 9000);
+      const tempCode = `PUNTO-OFFLINE-${randSuffix}`;
+      const poleId = `POLE_OFFLINE_${Date.now()}_${randSuffix}`;
+
+      await addToPolesQueue({
+        id: poleId,
+        crew_id: crewId,
+        operator_name: operatorName.trim() || null,
+        lat,
+        lng,
+        pole_type: poleType,
+        lamp_type: lampType,
+        zone_type: zoneType,
+        wattage: wattage ? Number(wattage) : null,
+        operating_status: operatingStatus,
+        notes: poleNotes,
+        photo_before: photoBefore,
+        photo_after: photoAfter,
+        created_at: new Date().toISOString()
+      });
+
+      setPoleSubmitMsg({
+        text: `¡Punto de iluminación (${tempCode}) guardado localmente en Modo Offline! Se asignará número oficial al sincronizar.`,
+        isError: false
+      });
+
+      registerSuccessAndQueueWhatsApp({
+        type: 'pole',
+        code: `${tempCode} (Pendiente Sync)`,
+        status: `${lampType} | ${operatingStatus}`,
+        wattage: wattage || null,
+        lat,
+        lng,
+        date: new Date().toISOString(),
+        notes: poleNotes,
+        photoBefore,
+        photoAfter
+      });
+
+      setPoleNotes('');
+      setWattage('');
+      setLampType('LED Nueva (Sin QR)');
+      setOperatingStatus('Funcionando');
+      setZoneType('Urbana');
+      setPoleType('Concreto');
+      setPhotoBefore(null);
+      setPhotoAfter(null);
+    };
+
+    if (!isOnline) {
+      try {
+        await savePoleLocally();
+      } catch (localErr) {
+        setPoleSubmitMsg({ text: 'Error al guardar el censo localmente en el dispositivo.', isError: true });
+      } finally {
+        setLoadingPole(false);
+        setIsSubmittingPole(false);
+      }
+      return;
+    }
+
     try {
       const res = await fetch(`${API_BASE_URL}/api/poles`, {
         method: 'POST',
@@ -662,9 +726,11 @@ ${typeLine}
           photo_after: photoAfter
         })
       });
+
       const data = await res.json();
-      if (!res.ok) {
-        setPoleSubmitMsg({ text: data.error || 'Error al censar punto de iluminación.', isError: true });
+
+      if (!res.ok || !data || !data.pole_code) {
+        throw new Error(data?.error || 'No se pudo obtener el folio del servidor.');
       } else {
         setPoleSubmitMsg({ text: `¡Punto de iluminación ${data.pole_code} censado con éxito en ${zoneType}!`, isError: false });
         registerSuccessAndQueueWhatsApp({
@@ -692,43 +758,7 @@ ${typeLine}
       }
     } catch (err) {
       try {
-        const poleId = `POLE_OFFLINE_${Date.now()}`;
-        await addToPolesQueue({
-          id: poleId,
-          crew_id: crewId,
-          operator_name: operatorName.trim() || null,
-          lat,
-          lng,
-          pole_type: poleType,
-          lamp_type: lampType,
-          zone_type: zoneType,
-          wattage: wattage ? Number(wattage) : null,
-          operating_status: operatingStatus,
-          notes: poleNotes,
-          photo_before: photoBefore,
-          photo_after: photoAfter,
-          created_at: new Date().toISOString()
-        });
-        setPoleSubmitMsg({
-          text: `¡Punto de iluminación censado y guardado localmente en Modo Offline!`,
-          isError: false
-        });
-        registerSuccessAndQueueWhatsApp({
-          type: 'pole',
-          code: `PUNTO-OFFLINE-${Date.now().toString().slice(-4)}`,
-          status: `${lampType} | ${operatingStatus}`,
-          wattage: wattage || null,
-          lat,
-          lng,
-          date: new Date().toISOString(),
-          notes: poleNotes,
-          photoBefore,
-          photoAfter
-        });
-        setPoleNotes('');
-        setWattage('');
-        setPhotoBefore(null);
-        setPhotoAfter(null);
+        await savePoleLocally();
       } catch (localErr) {
         setPoleSubmitMsg({ text: 'Error de red y fallo al guardar censo de forma local.', isError: true });
       }
