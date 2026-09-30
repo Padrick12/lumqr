@@ -201,6 +201,19 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
       });
   }, [crewId]);
 
+  useEffect(() => {
+    if (crewId) {
+      fetch(`${API_BASE_URL}/api/crews/${crewId}/assigned-fixtures`)
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            localStorage.setItem(`lumqr_assigned_fixtures_${crewId}`, JSON.stringify(data));
+          }
+        })
+        .catch(err => console.warn("Error caching assigned fixtures:", err));
+    }
+  }, [crewId]);
+
   const isSinLamp = lampType === 'Sin Lámpara';
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
@@ -995,15 +1008,32 @@ ${typeLine}
     setHistoryLog([]);
 
     const isOnline = navigator.onLine && !isSimulatedOffline;
+
     if (!isOnline) {
+      const savedAssignedRaw = localStorage.getItem(`lumqr_assigned_fixtures_${crewId}`);
+      let assignedList: any[] = [];
+      try {
+        if (savedAssignedRaw) assignedList = JSON.parse(savedAssignedRaw);
+      } catch (e) {}
+
+      const match = assignedList.find((item: any) => item.code === code);
+
+      if (!match) {
+        setSearchError(`⛔ ACCESO DENEGADO / NO DISPONIBLE (MODO OFFLINE): El código ${code} no consta como asignado a su cuadrilla en la memoria local del teléfono. Debe asignarse previamente en Almacén mientras esté en línea.`);
+        setLoadingSearch(false);
+        return;
+      }
+
+      const assignedWattage = String(match.default_wattage || match.batch_wattage || 100);
       setFixtureDetails({
-        code,
-        status: 'Nueva',
+        code: match.code,
+        status: match.status || 'Nueva',
         crew_id: crewId,
         crew_name: crewName,
         arrival_date: new Date().toISOString().split('T')[0]
       });
-      setSearchError('Modo Offline: No se puede obtener el historial. Puede registrar la instalación y se sincronizará más tarde.');
+      setQrWattage(assignedWattage);
+      setSearchError('Modo Offline: Custodia verificada en memoria del teléfono. Puede registrar la instalación.');
       setLoadingSearch(false);
       return;
     }
@@ -1024,6 +1054,9 @@ ${typeLine}
           setSearchError(`⛔ ACCESO DENEGADO: La luminaria ${code} está asignada a la cuadrilla "${data.fixture.crew_name || 'otra cuadrilla'}". Su perfil no puede registrarla.`);
           return;
         }
+
+        const autoWattage = String(data.fixture.default_wattage || data.fixture.batch_wattage || 100);
+        setQrWattage(autoWattage);
 
         setFixtureDetails({
           code: data.fixture.code,
@@ -1829,20 +1862,11 @@ ${typeLine}
                 </div>
 
                 <div className="form-group">
-                  <label>⚡ Potencia / Watts de la Luminaria (W):</label>
-                  <select 
-                    value={qrWattage} 
-                    onChange={(e) => setQrWattage(e.target.value)}
-                    style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', color: '#fff', fontSize: '13px' }}
-                  >
-                    <option value="50">50 Watts LED</option>
-                    <option value="70">70 Watts LED</option>
-                    <option value="100">100 Watts LED</option>
-                    <option value="150">150 Watts LED</option>
-                    <option value="200">200 Watts LED</option>
-                    <option value="250">250 Watts LED</option>
-                    <option value="300">300 Watts LED</option>
-                  </select>
+                  <label>⚡ Potencia de Lámpara QR (Definida en Lote):</label>
+                  <div style={{ padding: '10px 14px', background: 'rgba(5, 243, 162, 0.08)', border: '1px solid rgba(5, 243, 162, 0.3)', borderRadius: '8px', color: 'var(--neon-green)', fontWeight: 800, fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>⚡ {qrWattage || 100} Watts LED</span>
+                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>🔒 Bloqueado (Configurado en Lote)</span>
+                  </div>
                 </div>
               </div>
 

@@ -675,7 +675,7 @@ app.get('/api/fixtures/:code/history', async (req, res) => {
   const { code } = req.params;
   try {
     const fixture = await db.get(`
-      SELECT f.*, c.name as crew_name, b.arrival_date 
+      SELECT f.*, c.name as crew_name, b.arrival_date, b.default_wattage as batch_wattage
       FROM fixtures f
       LEFT JOIN crews c ON f.crew_id = c.id
       JOIN batches b ON f.batch_id = b.id
@@ -695,6 +695,23 @@ app.get('/api/fixtures/:code/history', async (req, res) => {
     `, [code]);
 
     res.json({ fixture, history });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET all fixtures assigned to a specific crew for offline caching & custody verification
+app.get('/api/crews/:id/assigned-fixtures', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const fixtures = await db.all(`
+      SELECT f.code, f.status, f.crew_id, f.default_wattage, b.default_wattage as batch_wattage, c.name as crew_name
+      FROM fixtures f
+      JOIN batches b ON f.batch_id = b.id
+      LEFT JOIN crews c ON f.crew_id = c.id
+      WHERE f.crew_id = ?
+    `, [id]);
+    res.json(fixtures);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
