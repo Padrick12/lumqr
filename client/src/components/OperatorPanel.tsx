@@ -50,7 +50,7 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
 
   // Operator Shift State
   const [operatorName, setOperatorName] = useState<string>(() => {
-    return localStorage.getItem('lumqr_operator_name') || '';
+    return localStorage.getItem(`lumqr_operator_name_${crewId}`) || localStorage.getItem('lumqr_operator_name') || '';
   });
 
   // Photo Evidence State
@@ -106,7 +106,10 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
   const [incidentSubmitMsg, setIncidentSubmitMsg] = useState({ text: '', isError: false });
   const [loadingIncident, setLoadingIncident] = useState(false);
 
-  const [isAdminAssigned, setIsAdminAssigned] = useState<boolean>(false);
+  const [isAdminAssigned, setIsAdminAssigned] = useState<boolean>(() => {
+    const savedName = localStorage.getItem(`lumqr_operator_name_${crewId}`) || localStorage.getItem('lumqr_operator_name');
+    return !!(savedName && savedName.trim());
+  });
 
   // Offline Pending WhatsApp Drawer States
   const [pendingWhatsAppList, setPendingWhatsAppList] = useState<PendingWhatsAppMsg[]>([]);
@@ -162,12 +165,23 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
           if (currentCrew.active_operator) {
             setOperatorName(currentCrew.active_operator);
             setIsAdminAssigned(true);
+            localStorage.setItem('lumqr_operator_name', currentCrew.active_operator);
+            if (crewId) {
+              localStorage.setItem(`lumqr_operator_name_${crewId}`, currentCrew.active_operator);
+            }
           } else {
             setIsAdminAssigned(false);
           }
         }
       })
-      .catch(err => console.error("Error loading crew details:", err));
+      .catch(err => {
+        console.error("Error loading crew details (offline fallback):", err);
+        const saved = (crewId && localStorage.getItem(`lumqr_operator_name_${crewId}`)) || localStorage.getItem('lumqr_operator_name');
+        if (saved) {
+          setOperatorName(saved);
+          setIsAdminAssigned(true);
+        }
+      });
   }, [crewId]);
 
   const isSinLamp = lampType === 'Sin Lámpara';
