@@ -65,7 +65,7 @@ export const ReportsPanel: React.FC = () => {
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [recordTypeFilter, setRecordTypeFilter] = useState<'all' | 'qr' | 'poles' | 'incidents'>('all');
-  const [includeDapAudit, setIncludeDapAudit] = useState<boolean>(true);
+  const [includeDapAudit, setIncludeDapAudit] = useState<boolean>(false);
 
   useEffect(() => {
     fetchReportData();
@@ -748,50 +748,52 @@ export const ReportsPanel: React.FC = () => {
             </div>
           </div>
 
-          {/* CFE DAP AUDIT SUMMARY BOX IN DASHBOARD */}
-          <div className="glass-panel" style={{ padding: '20px', border: '1px solid rgba(56, 189, 248, 0.4)', background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.08) 0%, rgba(13, 20, 38, 0.8) 100%)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--neon-blue)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Zap size={20} color="var(--neon-amber)" />
-                <span>Auditoría de Consumo Energético CFE (DAP Municipal)</span>
-              </h3>
-              <span style={{ fontSize: '11px', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', padding: '4px 10px', borderRadius: '12px', border: '1px solid rgba(56, 189, 248, 0.3)', fontWeight: 700 }}>
-                Base de Cálculo Auditada para CFE
-              </span>
-            </div>
-
-            <div className="metrics-grid">
-              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
-                <span className="metric-label" style={{ color: 'var(--neon-amber)' }}>Carga Conectada Total</span>
-                <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--neon-amber)', marginTop: '4px' }}>
-                  {totalWattsCombined.toLocaleString()} W
-                </div>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>({totalKwCombined} kW combinados)</span>
+          {/* CFE DAP AUDIT SUMMARY BOX IN DASHBOARD (HIDDEN FOR NOW) */}
+          {includeDapAudit && (
+            <div className="glass-panel" style={{ padding: '20px', border: '1px solid rgba(56, 189, 248, 0.4)', background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.08) 0%, rgba(13, 20, 38, 0.8) 100%)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--neon-blue)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Zap size={20} color="var(--neon-amber)" />
+                  <span>Auditoría de Consumo Energético CFE (DAP Municipal)</span>
+                </h3>
+                <span style={{ fontSize: '11px', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', padding: '4px 10px', borderRadius: '12px', border: '1px solid rgba(56, 189, 248, 0.3)', fontWeight: 700 }}>
+                  Base de Cálculo Auditada para CFE
+                </span>
               </div>
 
-              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
-                <span className="metric-label" style={{ color: 'var(--neon-green)' }}>Consumo Diario Estimado</span>
-                <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--neon-green)', marginTop: '4px' }}>
-                  {dailyKwh} kWh / día
+              <div className="metrics-grid">
+                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
+                  <span className="metric-label" style={{ color: 'var(--neon-amber)' }}>Carga Conectada Total</span>
+                  <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--neon-amber)', marginTop: '4px' }}>
+                    {totalWattsCombined.toLocaleString()} W
+                  </div>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>({totalKwCombined} kW combinados)</span>
                 </div>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>(operación 12 hrs/noche)</span>
+
+                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
+                  <span className="metric-label" style={{ color: 'var(--neon-green)' }}>Consumo Diario Estimado</span>
+                  <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--neon-green)', marginTop: '4px' }}>
+                    {dailyKwh} kWh / día
+                  </div>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>(operación 12 hrs/noche)</span>
+                </div>
+
+                <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(59, 130, 246, 0.3)', textAlign: 'center' }}>
+                  <span className="metric-label" style={{ color: 'var(--neon-blue)' }}>Consumo Mensual Facturable</span>
+                  <div style={{ fontSize: '24px', fontWeight: 800, color: '#60a5fa', marginTop: '4px' }}>
+                    {monthlyKwh} kWh / mes
+                  </div>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>(período 30 días CFE)</span>
+                </div>
               </div>
 
-              <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(59, 130, 246, 0.3)', textAlign: 'center' }}>
-                <span className="metric-label" style={{ color: 'var(--neon-blue)' }}>Consumo Mensual Facturable</span>
-                <div style={{ fontSize: '24px', fontWeight: 800, color: '#60a5fa', marginTop: '4px' }}>
-                  {monthlyKwh} kWh / mes
-                </div>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>(período 30 días CFE)</span>
+              <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px dashed var(--border-color)', display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-muted)', flexWrap: 'wrap', gap: '10px' }}>
+                <div>💡 <strong>Luminarias QR LED:</strong> {filteredInstallations.length} unidades ({totalWattsQR.toLocaleString()} W)</div>
+                <div>📍 <strong>Puntos de Iluminación:</strong> {filteredPoles.length} censados ({totalWattsPoles.toLocaleString()} W)</div>
+                <div>📋 <strong>Fórmula CFE:</strong> DAP = (Total Watts × 12 hrs × 30 días) ÷ 1,000</div>
               </div>
             </div>
-
-            <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px dashed var(--border-color)', display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-muted)', flexWrap: 'wrap', gap: '10px' }}>
-              <div>💡 <strong>Luminarias QR LED:</strong> {filteredInstallations.length} unidades ({totalWattsQR.toLocaleString()} W)</div>
-              <div>📍 <strong>Puntos de Iluminación:</strong> {filteredPoles.length} censados ({totalWattsPoles.toLocaleString()} W)</div>
-              <div>📋 <strong>Fórmula CFE:</strong> DAP = (Total Watts × 12 hrs × 30 días) ÷ 1,000</div>
-            </div>
-          </div>
+          )}
 
           {/* CLASIFICACIÓN DE ZONAS & TRAYECTOS SEGUROS */}
           <div className="glass-panel" style={{ padding: '20px' }}>
