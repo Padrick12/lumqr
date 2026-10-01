@@ -186,7 +186,12 @@ async function initializeDatabase() {
     await db.run(`
       UPDATE installations 
       SET zone_type = 'Rural' 
-      WHERE LOWER(notes) LIKE '%graceros%' OR LOWER(notes) LIKE '%graseros%' OR fixture_code = 'LUM-LERDO-0014'
+      WHERE zone_type IS NULL OR zone_type = 'Urbana' OR LOWER(notes) LIKE '%graceros%' OR LOWER(notes) LIKE '%graseros%' OR fixture_code = 'LUM-LERDO-0014'
+    `);
+    await db.run(`
+      UPDATE poles 
+      SET zone_type = 'Rural' 
+      WHERE zone_type IS NULL OR zone_type = 'Urbana'
     `);
   } catch (e) {
     console.warn("Error updating Graceros rural zone:", e);

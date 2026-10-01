@@ -236,18 +236,35 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
       return isNaN(d.getTime()) ? new Date() : d;
     };
 
+    const calculateNighttimeOperatingHours = (installDate: Date, currentDate: Date): number => {
+      if (!installDate || !currentDate || currentDate <= installDate) return 0;
+      let totalMs = 0;
+      let cursor = new Date(installDate.getTime());
+      const end = currentDate.getTime();
+      const maxEnd = Math.min(end, installDate.getTime() + 10 * 365 * 24 * 60 * 60 * 1000);
+
+      while (cursor.getTime() < maxEnd) {
+        const hour = cursor.getHours();
+        const isNight = hour >= 19 || hour < 7; // Nighttime schedule: 7 PM to 7 AM (12h/day)
+
+        const nextHour = new Date(cursor.getTime());
+        nextHour.setMinutes(0, 0, 0);
+        nextHour.setHours(nextHour.getHours() + 1);
+        const stepEnd = Math.min(maxEnd, nextHour.getTime());
+
+        if (isNight) {
+          totalMs += (stepEnd - cursor.getTime());
+        }
+
+        cursor = new Date(stepEnd);
+      }
+
+      return Math.round(totalMs / (1000 * 60 * 60));
+    };
+
     const withUsage: InstallationWithUsage[] = installations.map(inst => {
       const installDate = parseDateHelper(inst.installed_at);
-      const diffMs = Math.max(0, currentDate.getTime() - installDate.getTime());
-      const diffHoursTotal = diffMs / (1000 * 60 * 60);
-
-      let usedHours = 0;
-      if (diffHoursTotal <= 24) {
-        usedHours = Math.min(12, Math.max(1, Math.round(diffHoursTotal)));
-      } else {
-        const diffDays = diffHoursTotal / 24;
-        usedHours = Math.round(diffDays * 12);
-      }
+      const usedHours = calculateNighttimeOperatingHours(installDate, currentDate);
       const lifePercentage = Math.min((usedHours / MAX_HOURS) * 100, 100);
       
       return { ...inst, usedHours, lifePercentage };
