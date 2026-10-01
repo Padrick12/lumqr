@@ -218,8 +218,14 @@ async function initializeDatabase() {
     console.warn("Error deduplicating poles table:", e);
   }
 
-  // Ensure LUM-LERDO-0010 is registered in installations table if missing
+  // Ensure LUM-LERDO-0010 is registered in installations table with evidence photos
   try {
+    const { saveBase64Image } = require('./utils/fileStorage');
+    const lum0010Photos = require('./lum0010_photos');
+    
+    const photoBPath = saveBase64Image(lum0010Photos.photo_before, 'evidences');
+    const photoAPath = saveBase64Image(lum0010Photos.photo_after, 'evidences');
+
     const inst0010 = await db.get('SELECT * FROM installations WHERE fixture_code = ?', ['LUM-LERDO-0010']);
     if (!inst0010) {
       const crewRow = (await db.get('SELECT id FROM crews WHERE name LIKE "%SPA-02%"')) || { id: 1 };
@@ -234,20 +240,20 @@ async function initializeDatabase() {
 
       await db.run(`
         INSERT INTO installations (fixture_code, crew_id, operator_name, lat, lng, installed_at, status_at_install, notes, wattage, zone_type, offline_code, photo_before, photo_after)
-        VALUES ('LUM-LERDO-0010', ?, 'Jose Nieves', 25.265801265694268, -103.7743342987044, '2026-09-30 16:09:00', 'Nueva', 'Lampara nueva', 150, 'Rural', 'LUM-LERDO-0010', '/uploads/evidences/lum0010_before.png', '/uploads/evidences/lum0010_after.png')
-      `, [crewId]);
+        VALUES ('LUM-LERDO-0010', ?, 'Jose Nieves', 25.265801265694268, -103.7743342987044, '2026-09-30 16:09:00', 'Nueva', 'Lampara nueva', 150, 'Rural', 'LUM-LERDO-0010', ?, ?)
+      `, [crewId, photoBPath, photoAPath]);
 
       await db.run('UPDATE fixtures SET status = "Nueva", crew_id = ? WHERE code = "LUM-LERDO-0010"', [crewId]);
       console.log('✅ LUM-LERDO-0010 missing fixture auto-synced with evidence photos into database.');
     } else {
       await db.run(`
         UPDATE installations 
-        SET photo_before = '/uploads/evidences/lum0010_before.png', photo_after = '/uploads/evidences/lum0010_after.png'
+        SET photo_before = ?, photo_after = ?
         WHERE fixture_code = 'LUM-LERDO-0010'
-      `);
+      `, [photoBPath, photoAPath]);
     }
   } catch (e) {
-    console.warn("Error auto-syncing LUM-LERDO-0010:", e);
+    console.warn("Error auto-syncing LUM-LERDO-0010 photos:", e);
   }
 
   // Seed default admin if no admin exists
