@@ -2,6 +2,7 @@ const fs = require('fs');
 const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 const path = require('path');
+const { saveBase64Image } = require('./utils/fileStorage');
 
 const dbPath = process.env.DATABASE_PATH || path.join(__dirname, 'lumqr.db');
 
@@ -291,19 +292,31 @@ async function initializeDatabase() {
     console.warn("Error auto-syncing LUM-LERDO-0010 photos:", e);
   }
 
-  // Ensure INC-00001 (Reparación de Corto Circuito Plaza de Graseros) exists in incidents table
+  // Ensure INC-00001 (Reparación de Corto Circuito Plaza de Graseros) exists in incidents table with evidence photos & exact GPS
   try {
-    const inc0001 = await db.get('SELECT * FROM incidents WHERE incident_code = ?', ['INC-00001']);
+    const inc0001Photos = require('./inc0001_photos');
+    const photoBPathInc = saveBase64Image(inc0001Photos.photo_before, 'evidences');
+    const photoAPathInc = saveBase64Image(inc0001Photos.photo_after, 'evidences');
+
+    const crewRow = (await db.get('SELECT id FROM crews WHERE name LIKE "%SPA-07%"')) || (await db.get('SELECT id FROM crews ORDER BY id ASC LIMIT 1')) || { id: 1 };
+    
+    const inc0001 = await db.get('SELECT * FROM incidents WHERE incident_code = ? OR id = 1', ['INC-00001']);
     if (!inc0001) {
-      const crewRow = (await db.get('SELECT id FROM crews WHERE name LIKE "%SPA-07%"')) || (await db.get('SELECT id FROM crews ORDER BY id ASC LIMIT 1')) || { id: 1 };
       await db.run(`
-        INSERT INTO incidents (incident_code, crew_id, operator_name, incident_type, lat, lng, notes, created_at, zone_type)
-        VALUES ('INC-00001', ?, 'Luis Raul', 'Reparación de Corto Circuito', 25.265500, -103.774000, 'Corto reparado en baños de plaza de graseros ', '2026-09-30 13:34:00', 'Rural')
-      `, [crewRow.id]);
-      console.log('✅ Incident INC-00001 (Corto en Plaza de Graseros) auto-synced into database.');
+        INSERT INTO incidents (incident_code, crew_id, operator_name, incident_type, lat, lng, notes, created_at, zone_type, photo_before, photo_after)
+        VALUES ('INC-00001', ?, 'Luis Raul', 'Reparación de Corto Circuito', 25.258176072522712, -103.74221195108275, 'Corto reparado en baños de plaza de graseros ', '2026-09-30 13:34:00', 'Rural', ?, ?)
+      `, [crewRow.id, photoBPathInc, photoAPathInc]);
+      console.log('✅ Incident INC-00001 auto-synced into database with evidence photos.');
+    } else {
+      await db.run(`
+        UPDATE incidents 
+        SET lat = 25.258176072522712, lng = -103.74221195108275, incident_code = 'INC-00001', zone_type = 'Rural', photo_before = ?, photo_after = ?
+        WHERE id = ? OR incident_code = 'INC-00001'
+      `, [photoBPathInc, photoAPathInc, inc0001.id]);
+      console.log('✅ Incident INC-00001 coordinates & evidence photos updated.');
     }
   } catch (e) {
-    console.warn("Error auto-syncing incident INC-00001:", e);
+    console.warn("Error auto-syncing incident INC-00001 photos:", e);
   }
 
   // Seed default admin if no admin exists
