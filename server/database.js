@@ -202,7 +202,7 @@ async function initializeDatabase() {
     
     const allInsts = await db.all('SELECT id, lat, lng, notes, zone_type FROM installations');
     for (const inst of allInsts) {
-      const smartZone = classifyZone(inst.lat, inst.lng, inst.notes, null);
+      const smartZone = classifyZone(inst.lat, inst.lng, inst.notes, inst.zone_type);
       if (inst.zone_type !== smartZone) {
         await db.run('UPDATE installations SET zone_type = ? WHERE id = ?', [smartZone, inst.id]);
       }
@@ -210,7 +210,7 @@ async function initializeDatabase() {
 
     const allPoles = await db.all('SELECT id, lat, lng, notes, zone_type FROM poles');
     for (const pole of allPoles) {
-      const smartZone = classifyZone(pole.lat, pole.lng, pole.notes, null);
+      const smartZone = classifyZone(pole.lat, pole.lng, pole.notes, pole.zone_type);
       if (pole.zone_type !== smartZone) {
         await db.run('UPDATE poles SET zone_type = ? WHERE id = ?', [smartZone, pole.id]);
       }
@@ -270,12 +270,29 @@ async function initializeDatabase() {
     } else {
       await db.run(`
         UPDATE installations 
-        SET photo_before = ?, photo_after = ?
+        SET zone_type = 'Rural', photo_before = ?, photo_after = ?
         WHERE fixture_code = 'LUM-LERDO-0010'
       `, [photoBPath, photoAPath]);
     }
   } catch (e) {
     console.warn("Error auto-syncing LUM-LERDO-0010 photos:", e);
+  }
+
+  // Ensure INC-00001 (Reparación de Corto Circuito Plaza de Graseros) exists in incidents table
+  try {
+    const inc0001 = await db.get('SELECT * FROM incidents WHERE incident_code = ? OR (lat > 25.25 AND lat < 25.27 AND lng < -103.73)', ['INC-00001']);
+    if (!inc0001) {
+      const crewRow = (await db.get('SELECT id FROM crews WHERE name LIKE "%SPA-07%"')) || { id: 2 };
+      await db.run(`
+        INSERT INTO incidents (incident_code, crew_id, operator_name, incident_type, lat, lng, notes, created_at, zone_type)
+        VALUES ('INC-00001', ?, 'Luis Raul', 'Reparación de Corto Circuito', 25.258176072522712, -103.74221195108275, 'Corto reparado en baños de plaza de graseros ', '2026-09-30 13:34:00', 'Rural')
+      `, [crewRow.id]);
+      console.log('✅ Incident INC-00001 (Corto en Plaza de Graseros) auto-synced into database.');
+    } else if (!inc0001.incident_code) {
+      await db.run('UPDATE incidents SET incident_code = "INC-00001" WHERE id = ?', [inc0001.id]);
+    }
+  } catch (e) {
+    console.warn("Error auto-syncing incident INC-00001:", e);
   }
 
   // Seed default admin if no admin exists

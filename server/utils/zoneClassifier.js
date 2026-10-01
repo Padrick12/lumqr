@@ -49,6 +49,12 @@ function classifyZone(lat, lng, notes = '', explicitZone = null) {
   const numLat = Number(lat);
   const numLng = Number(lng);
 
+  // Geographic boundary rule for Lerdo rural sectors:
+  // Points south/west of Lerdo urban core (Graceros, Picardías, Nazareno, Villa Juárez: lat < 25.48 or lng < -103.56) are Rural.
+  if (numLat && numLng && (numLat < 25.48 || numLng < -103.56)) {
+    return 'Rural';
+  }
+
   const sectorName = getSectorName(numLat, numLng);
   if (sectorName) {
     return isRuralSector(sectorName) ? 'Rural' : 'Urbana';
