@@ -189,7 +189,7 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
         }
       `}</style>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {effectiveOnline ? (
             <>
@@ -205,6 +205,31 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
             </>
           )}
         </div>
+
+        {effectiveOnline && (
+          <button
+            onClick={triggerSync}
+            disabled={isSyncing}
+            title="Forzar Re-sincronización de Registros Locales"
+            style={{
+              background: 'rgba(5, 243, 162, 0.1)',
+              border: '1px solid rgba(5, 243, 162, 0.3)',
+              color: 'var(--neon-green)',
+              padding: '4px 10px',
+              borderRadius: '6px',
+              fontSize: '11px',
+              fontWeight: 700,
+              cursor: isSyncing ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              flexShrink: 0
+            }}
+          >
+            <RefreshCw size={12} style={isSyncing ? { animation: 'spin 1s linear infinite' } : {}} />
+            <span>{isSyncing ? 'Sincronizando...' : 'Re-Sincronizar'}</span>
+          </button>
+        )}
       </div>
 
       {queueCount > 0 && (
