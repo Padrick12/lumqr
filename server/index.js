@@ -500,6 +500,17 @@ app.post('/api/installations/sync', async (req, res) => {
       const offlineCode = item.offline_code || item.code || null;
       const itemZone = item.zone_type || (/graceros|graseros|villa ju[áa]rez|francisco villa|sacramento|picard[íi]as|san jacinto|el rayo|la luz/i.test((item.notes || '').toLowerCase()) ? 'Rural' : 'Urbana');
 
+      // Idempotency: Skip if fixture installation already exists at exact timestamp
+      const existingInst = await db.get(
+        'SELECT * FROM installations WHERE fixture_code = ? AND installed_at = ?',
+        [item.code, dateStr]
+      );
+      if (existingInst) {
+        await db.run('COMMIT;');
+        results.succeeded.push(item.code);
+        continue;
+      }
+
       await db.run(
         `INSERT INTO installations (fixture_code, crew_id, operator_name, lat, lng, installed_at, status_at_install, notes, photo_before, photo_after, wattage, offline_code, zone_type)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -540,11 +551,6 @@ app.post('/api/poles/sync', async (req, res) => {
     try {
       await db.run('BEGIN TRANSACTION;');
 
-      const countRes = await db.get('SELECT COUNT(*) as count FROM poles');
-      const nextNum = (countRes?.count || 0) + 1;
-      const poleCode = (item.pole_code && item.pole_code.startsWith('PST-') && !item.pole_code.includes('OFFLINE'))
-        ? item.pole_code
-        : `PST-${String(nextNum).padStart(5, '0')}`;
       const dateStr = item.created_at || new Date().toISOString().slice(0, 19).replace('T', ' ');
       const rawOffline = item.pole_code || item.id || null;
       const offlineCode = rawOffline 
@@ -553,10 +559,38 @@ app.post('/api/poles/sync', async (req, res) => {
             : `PUNTO-OFFLINE-${String(rawOffline).split('_').pop()}`) 
         : null;
 
+      // Idempotency check 1: Check by offline_code
+      if (offlineCode) {
+        const existingByOffline = await db.get('SELECT * FROM poles WHERE offline_code = ?', [offlineCode]);
+        if (existingByOffline) {
+          await db.run('COMMIT;');
+          results.succeeded.push(item.id);
+          continue;
+        }
+      }
+
+      // Idempotency check 2: Check by exact location and timestamp
+      const existingByLoc = await db.get(
+        'SELECT * FROM poles WHERE lat = ? AND lng = ? AND created_at = ?',
+        [item.lat, item.lng, dateStr]
+      );
+      if (existingByLoc) {
+        await db.run('COMMIT;');
+        results.succeeded.push(item.id);
+        continue;
+      }
+
+      const countRes = await db.get('SELECT COUNT(*) as count FROM poles');
+      const nextNum = (countRes?.count || 0) + 1;
+      const poleCode = (item.pole_code && item.pole_code.startsWith('PST-') && !item.pole_code.includes('OFFLINE'))
+        ? item.pole_code
+        : `PST-${String(nextNum).padStart(5, '0')}`;
+      const itemZone = item.zone_type || (/graceros|graseros|villa ju[áa]rez|francisco villa|sacramento|picard[íi]as|san jacinto|el rayo|la luz/i.test((item.notes || '').toLowerCase()) ? 'Rural' : 'Urbana');
+
       await db.run(
         `INSERT INTO poles (pole_code, crew_id, operator_name, lat, lng, pole_type, lamp_type, zone_type, wattage, operating_status, notes, photo_before, photo_after, created_at, offline_code)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [poleCode, item.crew_id, item.operator_name || null, item.lat, item.lng, item.pole_type || 'Concreto', item.lamp_type || 'Vapor de Sodio', item.zone_type || 'Urbana', item.wattage || null, item.operating_status || 'Funcionando', item.notes || 'Censo Offline', item.photo_before || null, item.photo_after || null, dateStr, offlineCode]
+        [poleCode, item.crew_id, item.operator_name || null, item.lat, item.lng, item.pole_type || 'Concreto', item.lamp_type || 'Vapor de Sodio', itemZone, item.wattage || null, item.operating_status || 'Funcionando', item.notes || 'Censo Offline', item.photo_before || null, item.photo_after || null, dateStr, offlineCode]
       );
 
       await db.run('COMMIT;');

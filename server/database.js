@@ -204,6 +204,20 @@ async function initializeDatabase() {
     console.warn("Error resetting test fixture 301:", e);
   }
 
+  // Deduplicate poles in DB that have exact same lat, lng, and created_at
+  try {
+    await db.run(`
+      DELETE FROM poles 
+      WHERE id NOT IN (
+        SELECT MIN(id) 
+        FROM poles 
+        GROUP BY lat, lng, created_at
+      )
+    `);
+  } catch (e) {
+    console.warn("Error deduplicating poles table:", e);
+  }
+
   // Seed default admin if no admin exists
   const adminCount = await db.get('SELECT COUNT(*) as count FROM admins');
   if (adminCount.count === 0) {
