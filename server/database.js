@@ -172,6 +172,12 @@ async function initializeDatabase() {
   try {
     await db.run('ALTER TABLE incidents ADD COLUMN incident_code TEXT');
   } catch (e) {}
+  try {
+    await db.run("ALTER TABLE incidents ADD COLUMN zone_type TEXT DEFAULT 'Rural'");
+  } catch (e) {}
+  try {
+    await db.run('ALTER TABLE incidents ADD COLUMN offline_code TEXT');
+  } catch (e) {}
 
   // Auto-generate incident_code folios for any existing incidents in DB
   try {
@@ -248,14 +254,21 @@ async function initializeDatabase() {
     const photoBPath = saveBase64Image(lum0010Photos.photo_before, 'evidences');
     const photoAPath = saveBase64Image(lum0010Photos.photo_after, 'evidences');
 
+    const batchCount = await db.get('SELECT COUNT(*) as count FROM batches');
+    if (batchCount.count === 0) {
+      await db.run('INSERT INTO batches (id, code_prefix, total_quantity, arrival_date, default_wattage) VALUES (1, "LUM-LERDO", 300, "2026-09-01", 150)');
+    }
+
     const inst0010 = await db.get('SELECT * FROM installations WHERE fixture_code = ?', ['LUM-LERDO-0010']);
     if (!inst0010) {
-      const crewRow = (await db.get('SELECT id FROM crews WHERE name LIKE "%SPA-02%"')) || { id: 1 };
+      const crewRow = (await db.get('SELECT id FROM crews WHERE name LIKE "%SPA-02%"')) || (await db.get('SELECT id FROM crews ORDER BY id ASC LIMIT 1')) || { id: 1 };
       const crewId = crewRow.id;
-      
+      const batchRow = (await db.get('SELECT id FROM batches ORDER BY id ASC LIMIT 1')) || { id: 1 };
+      const batchId = batchRow.id;
+
       const fix0010 = await db.get('SELECT * FROM fixtures WHERE code = ?', ['LUM-LERDO-0010']);
       if (!fix0010) {
-        await db.run('INSERT INTO fixtures (code, batch_id, crew_id, status, default_wattage) VALUES (?, 1, ?, "Nueva", 150)', ['LUM-LERDO-0010', crewId]);
+        await db.run('INSERT INTO fixtures (code, batch_id, crew_id, status, default_wattage) VALUES (?, ?, ?, "Nueva", 150)', ['LUM-LERDO-0010', batchId, crewId]);
       } else {
         await db.run('UPDATE fixtures SET crew_id = ?, status = "Nueva", default_wattage = 150 WHERE code = ?', [crewId, 'LUM-LERDO-0010']);
       }
@@ -280,16 +293,14 @@ async function initializeDatabase() {
 
   // Ensure INC-00001 (Reparación de Corto Circuito Plaza de Graseros) exists in incidents table
   try {
-    const inc0001 = await db.get('SELECT * FROM incidents WHERE incident_code = ? OR (lat > 25.25 AND lat < 25.27 AND lng < -103.73)', ['INC-00001']);
+    const inc0001 = await db.get('SELECT * FROM incidents WHERE incident_code = ?', ['INC-00001']);
     if (!inc0001) {
-      const crewRow = (await db.get('SELECT id FROM crews WHERE name LIKE "%SPA-07%"')) || { id: 2 };
+      const crewRow = (await db.get('SELECT id FROM crews WHERE name LIKE "%SPA-07%"')) || (await db.get('SELECT id FROM crews ORDER BY id ASC LIMIT 1')) || { id: 1 };
       await db.run(`
         INSERT INTO incidents (incident_code, crew_id, operator_name, incident_type, lat, lng, notes, created_at, zone_type)
-        VALUES ('INC-00001', ?, 'Luis Raul', 'Reparación de Corto Circuito', 25.258176072522712, -103.74221195108275, 'Corto reparado en baños de plaza de graseros ', '2026-09-30 13:34:00', 'Rural')
+        VALUES ('INC-00001', ?, 'Luis Raul', 'Reparación de Corto Circuito', 25.265500, -103.774000, 'Corto reparado en baños de plaza de graseros ', '2026-09-30 13:34:00', 'Rural')
       `, [crewRow.id]);
       console.log('✅ Incident INC-00001 (Corto en Plaza de Graseros) auto-synced into database.');
-    } else if (!inc0001.incident_code) {
-      await db.run('UPDATE incidents SET incident_code = "INC-00001" WHERE id = ?', [inc0001.id]);
     }
   } catch (e) {
     console.warn("Error auto-syncing incident INC-00001:", e);
