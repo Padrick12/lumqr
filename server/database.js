@@ -218,6 +218,32 @@ async function initializeDatabase() {
     console.warn("Error deduplicating poles table:", e);
   }
 
+  // Ensure LUM-LERDO-0010 is registered in installations table if missing
+  try {
+    const inst0010 = await db.get('SELECT * FROM installations WHERE fixture_code = ?', ['LUM-LERDO-0010']);
+    if (!inst0010) {
+      const crewRow = (await db.get('SELECT id FROM crews WHERE name LIKE "%SPA-02%"')) || { id: 1 };
+      const crewId = crewRow.id;
+      
+      const fix0010 = await db.get('SELECT * FROM fixtures WHERE code = ?', ['LUM-LERDO-0010']);
+      if (!fix0010) {
+        await db.run('INSERT INTO fixtures (code, batch_id, crew_id, status, default_wattage) VALUES (?, 1, ?, "Nueva", 150)', ['LUM-LERDO-0010', crewId]);
+      } else {
+        await db.run('UPDATE fixtures SET crew_id = ?, status = "Nueva", default_wattage = 150 WHERE code = ?', [crewId, 'LUM-LERDO-0010']);
+      }
+
+      await db.run(`
+        INSERT INTO installations (fixture_code, crew_id, operator_name, lat, lng, installed_at, status_at_install, notes, wattage, zone_type, offline_code)
+        VALUES ('LUM-LERDO-0010', ?, 'Jose Nieves', 25.265801265694268, -103.7743342987044, '2026-09-30 16:09:00', 'Nueva', 'Lampara nueva', 150, 'Rural', 'LUM-LERDO-0010')
+      `, [crewId]);
+
+      await db.run('UPDATE fixtures SET status = "Nueva", crew_id = ? WHERE code = "LUM-LERDO-0010"', [crewId]);
+      console.log('✅ LUM-LERDO-0010 missing fixture auto-synced into database.');
+    }
+  } catch (e) {
+    console.warn("Error auto-syncing LUM-LERDO-0010:", e);
+  }
+
   // Seed default admin if no admin exists
   const adminCount = await db.get('SELECT COUNT(*) as count FROM admins');
   if (adminCount.count === 0) {

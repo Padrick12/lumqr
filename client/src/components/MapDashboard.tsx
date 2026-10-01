@@ -561,25 +561,10 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
       marker.addTo(group);
     });
 
-    // Helper: Haversine distance in meters
-    const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-      if (!lat1 || !lon1 || !lat2 || !lon2) return 999999;
-      const R = 6371e3;
-      const rad = Math.PI / 180;
-      const dLat = (lat2 - lat1) * rad;
-      const dLon = (lon2 - lon1) * rad;
-      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(lat1 * rad) * Math.cos(lat2 * rad) *
-                Math.sin(dLon / 2) * Math.sin(dLon / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c;
-    };
+
 
     // RENDER CENSORED POLES ON MAP
     poles.forEach(p => {
-      // Deduplicate: If an installed QR fixture exists at this exact physical location (<= 15m), suppress the pole marker
-      const isOverlapped = installations.some(inst => getDistanceInMeters(p.lat, p.lng, inst.lat, inst.lng) <= 15);
-      if (isOverlapped) return;
 
       let matchesColonia = true;
       if (selectedColonia !== 'todas') {

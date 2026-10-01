@@ -419,8 +419,10 @@ app.post('/api/installations', async (req, res) => {
     }
 
     if (!fixture.crew_id) {
-      await db.run('ROLLBACK;');
-      return res.status(403).json({ error: `⛔ LUMINARIA NO DISPONIBLE: El código ${code} aún no ha sido asignado a ninguna cuadrilla en Almacén.` });
+      // Auto-assign to registering crew if not previously assigned in Warehouse
+      const assignCrew = crew_id ? Number(crew_id) : 1;
+      await db.run('UPDATE fixtures SET crew_id = ? WHERE code = ?', [assignCrew, code]);
+      fixture.crew_id = assignCrew;
     }
 
     if (crew_id && fixture.crew_id !== Number(crew_id)) {
@@ -490,9 +492,10 @@ app.post('/api/installations/sync', async (req, res) => {
         throw new Error(`Código ${item.code} no existe en inventario.`);
       }
 
-      const finalCrewId = item.crew_id || fixture.crew_id;
+      let finalCrewId = item.crew_id || fixture.crew_id;
       if (!finalCrewId) {
-        throw new Error(`Código ${item.code} no tiene cuadrilla asignada.`);
+        finalCrewId = 1;
+        await db.run('UPDATE fixtures SET crew_id = ? WHERE code = ?', [finalCrewId, item.code]);
       }
 
       const dateStr = item.installed_at || new Date().toISOString().slice(0, 19).replace('T', ' ');
@@ -825,26 +828,10 @@ app.get('/api/reports', async (req, res) => {
       LEFT JOIN crews c ON p.crew_id = c.id
     `);
 
-    // Distance helper for 15-meter physical point deduplication
-    function getDistanceInMeters(lat1, lon1, lat2, lon2) {
-      if (!lat1 || !lon1 || !lat2 || !lon2) return 999999;
-      const R = 6371e3;
-      const rad = Math.PI / 180;
-      const dLat = (lat2 - lat1) * rad;
-      const dLon = (lon2 - lon1) * rad;
-      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(lat1 * rad) * Math.cos(lat2 * rad) *
-                Math.sin(dLon / 2) * Math.sin(dLon / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c;
-    }
+    // ALL poles registered by operators are censo poles
+    const standalonePoles = allPoles;
 
-    // Filter standalone poles (poles that do NOT have a QR installation within 15 meters)
-    const standalonePoles = allPoles.filter(pole => {
-      return !latestInstallations.some(inst => getDistanceInMeters(pole.lat, pole.lng, inst.lat, inst.lng) <= 15);
-    });
-
-    // Deduplicated Total Puntos de Iluminación
+    // Total Puntos de Iluminación
     const totalLightingPoints = latestInstallations.length + standalonePoles.length;
 
     // Poles by Lamp (Standalone poles by lamp_type)

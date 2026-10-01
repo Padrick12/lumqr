@@ -1174,7 +1174,7 @@ ${typeLine}
 
         const data = await res.json();
         if (!res.ok) {
-          setSubmitMsg({ text: data.error || 'Error al registrar instalación.', isError: true });
+          throw new Error(data.error || 'Error en servidor al registrar instalación.');
         } else {
           setSubmitMsg({ text: `Instalación registrada con éxito. Luminaria ${payload.code} actualizada a ${newStatus}.`, isError: false });
           registerSuccessAndQueueWhatsApp({

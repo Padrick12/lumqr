@@ -121,13 +121,17 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
         }
       }
 
-      setSyncStatusMsg(`¡Éxito! ${totalSynced} registros sincronizados.`);
-      setTimeout(() => setSyncStatusMsg(''), 4000);
+      if (totalSynced > 0) {
+        setSyncStatusMsg(`¡Éxito! ${totalSynced} registro(s) sincronizado(s) con el servidor.`);
+      } else {
+        setSyncStatusMsg('Memoria local al día. No había registros pendientes en este celular.');
+      }
+      setTimeout(() => setSyncStatusMsg(''), 5000);
       await updateQueueCount();
       onSyncComplete();
     } catch (error: any) {
       console.error('Sync failed:', error);
-      setSyncStatusMsg('Reintento pendiente.');
+      setSyncStatusMsg('Error de conexión al sincronizar. Se reintentará.');
     } finally {
       setIsSyncing(false);
     }
