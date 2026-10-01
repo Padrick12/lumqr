@@ -4,6 +4,7 @@ const path = require('path');
 const jwt = require('jsonwebtoken');
 const { initializeDatabase } = require('./database');
 const { saveBase64Image } = require('./utils/fileStorage');
+const { classifyZone } = require('./utils/zoneClassifier');
 const { createDatabaseBackup, listBackups, BACKUPS_DIR } = require('./scripts/backup');
 
 const app = express();
@@ -436,8 +437,7 @@ app.post('/api/installations', async (req, res) => {
     const dateStr = installed_at || new Date().toISOString();
     const parsedWattage = wattage ? Number(wattage) : (fixture.default_wattage || 150);
     const explicitZone = req.body.zone_type;
-    const notesLower = (notes || '').toLowerCase();
-    const finalZone = explicitZone || 'Rural';
+    const finalZone = classifyZone(lat, lng, notes, explicitZone);
 
     await db.run(
       `INSERT INTO installations (fixture_code, crew_id, operator_name, lat, lng, installed_at, status_at_install, notes, photo_before, photo_after, wattage, zone_type)
@@ -498,7 +498,7 @@ app.post('/api/installations/sync', async (req, res) => {
       const dateStr = item.installed_at || new Date().toISOString().slice(0, 19).replace('T', ' ');
       const syncWattage = item.wattage ? Number(item.wattage) : (fixture.default_wattage || 150);
       const offlineCode = item.offline_code || item.code || null;
-      const itemZone = item.zone_type || 'Rural';
+      const itemZone = classifyZone(item.lat, item.lng, item.notes, item.zone_type);
 
       // Idempotency: Skip if fixture installation already exists at exact timestamp
       const existingInst = await db.get(
@@ -585,7 +585,7 @@ app.post('/api/poles/sync', async (req, res) => {
       const poleCode = (item.pole_code && item.pole_code.startsWith('PST-') && !item.pole_code.includes('OFFLINE'))
         ? item.pole_code
         : `PST-${String(nextNum).padStart(5, '0')}`;
-      const itemZone = item.zone_type || 'Rural';
+      const itemZone = classifyZone(item.lat, item.lng, item.notes, item.zone_type);
 
       await db.run(
         `INSERT INTO poles (pole_code, crew_id, operator_name, lat, lng, pole_type, lamp_type, zone_type, wattage, operating_status, notes, photo_before, photo_after, created_at, offline_code)
@@ -848,15 +848,15 @@ app.get('/api/reports', async (req, res) => {
     const combinedZones = { Urbana: 0, Rural: 0, 'Trayectos Seguros': 0 };
 
     latestInstallations.forEach(inst => {
-      const z = inst.zone_type || 'Rural';
+      const z = inst.zone_type || classifyZone(inst.lat, inst.lng, inst.notes);
       if (combinedZones[z] !== undefined) combinedZones[z]++;
-      else combinedZones['Rural']++;
+      else combinedZones['Urbana']++;
     });
 
     standalonePoles.forEach(pole => {
-      const z = pole.zone_type || 'Rural';
+      const z = pole.zone_type || classifyZone(pole.lat, pole.lng, pole.notes);
       if (combinedZones[z] !== undefined) combinedZones[z]++;
-      else combinedZones['Rural']++;
+      else combinedZones['Urbana']++;
     });
 
     // Fetch all crews
@@ -939,6 +939,8 @@ app.post('/api/poles', async (req, res) => {
     const poleCode = `PST-${String((countRow.count || 0) + 1).padStart(5, '0')}`;
     const isoDate = new Date().toISOString();
 
+    const finalZone = classifyZone(lat, lng, notes, zone_type);
+
     const result = await db.run(`
       INSERT INTO poles (pole_code, crew_id, operator_name, lat, lng, pole_type, lamp_type, zone_type, wattage, operating_status, notes, photo_before, photo_after, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -950,7 +952,7 @@ app.post('/api/poles', async (req, res) => {
       lng,
       pole_type || 'Concreto',
       lamp_type,
-      zone_type || 'Rural',
+      finalZone,
       wattage ? Number(wattage) : null,
       operating_status || 'Funcionando',
       notes || '',
@@ -967,7 +969,7 @@ app.post('/api/poles', async (req, res) => {
       lat,
       lng,
       lamp_type,
-      zone_type: zone_type || 'Rural',
+      zone_type: finalZone,
       wattage: wattage ? Number(wattage) : null,
       operating_status: operating_status || 'Funcionando',
       photo_before: photo_before || null,

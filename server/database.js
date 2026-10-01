@@ -183,18 +183,25 @@ async function initializeDatabase() {
   }
 
   try {
-    await db.run(`
-      UPDATE installations 
-      SET zone_type = 'Rural' 
-      WHERE zone_type IS NULL OR zone_type = 'Urbana' OR LOWER(notes) LIKE '%graceros%' OR LOWER(notes) LIKE '%graseros%' OR fixture_code = 'LUM-LERDO-0014'
-    `);
-    await db.run(`
-      UPDATE poles 
-      SET zone_type = 'Rural' 
-      WHERE zone_type IS NULL OR zone_type = 'Urbana'
-    `);
+    const { classifyZone } = require('./utils/zoneClassifier');
+    
+    const allInsts = await db.all('SELECT id, lat, lng, notes, zone_type FROM installations');
+    for (const inst of allInsts) {
+      const smartZone = classifyZone(inst.lat, inst.lng, inst.notes, null);
+      if (inst.zone_type !== smartZone) {
+        await db.run('UPDATE installations SET zone_type = ? WHERE id = ?', [smartZone, inst.id]);
+      }
+    }
+
+    const allPoles = await db.all('SELECT id, lat, lng, notes, zone_type FROM poles');
+    for (const pole of allPoles) {
+      const smartZone = classifyZone(pole.lat, pole.lng, pole.notes, null);
+      if (pole.zone_type !== smartZone) {
+        await db.run('UPDATE poles SET zone_type = ? WHERE id = ?', [smartZone, pole.id]);
+      }
+    }
   } catch (e) {
-    console.warn("Error updating Graceros rural zone:", e);
+    console.warn("Error running smart zone classification migration:", e);
   }
 
   try {
