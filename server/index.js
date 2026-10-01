@@ -434,12 +434,15 @@ app.post('/api/installations', async (req, res) => {
 
     // Insert installation log
     const dateStr = installed_at || new Date().toISOString();
-    const parsedWattage = wattage ? Number(wattage) : null;
+    const parsedWattage = wattage ? Number(wattage) : (fixture.default_wattage || 150);
+    const explicitZone = req.body.zone_type;
+    const notesLower = (notes || '').toLowerCase();
+    const finalZone = explicitZone || (/graceros|graseros|villa ju[áa]rez|francisco villa|sacramento|picard[íi]as|san jacinto|el rayo|la luz/i.test(notesLower) ? 'Rural' : 'Urbana');
 
     await db.run(
-      `INSERT INTO installations (fixture_code, crew_id, operator_name, lat, lng, installed_at, status_at_install, notes, photo_before, photo_after, wattage)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [code, finalCrewId, operator_name || null, lat, lng, dateStr, status, notes || '', photoBeforePath || null, photoAfterPath || null, parsedWattage]
+      `INSERT INTO installations (fixture_code, crew_id, operator_name, lat, lng, installed_at, status_at_install, notes, photo_before, photo_after, wattage, zone_type)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [code, finalCrewId, operator_name || null, lat, lng, dateStr, status, notes || '', photoBeforePath || null, photoAfterPath || null, parsedWattage, finalZone]
     );
 
     // Update fixture state and ensure it links to the installing crew if it wasn't
@@ -458,6 +461,7 @@ app.post('/api/installations', async (req, res) => {
       lat,
       lng,
       wattage: parsedWattage,
+      zone_type: finalZone,
       installed_at: dateStr,
       photo_before: photoBeforePath || null,
       photo_after: photoAfterPath || null
@@ -492,13 +496,14 @@ app.post('/api/installations/sync', async (req, res) => {
       }
 
       const dateStr = item.installed_at || new Date().toISOString().slice(0, 19).replace('T', ' ');
-      const syncWattage = item.wattage ? Number(item.wattage) : 70;
+      const syncWattage = item.wattage ? Number(item.wattage) : (fixture.default_wattage || 150);
       const offlineCode = item.offline_code || item.code || null;
+      const itemZone = item.zone_type || (/graceros|graseros|villa ju[áa]rez|francisco villa|sacramento|picard[íi]as|san jacinto|el rayo|la luz/i.test((item.notes || '').toLowerCase()) ? 'Rural' : 'Urbana');
 
       await db.run(
-        `INSERT INTO installations (fixture_code, crew_id, operator_name, lat, lng, installed_at, status_at_install, notes, photo_before, photo_after, wattage, offline_code)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [item.code, finalCrewId, item.operator_name || null, item.lat, item.lng, dateStr, item.status, item.notes || 'Sincronizado Offline', item.photo_before || null, item.photo_after || null, syncWattage, offlineCode]
+        `INSERT INTO installations (fixture_code, crew_id, operator_name, lat, lng, installed_at, status_at_install, notes, photo_before, photo_after, wattage, offline_code, zone_type)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [item.code, finalCrewId, item.operator_name || null, item.lat, item.lng, dateStr, item.status, item.notes || 'Sincronizado Offline', item.photo_before || null, item.photo_after || null, syncWattage, offlineCode, itemZone]
       );
 
       await db.run(

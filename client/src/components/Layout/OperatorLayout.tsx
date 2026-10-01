@@ -28,8 +28,9 @@ export const OperatorLayout: React.FC<OperatorLayoutProps> = ({
 
         <div className="operator-actions">
           {offlineIndicator}
-          <button onClick={() => setShowLogoutModal(true)} className="logout-btn" title="Cerrar Sesión">
-            <LogOut size={18} />
+          <button onClick={() => setShowLogoutModal(true)} className="logout-btn" title="Cerrar Sesión / Salir">
+            <LogOut size={16} />
+            <span style={{ fontSize: '11px', fontWeight: 700 }}>Salir</span>
           </button>
         </div>
       </header>

@@ -169,6 +169,36 @@ async function initializeDatabase() {
     await db.run('ALTER TABLE incidents ADD COLUMN crew_name TEXT');
   } catch (e) {}
 
+  // Data Corrections: Lot 1 150W Wattage, Graceros Rural Zone, and Test Fixture 301 Removal
+  try {
+    await db.run('UPDATE batches SET default_wattage = 150 WHERE id = 1');
+    await db.run('UPDATE fixtures SET default_wattage = 150 WHERE batch_id = 1');
+    await db.run(`
+      UPDATE installations 
+      SET wattage = 150 
+      WHERE fixture_code IN (SELECT code FROM fixtures WHERE batch_id = 1) OR fixture_code LIKE 'LUM-LERDO-00%' OR fixture_code LIKE 'LUM-LERDO-01%' OR fixture_code LIKE 'LUM-LERDO-02%'
+    `);
+  } catch (e) {
+    console.warn("Error updating batch 1 wattage:", e);
+  }
+
+  try {
+    await db.run(`
+      UPDATE installations 
+      SET zone_type = 'Rural' 
+      WHERE LOWER(notes) LIKE '%graceros%' OR LOWER(notes) LIKE '%graseros%' OR fixture_code = 'LUM-LERDO-0014'
+    `);
+  } catch (e) {
+    console.warn("Error updating Graceros rural zone:", e);
+  }
+
+  try {
+    await db.run('DELETE FROM installations WHERE fixture_code = "LUM-LERDO-0301" OR fixture_code = "LUM-LERDO-301"');
+    await db.run('UPDATE fixtures SET status = "Nueva" WHERE code = "LUM-LERDO-0301" OR code = "LUM-LERDO-301"');
+  } catch (e) {
+    console.warn("Error resetting test fixture 301:", e);
+  }
+
   // Seed default admin if no admin exists
   const adminCount = await db.get('SELECT COUNT(*) as count FROM admins');
   if (adminCount.count === 0) {

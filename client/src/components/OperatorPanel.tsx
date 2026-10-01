@@ -1116,6 +1116,10 @@ ${typeLine}
       return;
     }
 
+    const detectedZone = /graceros|graseros|villa ju[áa]rez|francisco villa|sacramento|picard[íi]as|san jacinto|el rayo|la luz/i.test((installNotes || '').toLowerCase())
+      ? 'Rural'
+      : zoneType;
+
     const payload = {
       code: fixtureDetails.code,
       crew_id: crewId,
@@ -1124,6 +1128,7 @@ ${typeLine}
       lng,
       status: newStatus,
       wattage: qrWattage ? Number(qrWattage) : null,
+      zone_type: detectedZone,
       notes: installNotes,
       photo_before: photoBefore,
       photo_after: photoAfter,
@@ -1864,10 +1869,22 @@ ${typeLine}
                 <div className="form-group">
                   <label>⚡ Potencia de Lámpara QR (Definida en Lote):</label>
                   <div style={{ padding: '10px 14px', background: 'rgba(5, 243, 162, 0.08)', border: '1px solid rgba(5, 243, 162, 0.3)', borderRadius: '8px', color: 'var(--neon-green)', fontWeight: 800, fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span>⚡ {qrWattage || 100} Watts LED</span>
-                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>🔒 Bloqueado (Configurado en Lote)</span>
+                    <span>⚡ {qrWattage || 150} Watts LED</span>
+                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>🔒 Configurado en Lote</span>
                   </div>
                 </div>
+              </div>
+
+              <div className="form-group">
+                <label>🌐 Clasificación de Sector / Zona:</label>
+                <select 
+                  value={zoneType} 
+                  onChange={(e) => setZoneType(e.target.value as any)}
+                >
+                  <option value="Urbana">Zona Urbana</option>
+                  <option value="Rural">Zona Rural (Ej. Nuevo Graceros / Villas)</option>
+                  <option value="Trayectos Seguros">Trayectos Seguros</option>
+                </select>
               </div>
 
               <div className="form-group">

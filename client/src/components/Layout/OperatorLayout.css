@@ -64,22 +64,24 @@
 }
 
 .logout-btn {
-  background: rgba(244, 63, 94, 0.1);
-  border: 1px solid rgba(244, 63, 94, 0.3);
-  color: var(--neon-rose);
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  display: flex;
+  background: rgba(244, 63, 94, 0.18);
+  border: 1px solid rgba(244, 63, 94, 0.5);
+  color: #f43f5e;
+  padding: 0 10px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex !important;
   align-items: center;
+  gap: 4px;
   justify-content: center;
   cursor: pointer;
+  flex-shrink: 0 !important;
   transition: var(--transition);
 }
 
 .logout-btn:hover {
-  background: rgba(244, 63, 94, 0.2);
-  box-shadow: 0 0 15px rgba(244, 63, 94, 0.2);
+  background: rgba(244, 63, 94, 0.35);
+  box-shadow: 0 0 15px rgba(244, 63, 94, 0.4);
 }
 
 .operator-content {
