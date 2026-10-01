@@ -92,7 +92,7 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
   // Census States
   const [poleType, setPoleType] = useState<'Concreto' | 'Metálico' | 'Madera' | 'Brazo en Fachada'>('Concreto');
   const [lampType, setLampType] = useState<'Vapor de Sodio' | 'LED Antiguo' | 'LED Nueva (Sin QR)' | 'Sin Lámpara'>('Vapor de Sodio');
-  const [zoneType, setZoneType] = useState<'Urbana' | 'Rural' | 'Trayectos Seguros'>('Urbana');
+  const [zoneType, setZoneType] = useState<'Urbana' | 'Rural' | 'Trayectos Seguros'>('Rural');
   const [operatingStatus, setOperatingStatus] = useState<'Funcionando' | 'Prendida 24/7' | 'No Funciona / Apagada'>('Funcionando');
   const [wattage, setWattage] = useState<string>('100');
   const [poleNotes, setPoleNotes] = useState('');
@@ -736,7 +736,7 @@ ${typeLine}
       setWattage('');
       setLampType('LED Nueva (Sin QR)');
       setOperatingStatus('Funcionando');
-      setZoneType('Urbana');
+      setZoneType('Rural');
       setPoleType('Concreto');
       setPhotoBefore(null);
       setPhotoAfter(null);
@@ -796,7 +796,7 @@ ${typeLine}
         setWattage('');
         setLampType('LED Nueva (Sin QR)');
         setOperatingStatus('Funcionando');
-        setZoneType('Urbana');
+        setZoneType('Rural');
         setPoleType('Concreto');
         setPhotoBefore(null);
         setPhotoAfter(null);

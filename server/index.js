@@ -437,7 +437,7 @@ app.post('/api/installations', async (req, res) => {
     const parsedWattage = wattage ? Number(wattage) : (fixture.default_wattage || 150);
     const explicitZone = req.body.zone_type;
     const notesLower = (notes || '').toLowerCase();
-    const finalZone = explicitZone || (/graceros|graseros|villa ju[áa]rez|francisco villa|sacramento|picard[íi]as|san jacinto|el rayo|la luz/i.test(notesLower) ? 'Rural' : 'Urbana');
+    const finalZone = explicitZone || 'Rural';
 
     await db.run(
       `INSERT INTO installations (fixture_code, crew_id, operator_name, lat, lng, installed_at, status_at_install, notes, photo_before, photo_after, wattage, zone_type)
@@ -498,7 +498,7 @@ app.post('/api/installations/sync', async (req, res) => {
       const dateStr = item.installed_at || new Date().toISOString().slice(0, 19).replace('T', ' ');
       const syncWattage = item.wattage ? Number(item.wattage) : (fixture.default_wattage || 150);
       const offlineCode = item.offline_code || item.code || null;
-      const itemZone = item.zone_type || (/graceros|graseros|villa ju[áa]rez|francisco villa|sacramento|picard[íi]as|san jacinto|el rayo|la luz/i.test((item.notes || '').toLowerCase()) ? 'Rural' : 'Urbana');
+      const itemZone = item.zone_type || 'Rural';
 
       // Idempotency: Skip if fixture installation already exists at exact timestamp
       const existingInst = await db.get(
@@ -585,7 +585,7 @@ app.post('/api/poles/sync', async (req, res) => {
       const poleCode = (item.pole_code && item.pole_code.startsWith('PST-') && !item.pole_code.includes('OFFLINE'))
         ? item.pole_code
         : `PST-${String(nextNum).padStart(5, '0')}`;
-      const itemZone = item.zone_type || (/graceros|graseros|villa ju[áa]rez|francisco villa|sacramento|picard[íi]as|san jacinto|el rayo|la luz/i.test((item.notes || '').toLowerCase()) ? 'Rural' : 'Urbana');
+      const itemZone = item.zone_type || 'Rural';
 
       await db.run(
         `INSERT INTO poles (pole_code, crew_id, operator_name, lat, lng, pole_type, lamp_type, zone_type, wattage, operating_status, notes, photo_before, photo_after, created_at, offline_code)
@@ -641,7 +641,7 @@ app.put('/api/installations/code/:code', async (req, res) => {
   const { code } = req.params;
   const { zone_type } = req.body;
   try {
-    await db.run('UPDATE installations SET zone_type = ? WHERE fixture_code = ?', [zone_type || 'Urbana', code]);
+    await db.run('UPDATE installations SET zone_type = ? WHERE fixture_code = ?', [zone_type || 'Rural', code]);
     res.json({ message: 'Clasificación de zona de instalación actualizada.' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -848,15 +848,15 @@ app.get('/api/reports', async (req, res) => {
     const combinedZones = { Urbana: 0, Rural: 0, 'Trayectos Seguros': 0 };
 
     latestInstallations.forEach(inst => {
-      const z = inst.zone_type || 'Urbana';
+      const z = inst.zone_type || 'Rural';
       if (combinedZones[z] !== undefined) combinedZones[z]++;
-      else combinedZones['Urbana']++;
+      else combinedZones['Rural']++;
     });
 
     standalonePoles.forEach(pole => {
-      const z = pole.zone_type || 'Urbana';
+      const z = pole.zone_type || 'Rural';
       if (combinedZones[z] !== undefined) combinedZones[z]++;
-      else combinedZones['Urbana']++;
+      else combinedZones['Rural']++;
     });
 
     // Fetch all crews
@@ -950,7 +950,7 @@ app.post('/api/poles', async (req, res) => {
       lng,
       pole_type || 'Concreto',
       lamp_type,
-      zone_type || 'Urbana',
+      zone_type || 'Rural',
       wattage ? Number(wattage) : null,
       operating_status || 'Funcionando',
       notes || '',
@@ -967,7 +967,7 @@ app.post('/api/poles', async (req, res) => {
       lat,
       lng,
       lamp_type,
-      zone_type: zone_type || 'Urbana',
+      zone_type: zone_type || 'Rural',
       wattage: wattage ? Number(wattage) : null,
       operating_status: operating_status || 'Funcionando',
       photo_before: photo_before || null,

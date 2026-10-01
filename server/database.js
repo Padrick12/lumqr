@@ -88,7 +88,7 @@ async function initializeDatabase() {
       lng REAL NOT NULL,
       pole_type TEXT DEFAULT 'Concreto',
       lamp_type TEXT CHECK(lamp_type IN ('Vapor de Sodio', 'LED Antiguo', 'LED Nueva (Sin QR)', 'Sin Lámpara')) NOT NULL,
-      zone_type TEXT CHECK(zone_type IN ('Urbana', 'Rural', 'Trayectos Seguros')) DEFAULT 'Urbana',
+      zone_type TEXT CHECK(zone_type IN ('Urbana', 'Rural', 'Trayectos Seguros')) DEFAULT 'Rural',
       wattage INTEGER,
       operating_status TEXT DEFAULT 'Funcionando',
       notes TEXT,
@@ -157,7 +157,7 @@ async function initializeDatabase() {
     await db.run('ALTER TABLE installations ADD COLUMN offline_code TEXT');
   } catch (e) {}
   try {
-    await db.run("ALTER TABLE installations ADD COLUMN zone_type TEXT DEFAULT 'Urbana'");
+    await db.run("ALTER TABLE installations ADD COLUMN zone_type TEXT DEFAULT 'Rural'");
   } catch (e) {}
   try {
     await db.run('ALTER TABLE installations ADD COLUMN crew_name TEXT');
