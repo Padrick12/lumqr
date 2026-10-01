@@ -1104,9 +1104,12 @@ app.post('/api/backup', async (req, res) => {
   }
 });
 
-// SPA Fallback: Send index.html for all non-API GET requests
+// SPA Fallback: Send index.html for all non-API GET requests with no-cache headers to prevent stale bundle mismatch
 app.get('*', (req, res, next) => {
-  if (req.url.startsWith('/api/')) return next();
+  if (req.url.startsWith('/api/') || req.url.startsWith('/uploads/')) return next();
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   res.sendFile(path.join(clientDistPath, 'index.html'));
 });
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lumqr-cache-v3';
+const CACHE_NAME = 'lumqr-cache-v6';
 const ASSETS = [
   '/',
   '/index.html',

@@ -151,7 +151,12 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
     try {
       const res = await fetch(`${API_BASE_URL}/api/incidents`);
       if (res.ok) {
-        setIncidents(await res.json());
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setIncidents(data);
+        } else {
+          setIncidents([]);
+        }
       }
     } catch (err) {
       console.error('Error fetching incidents for heatmap:', err);
@@ -163,7 +168,11 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
       const res = await fetch(`${API_BASE_URL}/api/poles`);
       if (res.ok) {
         const data = await res.json();
-        setPoles(data);
+        if (Array.isArray(data)) {
+          setPoles(data);
+        } else {
+          setPoles([]);
+        }
       }
     } catch (err) {
       console.error('Error fetching poles:', err);
@@ -176,7 +185,11 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
       const res = await fetch(`${API_BASE_URL}/api/installations`);
       if (res.ok) {
         const data = await res.json();
-        setInstallations(data);
+        if (Array.isArray(data)) {
+          setInstallations(data);
+        } else {
+          setInstallations([]);
+        }
       }
     } catch (err) {
       console.error('Error fetching installations:', err);
@@ -493,7 +506,7 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
       });
 
       // Render glowing red/amber heat zones for all reported Incidents / Short Circuits
-      incidents.forEach(inc => {
+      (Array.isArray(incidents) ? incidents : []).forEach(inc => {
         if (!inc.lat || !inc.lng) return;
         const heatCircle = L.circleMarker([inc.lat, inc.lng], {
           radius: 30,
@@ -675,7 +688,7 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
     });
 
     // RENDER INCIDENTS / TRABAJOS ESPECIALES ON MAP
-    incidents.forEach(inc => {
+    (Array.isArray(incidents) ? incidents : []).forEach(inc => {
       if (!inc.lat || !inc.lng) return;
 
       let matchesColonia = true;
