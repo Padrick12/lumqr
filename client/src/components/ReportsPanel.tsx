@@ -370,18 +370,23 @@ export const ReportsPanel: React.FC = () => {
             .btn-close { background: #475569; color: #fff; }
 
             .card-grid {
-              display: flex;
-              flex-wrap: wrap;
-              gap: 12px;
+              display: block;
+              width: 100%;
             }
             .card-box {
-              width: 48%;
+              display: inline-block;
+              vertical-align: top;
+              box-sizing: border-box;
+              width: 48.5%;
+              margin-right: 1%;
+              margin-bottom: 14px;
               border: 1px solid #cbd5e1;
               border-radius: 8px;
               padding: 10px;
               background: #ffffff;
-              break-inside: avoid;
-              page-break-inside: avoid;
+              break-inside: avoid !important;
+              page-break-inside: avoid !important;
+              -webkit-column-break-inside: avoid !important;
             }
 
             @media print {
