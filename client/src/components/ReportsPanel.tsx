@@ -300,11 +300,11 @@ export const ReportsPanel: React.FC = () => {
       <html lang="es">
         <head>
           <meta charset="utf-8" />
-          <title>Dictamen Oficial AP Lerdo</title>
+          <title></title>
           <style>
             @page {
               size: A4 portrait;
-              margin: 12mm 10mm 15mm 10mm;
+              margin: 24mm 8mm 16mm 8mm;
             }
             * { box-sizing: border-box; }
             body {
@@ -320,10 +320,10 @@ export const ReportsPanel: React.FC = () => {
 
             .header-repeating {
               position: fixed;
-              top: 0;
+              top: -22mm;
               left: 0;
               right: 0;
-              height: 75px;
+              height: 20mm;
               background: #ffffff;
               text-align: center;
               z-index: 1000;
@@ -331,19 +331,19 @@ export const ReportsPanel: React.FC = () => {
 
             .footer-repeating {
               position: fixed;
-              bottom: 0;
+              bottom: -14mm;
               left: 0;
               right: 0;
-              height: 45px;
+              height: 12mm;
               background: #ffffff;
               text-align: center;
               z-index: 1000;
             }
 
             .document-body {
-              margin-top: 80px;
-              margin-bottom: 50px;
-              padding: 0 10px;
+              margin-top: 0;
+              margin-bottom: 0;
+              padding: 0 4px;
             }
 
             .action-bar {
@@ -391,7 +391,10 @@ export const ReportsPanel: React.FC = () => {
 
             @media print {
               .no-print { display: none !important; }
-              .document-body { margin-top: 85px; margin-bottom: 55px; }
+              @page { margin: 24mm 8mm 16mm 8mm; }
+              .header-repeating { top: -22mm !important; }
+              .footer-repeating { bottom: -14mm !important; }
+              .document-body { margin-top: 0 !important; margin-bottom: 0 !important; }
             }
           </style>
         </head>
