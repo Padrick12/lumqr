@@ -661,12 +661,14 @@ app.post('/api/incidents/sync', async (req, res) => {
     try {
       await db.run('BEGIN TRANSACTION;');
 
+      const countRes = await db.get('SELECT COUNT(*) as count FROM incidents');
+      const generatedCode = item.incident_code || item.offline_code || `INC-${String((countRes?.count || 0) + 1).padStart(5, '0')}`;
       const dateStr = item.created_at || new Date().toISOString().slice(0, 19).replace('T', ' ');
 
       await db.run(
-        `INSERT INTO incidents (crew_id, operator_name, incident_type, lat, lng, notes, photo_before, photo_after, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [item.crew_id, item.operator_name || null, item.incident_type || 'Reparación de Corto Circuito', item.lat, item.lng, item.notes || 'Incidencia Offline', item.photo_before || null, item.photo_after || null, dateStr]
+        `INSERT INTO incidents (incident_code, crew_id, operator_name, incident_type, lat, lng, notes, photo_before, photo_after, created_at, offline_code)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [generatedCode, item.crew_id, item.operator_name || null, item.incident_type || 'Reparación de Corto Circuito', item.lat, item.lng, item.notes || 'Incidencia Offline', item.photo_before || null, item.photo_after || null, dateStr, item.id || null]
       );
 
       await db.run('COMMIT;');
@@ -887,6 +889,8 @@ app.get('/api/reports', async (req, res) => {
       ORDER BY f.code ASC
     `);
 
+    const incidentsCountRes = await db.get('SELECT COUNT(*) as count FROM incidents');
+
     res.json({
       summary: {
         total: totalCount.count,
@@ -898,6 +902,7 @@ app.get('/api/reports', async (req, res) => {
           return acc;
         }, { Nueva: 0, Reparada: 0, Rehabilitada: 0, Robo: 0 }),
         total_poles: totalLightingPoints,
+        total_incidents: incidentsCountRes?.count || 0,
         poles_by_lamp: polesByLamp,
         poles_by_zone: combinedZones
       },
@@ -1032,7 +1037,7 @@ app.get('/api/incidents', async (req, res) => {
 });
 
 app.post('/api/incidents', async (req, res) => {
-  const { crew_id, operator_name, incident_type, lat, lng, notes, photo_before, photo_after } = req.body;
+  const { crew_id, operator_name, incident_type, lat, lng, notes, photo_before, photo_after, incident_code } = req.body;
 
   if (!crew_id || !incident_type || !notes || notes.trim().length < 5) {
     return res.status(400).json({ error: 'Faltan parámetros requeridos o la justificación es menor a 5 caracteres.' });
@@ -1043,10 +1048,14 @@ app.post('/api/incidents', async (req, res) => {
     const photoAfterPath = saveBase64Image(photo_after, 'evidences');
     const isoDate = new Date().toISOString();
 
+    const countRes = await db.get('SELECT COUNT(*) as count FROM incidents');
+    const generatedCode = incident_code || `INC-${String((countRes?.count || 0) + 1).padStart(5, '0')}`;
+
     const result = await db.run(`
-      INSERT INTO incidents (crew_id, operator_name, incident_type, lat, lng, notes, photo_before, photo_after, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO incidents (incident_code, crew_id, operator_name, incident_type, lat, lng, notes, photo_before, photo_after, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
+      generatedCode,
       crew_id,
       operator_name || null,
       incident_type,
@@ -1061,6 +1070,7 @@ app.post('/api/incidents', async (req, res) => {
     res.status(201).json({
       message: 'Incidencia / Reporte especial guardado con éxito.',
       id: result.lastID,
+      incident_code: generatedCode,
       crew_id,
       operator_name: operator_name || null,
       incident_type,

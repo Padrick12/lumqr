@@ -382,6 +382,22 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
     });
   };
 
+  const createIncidentIcon = () => {
+    const htmlString = `
+      <div style="position: relative; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px;">
+        <div style="position: absolute; width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.4); background-color: #f59e0b; opacity: 0.95; box-shadow: 0 0 10px #f59e0b;"></div>
+        <span style="font-size: 10px; z-index: 10;">🛠️</span>
+      </div>
+    `;
+
+    return L.divIcon({
+      html: htmlString,
+      className: 'custom-div-icon',
+      iconSize: [24, 24],
+      iconAnchor: [12, 12]
+    });
+  };
+
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
@@ -657,7 +673,64 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
         marker.addTo(group);
       }
     });
-  }, [filteredInstallations, poles, isHeatmapMode, alerts, maintenanceStats, selectedColonia, zoneTypeFilter]);
+
+    // RENDER INCIDENTS / TRABAJOS ESPECIALES ON MAP
+    incidents.forEach(inc => {
+      if (!inc.lat || !inc.lng) return;
+
+      let matchesColonia = true;
+      if (selectedColonia !== 'todas') {
+        const col = COLONIAS.find(c => c.name === selectedColonia);
+        if (col) {
+          matchesColonia = isPointInPolygon(inc.lat, inc.lng, col.coords);
+        }
+      }
+
+      if (matchesColonia) {
+        const icon = createIncidentIcon();
+        const marker = L.marker([inc.lat, inc.lng], { icon });
+
+        const folioCode = inc.incident_code || `INC-${String(inc.id).padStart(5, '0')}`;
+
+        const incidentPhotoHTML = (inc.photo_before || inc.photo_after) ? `
+          <div style="display: flex; gap: 6px; margin-top: 8px;">
+            ${inc.photo_before ? `<div style="flex: 1;"><span style="font-size: 8px; color: #94a3b8; display: block; margin-bottom: 2px;">Foto Antes / Falla:</span><img src="${inc.photo_before}" onclick="window.openPhotoModal('${inc.photo_before}', 'Foto Evidencia Falla - ${folioCode}')" style="cursor: pointer; width: 100%; height: 65px; object-fit: cover; border-radius: 4px; border: 1px solid #f59e0b;" /></div>` : ''}
+            ${inc.photo_after ? `<div style="flex: 1;"><span style="font-size: 8px; color: #94a3b8; display: block; margin-bottom: 2px;">Foto Encendida:</span><img src="${inc.photo_after}" onclick="window.openPhotoModal('${inc.photo_after}', 'Foto Evidencia Reparada - ${folioCode}')" style="cursor: pointer; width: 100%; height: 65px; object-fit: cover; border-radius: 4px; border: 1px solid #34d399;" /></div>` : ''}
+          </div>
+        ` : '';
+
+        const popupHTML = `
+          <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px; color: #f1f5f9; min-width: 210px; padding: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 6px; margin-bottom: 6px;">
+              <span style="font-family: monospace; font-weight: bold; font-size: 13px; color: #f59e0b;">🛠️ ${folioCode}</span>
+              <span style="padding: 2px 6px; border-radius: 4px; font-weight: 600; font-size: 10px; background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4);">Incidencia / Trabajo Especial</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <p style="margin: 2px 0;"><strong>Trabajo Realizado:</strong> <span style="color: #60a5fa; font-weight: 700;">${inc.incident_type}</span></p>
+              <p style="margin: 2px 0;"><strong>Cuadrilla Atendió:</strong> ${inc.crew_name || 'Sistema / Operativo'}</p>
+              ${inc.operator_name ? `<p style="margin: 2px 0; color: #34d399;"><strong>Responsable en Turno:</strong> ${inc.operator_name}</p>` : ''}
+              <p style="margin: 2px 0;"><strong>Estado:</strong> <span style="color: #34d399; font-weight: 600;">Atendida / Finalizada</span></p>
+              <p style="margin: 2px 0;"><strong>Ubicación:</strong> ${getColoniaName(inc.lat, inc.lng)}</p>
+              <p style="margin: 2px 0;"><strong>Fecha Atención:</strong> ${formatLocalDateTime(inc.created_at)}</p>
+              ${inc.notes ? `<p style="margin: 6px 0 0 0; font-style: italic; background: rgba(245, 158, 11, 0.08); padding: 6px; border-radius: 4px; border: 1px solid rgba(245, 158, 11, 0.2);">"${inc.notes}"</p>` : ''}
+              ${incidentPhotoHTML}
+              <div style="display: flex; gap: 6px; margin-top: 10px; border-top: 1px solid #334155; padding-top: 8px;">
+                <a href="https://www.google.com/maps/dir/?api=1&destination=${inc.lat},${inc.lng}" target="_blank" rel="noopener noreferrer" style="flex: 1; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 4px; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); padding: 5px 8px; border-radius: 6px; font-weight: 600; font-size: 10px;">
+                  📍 Google Maps
+                </a>
+                <a href="https://waze.com/ul?ll=${inc.lat},${inc.lng}&navigate=yes" target="_blank" rel="noopener noreferrer" style="flex: 1; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 4px; background: rgba(5, 243, 162, 0.15); color: #05f3a2; border: 1px solid rgba(5, 243, 162, 0.4); padding: 5px 8px; border-radius: 6px; font-weight: 600; font-size: 10px;">
+                  🚙 Waze
+                </a>
+              </div>
+            </div>
+          </div>
+        `;
+
+        marker.bindPopup(popupHTML);
+        marker.addTo(group);
+      }
+    });
+  }, [filteredInstallations, poles, incidents, isHeatmapMode, alerts, maintenanceStats, selectedColonia, zoneTypeFilter]);
 
   return (
     <div className="map-dashboard-container">

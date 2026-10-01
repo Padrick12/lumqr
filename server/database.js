@@ -99,6 +99,7 @@ async function initializeDatabase() {
     );
     CREATE TABLE IF NOT EXISTS incidents (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      incident_code TEXT UNIQUE,
       crew_id INTEGER NOT NULL,
       operator_name TEXT,
       incident_type TEXT NOT NULL,
@@ -168,6 +169,20 @@ async function initializeDatabase() {
   try {
     await db.run('ALTER TABLE incidents ADD COLUMN crew_name TEXT');
   } catch (e) {}
+  try {
+    await db.run('ALTER TABLE incidents ADD COLUMN incident_code TEXT');
+  } catch (e) {}
+
+  // Auto-generate incident_code folios for any existing incidents in DB
+  try {
+    const uncodedIncidents = await db.all('SELECT id FROM incidents WHERE incident_code IS NULL OR incident_code = "" ORDER BY id ASC');
+    for (const inc of uncodedIncidents) {
+      const code = `INC-${String(inc.id).padStart(5, '0')}`;
+      await db.run('UPDATE incidents SET incident_code = ? WHERE id = ?', [code, inc.id]);
+    }
+  } catch (e) {
+    console.warn("Error assigning incident_code folios:", e);
+  }
 
   // Data Corrections: Lot 1 150W Wattage, Graceros Rural Zone, and Test Fixture 301 Removal
   try {

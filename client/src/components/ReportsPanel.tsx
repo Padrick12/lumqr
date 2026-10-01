@@ -24,6 +24,7 @@ interface SummaryStats {
     Robo: number;
   };
   total_poles?: number;
+  total_incidents?: number;
   poles_by_lamp?: {
     'Vapor de Sodio': number;
     'LED Antiguo': number;
@@ -785,6 +786,10 @@ export const ReportsPanel: React.FC = () => {
             <div className="glass-panel metric-card" style={{ borderColor: 'var(--neon-amber)' }}>
               <span className="metric-label">Vapor de Sodio</span>
               <span className="metric-value" style={{ color: 'var(--neon-amber)' }}>{summary.poles_by_lamp?.['Vapor de Sodio'] || 0}</span>
+            </div>
+            <div className="glass-panel metric-card" style={{ borderColor: 'rgba(245, 158, 11, 0.6)' }}>
+              <span className="metric-label">Incidencias Atendidas</span>
+              <span className="metric-value" style={{ color: '#f59e0b' }}>{summary.total_incidents || (incidents ? incidents.length : 0)}</span>
             </div>
             <div className="glass-panel metric-card" style={{ borderColor: 'rgba(244, 63, 94, 0.4)' }}>
               <span className="metric-label">Reporte Robo</span>

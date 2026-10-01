@@ -451,7 +451,7 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
       typeLine = `📍 *Punto de Iluminación Censado:* ${dataToShare.code}`;
     } else if (dataToShare.type === 'incident') {
       header = '🛠️ *REPORTE DE ATENCIÓN DE INCIDENCIA / TRABAJO ESPECIAL*';
-      typeLine = `📋 *Trabajo Realizado:* ${dataToShare.code}`;
+      typeLine = dataToShare.incidentCode ? `🆔 *Folio Incidencia:* ${dataToShare.incidentCode}\n📋 *Trabajo Realizado:* ${dataToShare.code}` : `📋 *Trabajo Realizado:* ${dataToShare.code}`;
     }
 
     const wattageLine = dataToShare.wattage ? `\n⚡ *Potencia / Watts:* ${dataToShare.wattage} Watts` : '';
@@ -870,10 +870,12 @@ ${typeLine}
       if (!res.ok) {
         setIncidentSubmitMsg({ text: data.error || 'Error al guardar incidencia.', isError: true });
       } else {
-        setIncidentSubmitMsg({ text: `¡Trabajo especial / incidencia "${incidentType}" registrada con éxito!`, isError: false });
+        const folioText = data.incident_code ? ` (Folio: ${data.incident_code})` : '';
+        setIncidentSubmitMsg({ text: `¡Trabajo especial / incidencia "${incidentType}" registrada con éxito!${folioText}`, isError: false });
         registerSuccessAndQueueWhatsApp({
           type: 'incident',
           code: incidentType,
+          incidentCode: data.incident_code,
           status: 'Atendida / Finalizada',
           lat,
           lng,
