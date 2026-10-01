@@ -304,46 +304,61 @@ export const ReportsPanel: React.FC = () => {
           <style>
             @page {
               size: A4 portrait;
-              margin: 24mm 8mm 16mm 8mm;
+              margin: 0;
+            }
+            @media print {
+              @page {
+                margin: 0;
+              }
+              body {
+                margin: 0 !important;
+                padding: 0 !important;
+              }
+              .no-print { display: none !important; }
             }
             * { box-sizing: border-box; }
-            body {
-              font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-              color: #0f172a;
-              background: #ffffff;
+            html, body {
               margin: 0;
               padding: 0;
+              background: #ffffff;
+              color: #0f172a;
+              font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
               font-size: 11px;
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
             }
 
-            .header-repeating {
-              position: fixed;
-              top: -22mm;
-              left: 0;
-              right: 0;
-              height: 20mm;
-              background: #ffffff;
-              text-align: center;
-              z-index: 1000;
+            .print-table {
+              width: 100%;
+              border-collapse: collapse;
             }
 
-            .footer-repeating {
-              position: fixed;
-              bottom: -14mm;
-              left: 0;
-              right: 0;
-              height: 12mm;
-              background: #ffffff;
-              text-align: center;
-              z-index: 1000;
+            thead.print-header {
+              display: table-header-group;
             }
 
-            .document-body {
-              margin-top: 0;
-              margin-bottom: 0;
-              padding: 0 4px;
+            tfoot.print-footer {
+              display: table-footer-group;
+            }
+
+            tbody.print-body {
+              display: table-row-group;
+            }
+
+            .header-content {
+              padding: 8mm 8mm 4mm 8mm;
+              text-align: center;
+              background: #ffffff;
+            }
+
+            .footer-content {
+              padding: 4mm 8mm 6mm 8mm;
+              text-align: center;
+              background: #ffffff;
+            }
+
+            .main-content {
+              padding: 0 8mm;
             }
 
             .action-bar {
@@ -388,14 +403,6 @@ export const ReportsPanel: React.FC = () => {
               page-break-inside: avoid !important;
               -webkit-column-break-inside: avoid !important;
             }
-
-            @media print {
-              .no-print { display: none !important; }
-              @page { margin: 24mm 8mm 16mm 8mm; }
-              .header-repeating { top: -22mm !important; }
-              .footer-repeating { bottom: -14mm !important; }
-              .document-body { margin-top: 0 !important; margin-bottom: 0 !important; }
-            }
           </style>
         </head>
         <body>
@@ -404,11 +411,29 @@ export const ReportsPanel: React.FC = () => {
             <button class="btn-close" onclick="window.close()">❌ Cerrar</button>
           </div>
 
-          <div class="header-repeating">
-            <img src="${origin}/letterhead/letterhead_header_trimmed.png" style="width:100%; max-height:75px; object-fit:contain;" />
-          </div>
-
-          <div class="document-body">
+          <table class="print-table">
+            <thead class="print-header">
+              <tr>
+                <td>
+                  <div class="header-content">
+                    <img src="${origin}/letterhead/letterhead_header_trimmed.png" style="width:100%; max-height:75px; object-fit:contain;" />
+                  </div>
+                </td>
+              </tr>
+            </thead>
+            <tfoot class="print-footer">
+              <tr>
+                <td>
+                  <div class="footer-content">
+                    <img src="${origin}/letterhead/letterhead_footer_trimmed.png" style="width:100%; max-height:45px; object-fit:contain;" />
+                  </div>
+                </td>
+              </tr>
+            </tfoot>
+            <tbody class="print-body">
+              <tr>
+                <td>
+                  <div class="main-content">
             <div style="text-align: center; margin-bottom: 14px; border-bottom: 2px solid #0284c7; padding-bottom: 8px;">
               <h1 style="margin: 0; font-size: 16px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">DIRECCIÓN DE SERVICIOS PÚBLICOS MUNICIPALES</h1>
               <h2 style="margin: 4px 0 0 0; font-size: 12px; color: #0284c7; font-weight: 700; text-transform: uppercase;">DICTAMEN Y REPORTE OFICIAL DE CUSTODIA Y ENTREGABLES — ALUMBRADO PÚBLICO</h2>
@@ -662,12 +687,12 @@ export const ReportsPanel: React.FC = () => {
               </div>
             </div>
           </div>
-
-          <div class="footer-repeating">
-            <img src="${origin}/letterhead/letterhead_footer_trimmed.png" style="width:100%; max-height:45px; object-fit:contain;" />
-          </div>
-        </body>
-      </html>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+</html>
     `;
 
     printWin.document.write(htmlDoc);
