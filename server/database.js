@@ -233,12 +233,18 @@ async function initializeDatabase() {
       }
 
       await db.run(`
-        INSERT INTO installations (fixture_code, crew_id, operator_name, lat, lng, installed_at, status_at_install, notes, wattage, zone_type, offline_code)
-        VALUES ('LUM-LERDO-0010', ?, 'Jose Nieves', 25.265801265694268, -103.7743342987044, '2026-09-30 16:09:00', 'Nueva', 'Lampara nueva', 150, 'Rural', 'LUM-LERDO-0010')
+        INSERT INTO installations (fixture_code, crew_id, operator_name, lat, lng, installed_at, status_at_install, notes, wattage, zone_type, offline_code, photo_before, photo_after)
+        VALUES ('LUM-LERDO-0010', ?, 'Jose Nieves', 25.265801265694268, -103.7743342987044, '2026-09-30 16:09:00', 'Nueva', 'Lampara nueva', 150, 'Rural', 'LUM-LERDO-0010', '/uploads/evidences/lum0010_before.png', '/uploads/evidences/lum0010_after.png')
       `, [crewId]);
 
       await db.run('UPDATE fixtures SET status = "Nueva", crew_id = ? WHERE code = "LUM-LERDO-0010"', [crewId]);
-      console.log('✅ LUM-LERDO-0010 missing fixture auto-synced into database.');
+      console.log('✅ LUM-LERDO-0010 missing fixture auto-synced with evidence photos into database.');
+    } else {
+      await db.run(`
+        UPDATE installations 
+        SET photo_before = '/uploads/evidences/lum0010_before.png', photo_after = '/uploads/evidences/lum0010_after.png'
+        WHERE fixture_code = 'LUM-LERDO-0010'
+      `);
     }
   } catch (e) {
     console.warn("Error auto-syncing LUM-LERDO-0010:", e);

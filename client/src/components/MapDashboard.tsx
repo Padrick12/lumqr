@@ -28,6 +28,7 @@ interface Installation {
   current_status: 'Nueva' | 'Reparada' | 'Rehabilitada' | 'Robo';
   arrival_date: string;
   offline_code?: string;
+  zone_type?: 'Urbana' | 'Rural' | 'Trayectos Seguros' | string;
 }
 
 interface InstallationWithUsage extends Installation {
@@ -124,6 +125,21 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
         }
       } catch (err) {
         console.error('Error updating pole zone classification:', err);
+      }
+    };
+
+    (window as any).updateInstallationZone = async (code: string, newZone: string) => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/installations/code/${code}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ zone_type: newZone })
+        });
+        if (res.ok) {
+          fetchInstallations();
+        }
+      } catch (err) {
+        console.error('Error updating installation zone classification:', err);
       }
     };
     fetchInstallations();
@@ -540,6 +556,14 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
             ${inst.operator_name ? `<p style="margin: 2px 0; color: #34d399;"><strong>Responsable en Turno:</strong> ${inst.operator_name}</p>` : ''}
             ${inst.wattage ? `<p style="margin: 2px 0; color: #f59e0b; font-weight: 700;"><strong>⚡ Potencia / Watts:</strong> ${inst.wattage} Watts</p>` : ''}
             <p style="margin: 2px 0;"><strong>Ubicación:</strong> ${getColoniaName(inst.lat, inst.lng)}</p>
+            <p style="margin: 4px 0; display: flex; align-items: center; justify-content: space-between;">
+              <strong>Clasificación Zona:</strong>
+              <select onchange="window.updateInstallationZone('${inst.fixture_code}', this.value)" style="background: rgba(15, 23, 42, 0.9); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.5); border-radius: 4px; padding: 2px 4px; font-size: 10px; font-weight: 700; cursor: pointer;">
+                <option value="Urbana" ${inst.zone_type === 'Urbana' ? 'selected' : ''}>Urbana</option>
+                <option value="Rural" ${inst.zone_type === 'Rural' ? 'selected' : ''}>Rural</option>
+                <option value="Trayectos Seguros" ${inst.zone_type === 'Trayectos Seguros' ? 'selected' : ''}>Trayectos Seguros</option>
+              </select>
+            </p>
             <p style="margin: 2px 0;"><strong>Instalada:</strong> ${formatLocalDateTime(inst.installed_at)}</p>
             ${inst.notes ? `<p style="margin: 6px 0 0 0; font-style: italic; background: rgba(255,255,255,0.04); padding: 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.04);">"${inst.notes}"</p>` : ''}
             ${photoHTML}
