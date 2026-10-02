@@ -881,12 +881,36 @@ app.get('/api/reports', async (req, res) => {
 
     crewPerformance.sort((a, b) => (b.total_installations + b.total_poles) - (a.total_installations + a.total_poles));
 
-    // List of all fixtures with crew name and current status
+    // List of all fixtures with crew name and installation status
     const allFixtures = await db.all(`
-      SELECT f.code, f.status, f.batch_id, c.name as crew_name, b.code_prefix, b.arrival_date
+      SELECT 
+        f.code, 
+        f.status, 
+        f.batch_id, 
+        f.crew_id,
+        c.name as crew_name, 
+        b.code_prefix, 
+        b.arrival_date,
+        i.id as installation_id,
+        i.installed_at,
+        i.operator_name as installed_by_operator,
+        ic.name as installed_by_crew,
+        i.internal_folio,
+        i.lat,
+        i.lng
       FROM fixtures f
       LEFT JOIN crews c ON f.crew_id = c.id
       JOIN batches b ON f.batch_id = b.id
+      LEFT JOIN (
+        SELECT inst.*
+        FROM installations inst
+        JOIN (
+          SELECT fixture_code, MAX(id) as max_id
+          FROM installations
+          GROUP BY fixture_code
+        ) latest ON inst.id = latest.max_id
+      ) i ON f.code = i.fixture_code
+      LEFT JOIN crews ic ON i.crew_id = ic.id
       ORDER BY f.code ASC
     `);
 
