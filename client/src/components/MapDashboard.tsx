@@ -220,7 +220,7 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
   }, []);
 
   const filteredColoniasList = COLONIAS.filter(c => {
-    const isRural = /Villa Ju[áa]rez|^Francisco Villa$/i.test(c.name) || !c.name.match(/Colonia|Ampliaci|Villa|Centro|Fraccionamiento|Jardines|Magisterial|Samaniego|Rosales|Altas|Sarabia|Brisas|Sacramento|Rueda|Fierro|Quintas|Cerrada|Residencial|Valle|Laureles|Sauces|Reina|Jerusalem|Ed[ée]n|Cambio|Constituci[óo]n|Mayagoitia|Parque|Lomita/i);
+    const isRural = /Villa de Guadalupe|Villa Ju[áa]rez|^Francisco Villa$/i.test(c.name) || !c.name.match(/Colonia|Ampliaci|Villa|Centro|Fraccionamiento|Jardines|Magisterial|Samaniego|Rosales|Altas|Sarabia|Brisas|Sacramento|Rueda|Fierro|Quintas|Cerrada|Residencial|Valle|Laureles|Sauces|Reina|Jerusalem|Ed[ée]n|Cambio|Constituci[óo]n|Mayagoitia|Parque|Lomita/i);
     const matchesType = zoneTypeFilter === 'Todas' || 
                         (zoneTypeFilter === 'Urbana' && !isRural) || 
                         (zoneTypeFilter === 'Rural' && isRural);
