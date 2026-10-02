@@ -17,6 +17,7 @@ interface Installation {
   crew_id: number;
   crew_name: string;
   operator_name?: string;
+  internal_folio?: string;
   lat: number;
   lng: number;
   installed_at: string;
@@ -49,6 +50,7 @@ interface CensusPole {
   notes: string;
   crew_name: string;
   operator_name?: string;
+  internal_folio?: string;
   photo_before?: string;
   photo_after?: string;
   created_at: string;
@@ -104,6 +106,7 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
   // Map settings
   const [selectedColonia, setSelectedColonia] = useState<string>('todas');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
+  const [folioSearch, setFolioSearch] = useState<string>('');
   const [isHeatmapMode, setIsHeatmapMode] = useState<boolean>(false);
   const [coloniaSearch, setColoniaSearch] = useState('');
   const [coloniaDropdownOpen, setColoniaDropdownOpen] = useState(false);
@@ -338,7 +341,17 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
       }
     }
 
-    return matchesStatus && matchesColonia;
+    let matchesSearch = true;
+    const searchNorm = folioSearch.trim().toLowerCase();
+    if (searchNorm) {
+      const codeMatch = inst.fixture_code?.toLowerCase().includes(searchNorm);
+      const folioMatch = inst.internal_folio?.toLowerCase().includes(searchNorm);
+      const notesMatch = inst.notes?.toLowerCase().includes(searchNorm);
+      const operatorMatch = inst.operator_name?.toLowerCase().includes(searchNorm);
+      matchesSearch = !!(codeMatch || folioMatch || notesMatch || operatorMatch);
+    }
+
+    return matchesStatus && matchesColonia && matchesSearch;
   });
 
   const createCustomIcon = (status: string, isAlert: boolean) => {
@@ -581,6 +594,13 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
             <span style="padding: 2px 6px; border-radius: 4px; font-weight: 600; font-size: 10px; ${badgeClassStyle}">${inst.current_status}</span>
           </div>
           <div style="display: flex; flex-direction: column; gap: 4px;">
+            ${inst.internal_folio ? `
+              <div style="background: rgba(5, 243, 162, 0.12); border: 1px solid rgba(5, 243, 162, 0.4); border-radius: 6px; padding: 4px 6px; margin: 2px 0; color: #05f3a2; font-size: 10px; font-weight: 700; display: flex; justify-content: space-between; align-items: center;">
+                <span>📋 Folio Reporte Ciudadano:</span>
+                <span style="font-family: monospace; font-size: 11px; color: #fff;">${inst.internal_folio}</span>
+              </div>
+              <div style="font-size: 9px; color: #34d399; font-weight: 700; margin-bottom: 2px;">✅ REPORTE ATENDIDO Y SOLUCIONADO</div>
+            ` : ''}
             <p style="margin: 2px 0;"><strong>Cuadrilla:</strong> ${inst.crew_name}</p>
             ${inst.operator_name ? `<p style="margin: 2px 0; color: #34d399;"><strong>Responsable en Turno:</strong> ${inst.operator_name}</p>` : ''}
             ${inst.wattage ? `<p style="margin: 2px 0; color: #f59e0b; font-weight: 700;"><strong>⚡ Potencia / Watts:</strong> ${inst.wattage} Watts</p>` : ''}
@@ -614,11 +634,8 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
       marker.addTo(group);
     });
 
-
-
     // RENDER CENSORED POLES ON MAP
     poles.forEach(p => {
-
       let matchesColonia = true;
       if (selectedColonia !== 'todas') {
         const col = COLONIAS.find(c => c.name === selectedColonia);
@@ -628,7 +645,18 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
       }
       let matchesZone = zoneTypeFilter === 'Todas' || p.zone_type === zoneTypeFilter;
 
-      if (matchesColonia && matchesZone) {
+      let matchesSearch = true;
+      const searchNorm = folioSearch.trim().toLowerCase();
+      if (searchNorm) {
+        const codeMatch = p.pole_code?.toLowerCase().includes(searchNorm);
+        const folioMatch = p.internal_folio?.toLowerCase().includes(searchNorm);
+        const lampMatch = p.lamp_type?.toLowerCase().includes(searchNorm);
+        const notesMatch = p.notes?.toLowerCase().includes(searchNorm);
+        const operatorMatch = p.operator_name?.toLowerCase().includes(searchNorm);
+        matchesSearch = !!(codeMatch || folioMatch || lampMatch || notesMatch || operatorMatch);
+      }
+
+      if (matchesColonia && matchesZone && matchesSearch) {
         const icon = createPoleIcon(p.lamp_type);
         const marker = L.marker([p.lat, p.lng], { icon });
 
@@ -652,6 +680,13 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
               <span style="padding: 2px 6px; border-radius: 4px; font-weight: 600; font-size: 10px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3);">Punto de Iluminación</span>
             </div>
             <div style="display: flex; flex-direction: column; gap: 4px;">
+              ${p.internal_folio ? `
+                <div style="background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 6px; padding: 4px 6px; margin: 2px 0; color: #38bdf8; font-size: 10px; font-weight: 700; display: flex; justify-content: space-between; align-items: center;">
+                  <span>📋 Folio Reporte Ciudadano:</span>
+                  <span style="font-family: monospace; font-size: 11px; color: #fff;">${p.internal_folio}</span>
+                </div>
+                <div style="font-size: 9px; color: #38bdf8; font-weight: 700; margin-bottom: 2px;">✅ REPORTE ATENDIDO EN CENSO</div>
+              ` : ''}
               ${offlineTagHTML}
               <p style="margin: 2px 0;"><strong>Cuadrilla Censadora:</strong> ${p.crew_name || 'Almacén / Sistema'}</p>
               ${p.operator_name ? `<p style="margin: 2px 0; color: #38bdf8;"><strong>Responsable en Turno:</strong> ${p.operator_name}</p>` : ''}
@@ -699,7 +734,18 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
         }
       }
 
-      if (matchesColonia) {
+      let matchesSearch = true;
+      const searchNorm = folioSearch.trim().toLowerCase();
+      if (searchNorm) {
+        const codeMatch = (inc.incident_code || '').toLowerCase().includes(searchNorm);
+        const folioMatch = (inc.internal_folio || '').toLowerCase().includes(searchNorm);
+        const typeMatch = (inc.incident_type || '').toLowerCase().includes(searchNorm);
+        const notesMatch = (inc.notes || '').toLowerCase().includes(searchNorm);
+        const operatorMatch = (inc.operator_name || '').toLowerCase().includes(searchNorm);
+        matchesSearch = !!(codeMatch || folioMatch || typeMatch || notesMatch || operatorMatch);
+      }
+
+      if (matchesColonia && matchesSearch) {
         const icon = createIncidentIcon();
         const marker = L.marker([inc.lat, inc.lng], { icon });
 
@@ -719,6 +765,13 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
               <span style="padding: 2px 6px; border-radius: 4px; font-weight: 600; font-size: 10px; background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4);">Incidencia / Trabajo Especial</span>
             </div>
             <div style="display: flex; flex-direction: column; gap: 4px;">
+              ${inc.internal_folio ? `
+                <div style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.5); border-radius: 6px; padding: 4px 6px; margin: 2px 0; color: #f59e0b; font-size: 10px; font-weight: 700; display: flex; justify-content: space-between; align-items: center;">
+                  <span>📋 Folio Reporte Ciudadano:</span>
+                  <span style="font-family: monospace; font-size: 11px; color: #fff;">${inc.internal_folio}</span>
+                </div>
+                <div style="font-size: 9px; color: #34d399; font-weight: 700; margin-bottom: 2px;">✅ INCIDENCIA ATENDIDA Y RESUELTA</div>
+              ` : ''}
               <p style="margin: 2px 0;"><strong>Trabajo Realizado:</strong> <span style="color: #60a5fa; font-weight: 700;">${inc.incident_type}</span></p>
               <p style="margin: 2px 0;"><strong>Cuadrilla Atendió:</strong> ${inc.crew_name || 'Sistema / Operativo'}</p>
               ${inc.operator_name ? `<p style="margin: 2px 0; color: #34d399;"><strong>Responsable en Turno:</strong> ${inc.operator_name}</p>` : ''}
@@ -743,7 +796,7 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
         marker.addTo(group);
       }
     });
-  }, [filteredInstallations, poles, incidents, isHeatmapMode, alerts, maintenanceStats, selectedColonia, zoneTypeFilter]);
+  }, [filteredInstallations, poles, incidents, isHeatmapMode, alerts, maintenanceStats, selectedColonia, zoneTypeFilter, folioSearch]);
 
   return (
     <div className="map-dashboard-container">
@@ -825,6 +878,26 @@ export const MapDashboard: React.FC<MapDashboardProps> = ({ refreshTrigger }) =>
               <option value="Rehabilitada">Rehabilitada</option>
               <option value="Robo">Robo</option>
             </select>
+
+            <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(13, 20, 38, 0.8)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0 10px', height: '36px', gap: '6px' }}>
+              <Search size={14} color="var(--neon-blue)" />
+              <input 
+                type="text" 
+                placeholder="Buscar Folio (SPF-...) / QR / Cuadrilla..." 
+                value={folioSearch}
+                onChange={(e) => setFolioSearch(e.target.value)}
+                style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '12px', outline: 'none', width: '220px' }}
+              />
+              {folioSearch && (
+                <button 
+                  onClick={() => setFolioSearch('')}
+                  style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '12px', padding: '0 2px' }}
+                  title="Limpiar búsqueda"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="map-actions">

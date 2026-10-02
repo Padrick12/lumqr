@@ -2,6 +2,7 @@ export interface OfflineInstallation {
   code: string;
   crew_id: number;
   operator_name?: string | null;
+  internal_folio?: string | null;
   lat: number;
   lng: number;
   status: 'Nueva' | 'Reparada' | 'Rehabilitada' | 'Robo' | string;
@@ -17,6 +18,7 @@ export interface OfflinePole {
   pole_code?: string;
   crew_id: number;
   operator_name?: string | null;
+  internal_folio?: string | null;
   lat: number;
   lng: number;
   pole_type: string;
@@ -34,6 +36,7 @@ export interface OfflineIncident {
   id: string; // unique timestamp
   crew_id: number;
   operator_name?: string | null;
+  internal_folio?: string | null;
   incident_type: string;
   lat: number;
   lng: number;
@@ -47,14 +50,16 @@ export interface PendingWhatsAppMsg {
   id: string; // unique code or timestamp
   type: 'qr' | 'pole' | 'incident';
   code: string;
+  incidentCode?: string;
+  internalFolio?: string | null;
   date: string;
   lat: number;
   lng: number;
   status: string;
-  wattage?: number;
+  wattage?: number | string | null;
   notes: string;
-  photoBefore?: string;
-  photoAfter?: string;
+  photoBefore?: string | null;
+  photoAfter?: string | null;
   operatorName?: string;
   crewName?: string;
   created_at: string;

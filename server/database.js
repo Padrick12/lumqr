@@ -69,6 +69,7 @@ async function initializeDatabase() {
       fixture_code TEXT NOT NULL,
       crew_id INTEGER NOT NULL,
       operator_name TEXT,
+      internal_folio TEXT,
       lat REAL NOT NULL,
       lng REAL NOT NULL,
       installed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -85,6 +86,7 @@ async function initializeDatabase() {
       pole_code TEXT NOT NULL UNIQUE,
       crew_id INTEGER,
       operator_name TEXT,
+      internal_folio TEXT,
       lat REAL NOT NULL,
       lng REAL NOT NULL,
       pole_type TEXT DEFAULT 'Concreto',
@@ -103,6 +105,7 @@ async function initializeDatabase() {
       incident_code TEXT UNIQUE,
       crew_id INTEGER NOT NULL,
       operator_name TEXT,
+      internal_folio TEXT,
       incident_type TEXT NOT NULL,
       lat REAL NOT NULL,
       lng REAL NOT NULL,
@@ -127,6 +130,9 @@ async function initializeDatabase() {
   try {
     await db.run('ALTER TABLE installations ADD COLUMN wattage INTEGER');
   } catch (e) {}
+  try {
+    await db.run('ALTER TABLE installations ADD COLUMN internal_folio TEXT');
+  } catch (e) {}
 
   try {
     await db.run('ALTER TABLE poles ADD COLUMN operator_name TEXT');
@@ -145,6 +151,9 @@ async function initializeDatabase() {
   } catch (e) {}
   try {
     await db.run('ALTER TABLE poles ADD COLUMN offline_code TEXT');
+  } catch (e) {}
+  try {
+    await db.run('ALTER TABLE poles ADD COLUMN internal_folio TEXT');
   } catch (e) {}
   try {
     await db.run('ALTER TABLE crews ADD COLUMN active_operator TEXT');
@@ -178,6 +187,9 @@ async function initializeDatabase() {
   } catch (e) {}
   try {
     await db.run('ALTER TABLE incidents ADD COLUMN offline_code TEXT');
+  } catch (e) {}
+  try {
+    await db.run('ALTER TABLE incidents ADD COLUMN internal_folio TEXT');
   } catch (e) {}
 
   // Auto-generate incident_code folios for any existing incidents in DB

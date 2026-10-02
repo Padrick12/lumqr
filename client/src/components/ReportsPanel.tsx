@@ -139,25 +139,104 @@ export const ReportsPanel: React.FC = () => {
   });
 
   const handleExportCSV = () => {
-    if (filteredFixtures.length === 0) return;
-    
-    const headers = ['Codigo', 'Estado Actual', 'Cuadrilla Custodia', 'Prefijo Lote', 'Fecha Ingreso Lote'];
-    const rows = filteredFixtures.map(f => [
-      f.code,
-      f.status,
-      f.crew_name || 'En Almacen',
-      f.code_prefix,
-      f.arrival_date
-    ]);
+    const headers = [
+      'Tipo de Registro',
+      'Codigo / Serial',
+      'Folio Reporte Ciudadano',
+      'Estado / Clasificacion',
+      'Cuadrilla Custodia',
+      'Responsable en Turno',
+      'Potencia (Watts)',
+      'Fecha y Hora',
+      'Latitud',
+      'Longitud',
+      'Notas / Observaciones'
+    ];
+
+    const rows: string[][] = [];
+
+    if (showQR) {
+      filteredInstallations.forEach(inst => {
+        rows.push([
+          'Luminaria QR LED',
+          inst.fixture_code || '',
+          inst.internal_folio || 'N/A',
+          inst.current_status || inst.status || 'Instalada',
+          inst.crew_name || 'Almacen',
+          inst.operator_name || 'Sin asignar',
+          String(inst.wattage || 70),
+          inst.installed_at ? new Date(inst.installed_at).toLocaleString('es-MX') : '',
+          String(inst.lat || ''),
+          String(inst.lng || ''),
+          inst.notes || ''
+        ]);
+      });
+    }
+
+    if (showPoles) {
+      filteredPoles.forEach(p => {
+        rows.push([
+          'Punto de Iluminacion (Censo)',
+          p.pole_code || '',
+          p.internal_folio || 'N/A',
+          `${p.pole_type || 'Poste'} - ${p.lamp_type || 'Lámpara'}`,
+          p.crew_name || 'Almacen',
+          p.operator_name || 'Sin asignar',
+          String(p.wattage || (p.lamp_type === 'Vapor de Sodio' ? 150 : 70)),
+          p.created_at || p.installed_at ? new Date(p.created_at || p.installed_at).toLocaleString('es-MX') : '',
+          String(p.lat || ''),
+          String(p.lng || ''),
+          p.notes || ''
+        ]);
+      });
+    }
+
+    if (showIncidents) {
+      filteredIncidents.forEach(inc => {
+        rows.push([
+          'Incidencia / Corto Circuito',
+          inc.incident_code || inc.incident_type || 'Incidencia',
+          inc.internal_folio || 'N/A',
+          'Atendida y Resuelta',
+          inc.crew_name || 'Almacen',
+          inc.operator_name || 'Sin asignar',
+          'N/A',
+          inc.created_at ? new Date(inc.created_at).toLocaleString('es-MX') : '',
+          String(inc.lat || ''),
+          String(inc.lng || ''),
+          inc.notes || ''
+        ]);
+      });
+    }
+
+    if (rows.length === 0 && filteredFixtures.length > 0) {
+      filteredFixtures.forEach(f => {
+        rows.push([
+          'Lote Almacen',
+          f.code,
+          'N/A',
+          f.status,
+          f.crew_name || 'En Almacen',
+          'Almacen',
+          '70',
+          f.arrival_date,
+          '',
+          '',
+          f.code_prefix
+        ]);
+      });
+    }
+
+    if (rows.length === 0) return;
 
     const csvContent = 
       'data:text/csv;charset=utf-8,\uFEFF' + 
-      [headers.join(','), ...rows.map(e => e.map(val => `"${val}"`).join(','))].join('\n');
+      [headers.join(','), ...rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))].join('\n');
     
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `reporte_inventario_luminarias_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `auditoria_alumbrado_lerdo_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -181,6 +260,8 @@ export const ReportsPanel: React.FC = () => {
   const filteredInstallations = uniqueInstallations.filter(inst => {
     const matchSearch = !searchLower || 
       (inst.fixture_code && inst.fixture_code.toLowerCase().includes(searchLower)) ||
+      (inst.internal_folio && inst.internal_folio.toLowerCase().includes(searchLower)) ||
+      (inst.operator_name && inst.operator_name.toLowerCase().includes(searchLower)) ||
       (inst.notes && inst.notes.toLowerCase().includes(searchLower));
     
     const instCrew = (inst.crew_name || '').trim().toLowerCase();
@@ -203,6 +284,8 @@ export const ReportsPanel: React.FC = () => {
   const filteredPoles = poles.filter(p => {
     const matchSearch = !searchLower || 
       (p.pole_code && p.pole_code.toLowerCase().includes(searchLower)) ||
+      (p.internal_folio && p.internal_folio.toLowerCase().includes(searchLower)) ||
+      (p.operator_name && p.operator_name.toLowerCase().includes(searchLower)) ||
       (p.pole_type && p.pole_type.toLowerCase().includes(searchLower)) ||
       (p.lamp_type && p.lamp_type.toLowerCase().includes(searchLower)) ||
       (p.notes && p.notes.toLowerCase().includes(searchLower));
@@ -226,7 +309,10 @@ export const ReportsPanel: React.FC = () => {
 
   const filteredIncidents = incidents.filter(inc => {
     const matchSearch = !searchLower || 
+      (inc.incident_code && inc.incident_code.toLowerCase().includes(searchLower)) || 
+      (inc.internal_folio && inc.internal_folio.toLowerCase().includes(searchLower)) || 
       (inc.incident_type && inc.incident_type.toLowerCase().includes(searchLower)) || 
+      (inc.operator_name && inc.operator_name.toLowerCase().includes(searchLower)) || 
       (inc.notes && inc.notes.toLowerCase().includes(searchLower));
     
     const incCrew = (inc.crew_name || '').trim().toLowerCase();
@@ -506,6 +592,7 @@ export const ReportsPanel: React.FC = () => {
                   <tr style="background: #e2e8f0; color: #0f172a; text-align: left;">
                     <th style="padding: 6px; border: 1px solid #cbd5e1;">#</th>
                     <th style="padding: 6px; border: 1px solid #cbd5e1;">Código / Identificador</th>
+                    <th style="padding: 6px; border: 1px solid #cbd5e1;">Folio Reporte Ciudadano</th>
                     <th style="padding: 6px; border: 1px solid #cbd5e1;">Tipo Registro</th>
                     <th style="padding: 6px; border: 1px solid #cbd5e1;">Cuadrilla</th>
                     <th style="padding: 6px; border: 1px solid #cbd5e1;">Responsable en Turno</th>
@@ -518,6 +605,7 @@ export const ReportsPanel: React.FC = () => {
                     <tr style="border-bottom: 1px solid #cbd5e1;">
                       <td style="padding: 5px; border: 1px solid #cbd5e1;">${idx + 1}</td>
                       <td style="padding: 5px; border: 1px solid #cbd5e1; font-weight: bold;">${inst.fixture_code}</td>
+                      <td style="padding: 5px; border: 1px solid #cbd5e1; font-family: monospace; font-weight: bold; color: #0284c7;">${inst.internal_folio ? `${inst.internal_folio} <span style="color:#059669; font-size:8px;">(✅ Resuelto)</span>` : '<span style="color:#94a3b8;">—</span>'}</td>
                       <td style="padding: 5px; border: 1px solid #cbd5e1; color: #059669; font-weight: bold;">💡 Luminaria QR</td>
                       <td style="padding: 5px; border: 1px solid #cbd5e1;">${inst.crew_name || 'N/A'}</td>
                       <td style="padding: 5px; border: 1px solid #cbd5e1;">${inst.operator_name || 'Sin asignar'}</td>
@@ -529,6 +617,7 @@ export const ReportsPanel: React.FC = () => {
                     <tr style="border-bottom: 1px solid #cbd5e1;">
                       <td style="padding: 5px; border: 1px solid #cbd5e1;">${filteredInstallations.length + idx + 1}</td>
                       <td style="padding: 5px; border: 1px solid #cbd5e1; font-weight: bold;">${p.pole_code}</td>
+                      <td style="padding: 5px; border: 1px solid #cbd5e1; font-family: monospace; font-weight: bold; color: #0284c7;">${p.internal_folio ? `${p.internal_folio} <span style="color:#059669; font-size:8px;">(✅ Resuelto)</span>` : '<span style="color:#94a3b8;">—</span>'}</td>
                       <td style="padding: 5px; border: 1px solid #cbd5e1; color: #0284c7; font-weight: bold;">📍 Punto Iluminación</td>
                       <td style="padding: 5px; border: 1px solid #cbd5e1;">${p.crew_name || 'N/A'}</td>
                       <td style="padding: 5px; border: 1px solid #cbd5e1;">${p.operator_name || 'Sin asignar'}</td>
@@ -540,6 +629,7 @@ export const ReportsPanel: React.FC = () => {
                     <tr style="border-bottom: 1px solid #cbd5e1;">
                       <td style="padding: 5px; border: 1px solid #cbd5e1;">${filteredInstallations.length + filteredPoles.length + idx + 1}</td>
                       <td style="padding: 5px; border: 1px solid #cbd5e1; font-weight: bold;">${inc.incident_type}</td>
+                      <td style="padding: 5px; border: 1px solid #cbd5e1; font-family: monospace; font-weight: bold; color: #0284c7;">${inc.internal_folio ? `${inc.internal_folio} <span style="color:#059669; font-size:8px;">(✅ Resuelto)</span>` : '<span style="color:#94a3b8;">—</span>'}</td>
                       <td style="padding: 5px; border: 1px solid #cbd5e1; color: #d97706; font-weight: bold;">🛠️ Incidencia</td>
                       <td style="padding: 5px; border: 1px solid #cbd5e1;">${inc.crew_name || 'N/A'}</td>
                       <td style="padding: 5px; border: 1px solid #cbd5e1;">${inc.operator_name || 'Sin asignar'}</td>
@@ -568,6 +658,12 @@ export const ReportsPanel: React.FC = () => {
                         <span style="background: #d1fae5; color: #047857; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 9px;">${inst.current_status || inst.status || 'Instalada'}</span>
                       </div>
                       <div style="font-size: 10px; display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px;">
+                        ${inst.internal_folio ? `
+                          <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 4px; padding: 4px 6px; margin-bottom: 4px; color: #065f46; font-size: 9px; font-weight: bold; display: flex; justify-content: space-between;">
+                            <span>📋 Folio Reporte Ciudadano:</span>
+                            <span style="font-family: monospace; color: #047857;">${inst.internal_folio} (✅ ATENDIDO)</span>
+                          </div>
+                        ` : ''}
                         <div>👷‍♂️ <strong>Cuadrilla:</strong> ${inst.crew_name || 'N/A'}</div>
                         ${inst.operator_name ? `<div>👤 <strong>Responsable en Turno:</strong> ${inst.operator_name}</div>` : ''}
                         <div>⚡ <strong>Potencia:</strong> <strong style="color: #d97706;">${inst.wattage || 70} Watts LED</strong></div>
@@ -608,6 +704,12 @@ export const ReportsPanel: React.FC = () => {
                         <span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 9px;">Punto de Iluminación</span>
                       </div>
                       <div style="font-size: 10px; display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px;">
+                        ${p.internal_folio ? `
+                          <div style="background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 4px; padding: 4px 6px; margin-bottom: 4px; color: #0369a1; font-size: 9px; font-weight: bold; display: flex; justify-content: space-between;">
+                            <span>📋 Folio Reporte Ciudadano:</span>
+                            <span style="font-family: monospace; color: #0284c7;">${p.internal_folio} (✅ ATENDIDO)</span>
+                          </div>
+                        ` : ''}
                         <div>👷‍♂️ <strong>Cuadrilla:</strong> ${p.crew_name || 'N/A'}</div>
                         ${p.operator_name ? `<div>👤 <strong>Responsable en Turno:</strong> ${p.operator_name}</div>` : ''}
                         <div>🏗️ <strong>Estructura / Lámpara:</strong> ${p.pole_type || 'Punto'} — ${p.lamp_type || 'Sin especificar'}</div>
@@ -648,6 +750,12 @@ export const ReportsPanel: React.FC = () => {
                         <span style="background: #fef3c7; color: #b45309; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 9px;">Atendida / Resuelta</span>
                       </div>
                       <div style="font-size: 10px; display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px;">
+                        ${inc.internal_folio ? `
+                          <div style="background: #fef3c7; border: 1px solid #fde68a; border-radius: 4px; padding: 4px 6px; margin-bottom: 4px; color: #92400e; font-size: 9px; font-weight: bold; display: flex; justify-content: space-between;">
+                            <span>📋 Folio Reporte Ciudadano:</span>
+                            <span style="font-family: monospace; color: #b45309;">${inc.internal_folio} (✅ ATENDIDO)</span>
+                          </div>
+                        ` : ''}
                         <div>👷‍♂️ <strong>Cuadrilla:</strong> ${inc.crew_name || 'N/A'}</div>
                         ${inc.operator_name ? `<div>👤 <strong>Responsable en Turno:</strong> ${inc.operator_name}</div>` : ''}
                         <div>📅 <strong>Fecha/Hora Atención:</strong> ${new Date(inc.created_at).toLocaleString('es-MX')}</div>
@@ -1103,14 +1211,15 @@ export const ReportsPanel: React.FC = () => {
         </div>
 
         <div className="reports-table-container">
-          {incidents.length === 0 ? (
-            <div className="empty-state">No hay incidencias o trabajos especiales registrados aún.</div>
+          {filteredIncidents.length === 0 ? (
+            <div className="empty-state">No hay incidencias o trabajos especiales con los filtros seleccionados.</div>
           ) : (
             <table className="reports-table">
               <thead>
                 <tr>
                   <th>Fecha / Hora</th>
                   <th>Tipo de Trabajo</th>
+                  <th>Folio Reporte Ciudadano</th>
                   <th>Cuadrilla Responsable</th>
                   <th>Operador en Turno</th>
                   <th>Detalle / Observaciones</th>
@@ -1119,7 +1228,7 @@ export const ReportsPanel: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {incidents.map(inc => (
+                {filteredIncidents.map(inc => (
                   <tr key={inc.id}>
                     <td style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                       {new Date(inc.created_at).toLocaleString()}
@@ -1128,6 +1237,15 @@ export const ReportsPanel: React.FC = () => {
                       <span style={{ padding: '2px 8px', borderRadius: '4px', background: 'rgba(245,158,11,0.15)', color: 'var(--neon-amber)', fontWeight: 700, fontSize: '11px' }}>
                         {inc.incident_type}
                       </span>
+                    </td>
+                    <td>
+                      {inc.internal_folio ? (
+                        <span style={{ padding: '3px 8px', borderRadius: '4px', background: 'rgba(5, 243, 162, 0.12)', border: '1px solid rgba(5, 243, 162, 0.4)', color: '#05f3a2', fontFamily: 'monospace', fontWeight: 700, fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <span>📋</span> {inc.internal_folio}
+                        </span>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>—</span>
+                      )}
                     </td>
                     <td style={{ fontWeight: 600 }}>{inc.crew_name || 'Desconocida'}</td>
                     <td style={{ color: 'var(--neon-green)', fontWeight: 600 }}>{inc.operator_name || 'N/A'}</td>

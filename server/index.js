@@ -399,7 +399,7 @@ app.post('/api/batches/assign', async (req, res) => {
 
 // 4. Register Installation / Change Status (Despliegue & Mantenimiento)
 app.post('/api/installations', async (req, res) => {
-  const { code, crew_id, operator_name, lat, lng, notes, status, installed_at, photo_before, photo_after, wattage } = req.body;
+  const { code, crew_id, operator_name, internal_folio, lat, lng, notes, status, installed_at, photo_before, photo_after, wattage } = req.body;
 
   if (!code || !lat || !lng || !status) {
     return res.status(400).json({ error: 'Faltan parámetros (code, lat, lng, status).' });
@@ -440,9 +440,9 @@ app.post('/api/installations', async (req, res) => {
     const finalZone = classifyZone(lat, lng, notes, explicitZone);
 
     await db.run(
-      `INSERT INTO installations (fixture_code, crew_id, operator_name, lat, lng, installed_at, status_at_install, notes, photo_before, photo_after, wattage, zone_type)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [code, finalCrewId, operator_name || null, lat, lng, dateStr, status, notes || '', photoBeforePath || null, photoAfterPath || null, parsedWattage, finalZone]
+      `INSERT INTO installations (fixture_code, crew_id, operator_name, internal_folio, lat, lng, installed_at, status_at_install, notes, photo_before, photo_after, wattage, zone_type)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [code, finalCrewId, operator_name || null, internal_folio ? internal_folio.trim() : null, lat, lng, dateStr, status, notes || '', photoBeforePath || null, photoAfterPath || null, parsedWattage, finalZone]
     );
 
     // Update fixture state and ensure it links to the installing crew if it wasn't
@@ -457,6 +457,7 @@ app.post('/api/installations', async (req, res) => {
       code,
       crew_id: finalCrewId,
       operator_name: operator_name || null,
+      internal_folio: internal_folio ? internal_folio.trim() : null,
       status,
       lat,
       lng,
@@ -512,9 +513,9 @@ app.post('/api/installations/sync', async (req, res) => {
       }
 
       await db.run(
-        `INSERT INTO installations (fixture_code, crew_id, operator_name, lat, lng, installed_at, status_at_install, notes, photo_before, photo_after, wattage, offline_code, zone_type)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [item.code, finalCrewId, item.operator_name || null, item.lat, item.lng, dateStr, item.status, item.notes || 'Sincronizado Offline', item.photo_before || null, item.photo_after || null, syncWattage, offlineCode, itemZone]
+        `INSERT INTO installations (fixture_code, crew_id, operator_name, internal_folio, lat, lng, installed_at, status_at_install, notes, photo_before, photo_after, wattage, offline_code, zone_type)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [item.code, finalCrewId, item.operator_name || null, item.internal_folio ? item.internal_folio.trim() : null, item.lat, item.lng, dateStr, item.status, item.notes || 'Sincronizado Offline', item.photo_before || null, item.photo_after || null, syncWattage, offlineCode, itemZone]
       );
 
       await db.run(
@@ -588,9 +589,9 @@ app.post('/api/poles/sync', async (req, res) => {
       const itemZone = classifyZone(item.lat, item.lng, item.notes, item.zone_type);
 
       await db.run(
-        `INSERT INTO poles (pole_code, crew_id, operator_name, lat, lng, pole_type, lamp_type, zone_type, wattage, operating_status, notes, photo_before, photo_after, created_at, offline_code)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [poleCode, item.crew_id, item.operator_name || null, item.lat, item.lng, item.pole_type || 'Concreto', item.lamp_type || 'Vapor de Sodio', itemZone, item.wattage || null, item.operating_status || 'Funcionando', item.notes || 'Censo Offline', item.photo_before || null, item.photo_after || null, dateStr, offlineCode]
+        `INSERT INTO poles (pole_code, crew_id, operator_name, internal_folio, lat, lng, pole_type, lamp_type, zone_type, wattage, operating_status, notes, photo_before, photo_after, created_at, offline_code)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [poleCode, item.crew_id, item.operator_name || null, item.internal_folio ? item.internal_folio.trim() : null, item.lat, item.lng, item.pole_type || 'Concreto', item.lamp_type || 'Vapor de Sodio', itemZone, item.wattage || null, item.operating_status || 'Funcionando', item.notes || 'Censo Offline', item.photo_before || null, item.photo_after || null, dateStr, offlineCode]
       );
 
       await db.run('COMMIT;');
@@ -666,9 +667,9 @@ app.post('/api/incidents/sync', async (req, res) => {
       const dateStr = item.created_at || new Date().toISOString().slice(0, 19).replace('T', ' ');
 
       await db.run(
-        `INSERT INTO incidents (incident_code, crew_id, operator_name, incident_type, lat, lng, notes, photo_before, photo_after, created_at, offline_code)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [generatedCode, item.crew_id, item.operator_name || null, item.incident_type || 'Reparación de Corto Circuito', item.lat, item.lng, item.notes || 'Incidencia Offline', item.photo_before || null, item.photo_after || null, dateStr, item.id || null]
+        `INSERT INTO incidents (incident_code, crew_id, operator_name, internal_folio, incident_type, lat, lng, notes, photo_before, photo_after, created_at, offline_code)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [generatedCode, item.crew_id, item.operator_name || null, item.internal_folio ? item.internal_folio.trim() : null, item.incident_type || 'Reparación de Corto Circuito', item.lat, item.lng, item.notes || 'Incidencia Offline', item.photo_before || null, item.photo_after || null, dateStr, item.id || null]
       );
 
       await db.run('COMMIT;');
@@ -930,7 +931,7 @@ app.get('/api/poles', async (req, res) => {
 });
 
 app.post('/api/poles', async (req, res) => {
-  const { crew_id, operator_name, lat, lng, pole_type, lamp_type, zone_type, wattage, operating_status, notes, photo_before, photo_after } = req.body;
+  const { crew_id, operator_name, internal_folio, lat, lng, pole_type, lamp_type, zone_type, wattage, operating_status, notes, photo_before, photo_after } = req.body;
 
   if (!lat || !lng || !lamp_type) {
     return res.status(400).json({ error: 'Faltan parámetros requeridos (lat, lng, lamp_type).' });
@@ -947,12 +948,13 @@ app.post('/api/poles', async (req, res) => {
     const finalZone = classifyZone(lat, lng, notes, zone_type);
 
     const result = await db.run(`
-      INSERT INTO poles (pole_code, crew_id, operator_name, lat, lng, pole_type, lamp_type, zone_type, wattage, operating_status, notes, photo_before, photo_after, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO poles (pole_code, crew_id, operator_name, internal_folio, lat, lng, pole_type, lamp_type, zone_type, wattage, operating_status, notes, photo_before, photo_after, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       poleCode,
       crew_id || null,
       operator_name || null,
+      internal_folio ? internal_folio.trim() : null,
       lat,
       lng,
       pole_type || 'Concreto',
@@ -971,6 +973,7 @@ app.post('/api/poles', async (req, res) => {
       id: result.lastID,
       pole_code: poleCode,
       operator_name: operator_name || null,
+      internal_folio: internal_folio ? internal_folio.trim() : null,
       lat,
       lng,
       lamp_type,
@@ -1037,7 +1040,7 @@ app.get('/api/incidents', async (req, res) => {
 });
 
 app.post('/api/incidents', async (req, res) => {
-  const { crew_id, operator_name, incident_type, lat, lng, notes, photo_before, photo_after, incident_code } = req.body;
+  const { crew_id, operator_name, internal_folio, incident_type, lat, lng, notes, photo_before, photo_after, incident_code } = req.body;
 
   if (!crew_id || !incident_type || !notes || notes.trim().length < 5) {
     return res.status(400).json({ error: 'Faltan parámetros requeridos o la justificación es menor a 5 caracteres.' });
@@ -1052,12 +1055,13 @@ app.post('/api/incidents', async (req, res) => {
     const generatedCode = incident_code || `INC-${String((countRes?.count || 0) + 1).padStart(5, '0')}`;
 
     const result = await db.run(`
-      INSERT INTO incidents (incident_code, crew_id, operator_name, incident_type, lat, lng, notes, photo_before, photo_after, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO incidents (incident_code, crew_id, operator_name, internal_folio, incident_type, lat, lng, notes, photo_before, photo_after, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       generatedCode,
       crew_id,
       operator_name || null,
+      internal_folio ? internal_folio.trim() : null,
       incident_type,
       lat || 25.539,
       lng || -103.524,
@@ -1073,6 +1077,7 @@ app.post('/api/incidents', async (req, res) => {
       incident_code: generatedCode,
       crew_id,
       operator_name: operator_name || null,
+      internal_folio: internal_folio ? internal_folio.trim() : null,
       incident_type,
       lat,
       lng,

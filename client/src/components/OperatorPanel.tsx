@@ -68,6 +68,8 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
   const [lastSuccessData, setLastSuccessData] = useState<{
     type: 'installation' | 'pole' | 'incident';
     code: string;
+    incidentCode?: string;
+    internalFolio?: string | null;
     status: string;
     wattage?: number | string | null;
     lat: number;
@@ -77,6 +79,16 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
     photoBefore?: string | null;
     photoAfter?: string | null;
   } | null>(null);
+
+  // Folio Interno del Reporte Ciudadano (SPF-00...)
+  const [internalFolioNum, setInternalFolioNum] = useState<string>('');
+
+  const formatInternalFolio = (val: string): string => {
+    if (!val || !val.trim()) return '';
+    const clean = val.trim().toUpperCase().replace(/^SPF-0*/i, '').replace(/[^0-9A-Z]/gi, '');
+    if (!clean) return '';
+    return `SPF-00${clean}`;
+  };
 
   const [fixtureCode, setFixtureCode] = useState('');
   const [fixtureDetails, setFixtureDetails] = useState<FixtureDetails | null>(null);
@@ -138,6 +150,8 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
       id: `${successObj.code}_${Date.now()}`,
       type: successObj.type,
       code: successObj.code,
+      incidentCode: successObj.incidentCode,
+      internalFolio: successObj.internalFolio,
       date: successObj.date || new Date().toISOString(),
       lat: successObj.lat,
       lng: successObj.lng,
@@ -158,6 +172,7 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
     setIsScannerActive(false);
     stopScannerSafely();
     setPanelMode(mode);
+    setInternalFolioNum('');
     setPhotoBefore(null);
     setPhotoAfter(null);
   };
@@ -455,11 +470,12 @@ export const OperatorPanel: React.FC<OperatorPanelProps> = ({
     }
 
     const wattageLine = dataToShare.wattage ? `\n⚡ *Potencia / Watts:* ${dataToShare.wattage} Watts` : '';
+    const internalFolioLine = dataToShare.internalFolio ? `\n📋 *Folio Reporte Ciudadano:* ${dataToShare.internalFolio}` : '';
     const notesLine = dataToShare.notes ? `\n📝 *Observaciones:* "${dataToShare.notes}"` : '';
 
     const textCaption = `${header}
 ----------------------------------------------
-${typeLine}
+${typeLine}${internalFolioLine}
 👷‍♂️ *Cuadrilla:* ${dataToShare.crewName || crewName}
 👤 *Responsable en Turno:* ${(dataToShare.operatorName || operatorName).trim() || 'No especificado'}
 🌐 *Estado / Tipo:* ${dataToShare.status}${wattageLine}
@@ -690,6 +706,7 @@ ${typeLine}
     }
 
     const isOnline = navigator.onLine && !isSimulatedOffline;
+    const fullInternalFolio = internalFolioNum.trim() ? formatInternalFolio(internalFolioNum) : null;
 
     const savePoleLocally = async () => {
       const randSuffix = Math.floor(1000 + Math.random() * 9000);
@@ -701,6 +718,7 @@ ${typeLine}
         pole_code: tempCode,
         crew_id: crewId,
         operator_name: operatorName.trim() || null,
+        internal_folio: fullInternalFolio,
         lat,
         lng,
         pole_type: poleType,
@@ -722,6 +740,7 @@ ${typeLine}
       registerSuccessAndQueueWhatsApp({
         type: 'pole',
         code: `${tempCode} (Pendiente Sync)`,
+        internalFolio: fullInternalFolio,
         status: `${lampType} | ${operatingStatus}`,
         wattage: wattage || null,
         lat,
@@ -733,6 +752,7 @@ ${typeLine}
       });
 
       setPoleNotes('');
+      setInternalFolioNum('');
       setWattage('');
       setLampType('LED Nueva (Sin QR)');
       setOperatingStatus('Funcionando');
@@ -761,6 +781,7 @@ ${typeLine}
         body: JSON.stringify({
           crew_id: crewId,
           operator_name: operatorName.trim() || null,
+          internal_folio: fullInternalFolio,
           lat,
           lng,
           pole_type: poleType,
@@ -779,10 +800,12 @@ ${typeLine}
       if (!res.ok || !data || !data.pole_code) {
         throw new Error(data?.error || 'No se pudo obtener el folio del servidor.');
       } else {
-        setPoleSubmitMsg({ text: `¡Punto de iluminación ${data.pole_code} censado con éxito en ${zoneType}!`, isError: false });
+        const folioMsg = fullInternalFolio ? ` [Folio Ciudadano: ${fullInternalFolio}]` : '';
+        setPoleSubmitMsg({ text: `¡Punto de iluminación ${data.pole_code} censado con éxito en ${zoneType}!${folioMsg}`, isError: false });
         registerSuccessAndQueueWhatsApp({
           type: 'pole',
           code: data.pole_code,
+          internalFolio: fullInternalFolio,
           status: `${lampType} | ${operatingStatus}`,
           wattage: wattage || null,
           lat,
@@ -793,6 +816,7 @@ ${typeLine}
           photoAfter
         });
         setPoleNotes('');
+        setInternalFolioNum('');
         setWattage('');
         setLampType('LED Nueva (Sin QR)');
         setOperatingStatus('Funcionando');
@@ -850,6 +874,8 @@ ${typeLine}
       lng = -103.524;
     }
 
+    const fullInternalFolio = internalFolioNum.trim() ? formatInternalFolio(internalFolioNum) : null;
+
     try {
       const res = await fetch(`${API_BASE_URL}/api/incidents`, {
         method: 'POST',
@@ -857,6 +883,7 @@ ${typeLine}
         body: JSON.stringify({
           crew_id: crewId,
           operator_name: operatorName.trim() || null,
+          internal_folio: fullInternalFolio,
           incident_type: incidentType,
           lat,
           lng,
@@ -871,11 +898,13 @@ ${typeLine}
         setIncidentSubmitMsg({ text: data.error || 'Error al guardar incidencia.', isError: true });
       } else {
         const folioText = data.incident_code ? ` (Folio: ${data.incident_code})` : '';
-        setIncidentSubmitMsg({ text: `¡Trabajo especial / incidencia "${incidentType}" registrada con éxito!${folioText}`, isError: false });
+        const internalFolioText = fullInternalFolio ? ` [Folio Ciudadano: ${fullInternalFolio}]` : '';
+        setIncidentSubmitMsg({ text: `¡Trabajo especial / incidencia "${incidentType}" registrada con éxito!${folioText}${internalFolioText}`, isError: false });
         registerSuccessAndQueueWhatsApp({
           type: 'incident',
           code: incidentType,
           incidentCode: data.incident_code,
+          internalFolio: fullInternalFolio,
           status: 'Atendida / Finalizada',
           lat,
           lng,
@@ -885,6 +914,7 @@ ${typeLine}
           photoAfter
         });
         setIncidentNotes('');
+        setInternalFolioNum('');
         setIncidentType('Reparación de Corto Circuito');
         setPhotoBefore(null);
         setPhotoAfter(null);
@@ -897,6 +927,7 @@ ${typeLine}
           id: incId,
           crew_id: crewId,
           operator_name: operatorName.trim() || null,
+          internal_folio: fullInternalFolio,
           incident_type: incidentType,
           lat,
           lng,
@@ -912,6 +943,7 @@ ${typeLine}
         registerSuccessAndQueueWhatsApp({
           type: 'incident',
           code: incidentType,
+          internalFolio: fullInternalFolio,
           status: 'Atendida / Finalizada',
           lat,
           lng,
@@ -921,6 +953,7 @@ ${typeLine}
           photoAfter
         });
         setIncidentNotes('');
+        setInternalFolioNum('');
         setPhotoBefore(null);
         setPhotoAfter(null);
       } catch (localErr) {
@@ -1122,10 +1155,13 @@ ${typeLine}
       ? 'Rural'
       : zoneType;
 
+    const fullInternalFolio = internalFolioNum.trim() ? formatInternalFolio(internalFolioNum) : null;
+
     const payload = {
       code: fixtureDetails.code,
       crew_id: crewId,
       operator_name: operatorName.trim() || null,
+      internal_folio: fullInternalFolio,
       lat,
       lng,
       status: newStatus,
@@ -1149,6 +1185,7 @@ ${typeLine}
         registerSuccessAndQueueWhatsApp({
           type: 'installation',
           code: payload.code,
+          internalFolio: fullInternalFolio,
           status: newStatus,
           wattage: qrWattage || null,
           lat,
@@ -1160,6 +1197,7 @@ ${typeLine}
         });
         setFixtureDetails(null);
         setFixtureCode('');
+        setInternalFolioNum('');
         setInstallNotes('');
         setPhotoBefore(null);
         setPhotoAfter(null);
@@ -1178,10 +1216,12 @@ ${typeLine}
         if (!res.ok) {
           throw new Error(data.error || 'Error en servidor al registrar instalación.');
         } else {
-          setSubmitMsg({ text: `Instalación registrada con éxito. Luminaria ${payload.code} actualizada a ${newStatus}.`, isError: false });
+          const folioMsg = fullInternalFolio ? ` [Folio Ciudadano: ${fullInternalFolio}]` : '';
+          setSubmitMsg({ text: `Instalación registrada con éxito. Luminaria ${payload.code} actualizada a ${newStatus}.${folioMsg}`, isError: false });
           registerSuccessAndQueueWhatsApp({
             type: 'installation',
             code: payload.code,
+            internalFolio: fullInternalFolio,
             status: newStatus,
             wattage: qrWattage || null,
             lat,
@@ -1193,6 +1233,7 @@ ${typeLine}
           });
           setFixtureDetails(null);
           setFixtureCode('');
+          setInternalFolioNum('');
           setInstallNotes('');
           setQrWattage('50');
           setNewStatus('Nueva');
@@ -1210,6 +1251,7 @@ ${typeLine}
           registerSuccessAndQueueWhatsApp({
             type: 'installation',
             code: payload.code,
+            internalFolio: fullInternalFolio,
             status: newStatus,
             lat,
             lng,
@@ -1217,6 +1259,7 @@ ${typeLine}
           });
           setFixtureDetails(null);
           setFixtureCode('');
+          setInternalFolioNum('');
           setInstallNotes('');
           setQrWattage('50');
           setNewStatus('Nueva');
@@ -1445,6 +1488,38 @@ ${typeLine}
 
             <div style={{ marginTop: '14px' }}>
               <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                📋 Folio Interno Reporte Ciudadano (Opcional):
+              </label>
+              <div style={{ display: 'flex', alignItems: 'stretch', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
+                <span style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', padding: '10px 14px', fontWeight: 800, fontSize: '13px', borderRight: '1px solid var(--border-color)', userSelect: 'none', display: 'flex', alignItems: 'center' }}>
+                  SPF-00
+                </span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Ej. 124 (Solo teclee el número)"
+                  value={internalFolioNum}
+                  onChange={(e) => setInternalFolioNum(e.target.value.replace(/^SPF-0*/i, ''))}
+                  style={{ flex: 1, border: 'none', background: 'transparent', color: '#fff', fontSize: '13px', padding: '10px', outline: 'none' }}
+                />
+                {internalFolioNum && (
+                  <button
+                    type="button"
+                    onClick={() => setInternalFolioNum('')}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', padding: '0 12px', cursor: 'pointer', fontSize: '14px' }}
+                    title="Borrar folio"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                {internalFolioNum.trim() ? `✓ Se vinculará como: SPF-00${internalFolioNum.trim()}` : 'ℹ️ El prefijo SPF-00 ya está listo. Ingrese solo el número del reporte ciudadano.'}
+              </span>
+            </div>
+
+            <div style={{ marginTop: '14px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
                 Observaciones y Detalles del Trabajo (Mínimo 5 caracteres):
               </label>
               <textarea
@@ -1659,6 +1734,38 @@ ${typeLine}
                   <option value="Brazo en Fachada">Brazo en Fachada</option>
                 </select>
               </div>
+            </div>
+
+            <div style={{ marginTop: '12px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                📋 Folio Interno Reporte Ciudadano (Opcional):
+              </label>
+              <div style={{ display: 'flex', alignItems: 'stretch', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
+                <span style={{ background: 'rgba(0, 242, 254, 0.15)', color: 'var(--neon-blue)', padding: '10px 14px', fontWeight: 800, fontSize: '13px', borderRight: '1px solid var(--border-color)', userSelect: 'none', display: 'flex', alignItems: 'center' }}>
+                  SPF-00
+                </span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Ej. 124 (Solo teclee el número)"
+                  value={internalFolioNum}
+                  onChange={(e) => setInternalFolioNum(e.target.value.replace(/^SPF-0*/i, ''))}
+                  style={{ flex: 1, border: 'none', background: 'transparent', color: '#fff', fontSize: '13px', padding: '10px', outline: 'none' }}
+                />
+                {internalFolioNum && (
+                  <button
+                    type="button"
+                    onClick={() => setInternalFolioNum('')}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', padding: '0 12px', cursor: 'pointer', fontSize: '14px' }}
+                    title="Borrar folio"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                {internalFolioNum.trim() ? `✓ Se vinculará como: SPF-00${internalFolioNum.trim()}` : 'ℹ️ El prefijo SPF-00 es automático para agilizar el registro.'}
+              </span>
             </div>
 
             <div style={{ marginTop: '12px' }}>
@@ -1890,6 +1997,38 @@ ${typeLine}
               </div>
 
               <div className="form-group">
+                <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                  📋 Folio Interno Reporte Ciudadano (Opcional):
+                </label>
+                <div style={{ display: 'flex', alignItems: 'stretch', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
+                  <span style={{ background: 'rgba(5, 243, 162, 0.15)', color: 'var(--neon-green)', padding: '10px 14px', fontWeight: 800, fontSize: '13px', borderRight: '1px solid var(--border-color)', userSelect: 'none', display: 'flex', alignItems: 'center' }}>
+                    SPF-00
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Ej. 124 (Solo teclee el número)"
+                    value={internalFolioNum}
+                    onChange={(e) => setInternalFolioNum(e.target.value.replace(/^SPF-0*/i, ''))}
+                    style={{ flex: 1, border: 'none', background: 'transparent', color: '#fff', fontSize: '13px', padding: '10px', outline: 'none' }}
+                  />
+                  {internalFolioNum && (
+                    <button
+                      type="button"
+                      onClick={() => setInternalFolioNum('')}
+                      style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', padding: '0 12px', cursor: 'pointer', fontSize: '14px' }}
+                      title="Borrar folio"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+                <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                  {internalFolioNum.trim() ? `✓ Se vinculará como: SPF-00${internalFolioNum.trim()}` : 'ℹ️ El prefijo SPF-00 ya está predeterminado. Ingrese solo el número del reporte ciudadano.'}
+                </span>
+              </div>
+
+              <div className="form-group">
                 <label>Notas de Campo / Observaciones</label>
                 <textarea 
                   rows={2} 
@@ -2011,6 +2150,7 @@ ${typeLine}
                   </div>
 
                   <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    {msg.internalFolio && <div style={{ color: '#38bdf8', fontWeight: 700 }}>📋 <strong>Folio Ciudadano:</strong> {msg.internalFolio}</div>}
                     <div>📅 <strong>Fecha:</strong> {new Date(msg.created_at || msg.date).toLocaleString('es-MX')}</div>
                     <div>🌐 <strong>Estado:</strong> {msg.status} {msg.wattage ? `(${msg.wattage} Watts)` : ''}</div>
                     {msg.notes ? <div>📝 <strong>Notas:</strong> "{msg.notes}"</div> : null}
