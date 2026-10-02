@@ -862,24 +862,29 @@ app.get('/api/reports', async (req, res) => {
       else combinedZones['Urbana']++;
     });
 
-    // Fetch all crews
-    const crews = await db.all('SELECT id, name as crew_name, active_operator FROM crews');
+    // Fetch all incidents
+    const allIncidents = await db.all('SELECT * FROM incidents');
 
-    // Compute crew performance with deduplication
+    // Compute crew performance with deduplication (Installations + Poles + Incidents)
     const crewPerformance = crews.map(c => {
       const crewInsts = latestInstallations.filter(i => i.crew_id === c.id);
       const crewPoles = standalonePoles.filter(p => p.crew_id === c.id);
+      const crewIncidents = allIncidents.filter(inc => inc.crew_id === c.id);
 
       return {
         id: c.id,
         crew_name: c.crew_name,
         active_operator: c.active_operator,
         total_installations: crewInsts.length,
-        total_poles: crewPoles.length
+        total_poles: crewPoles.length,
+        total_incidents: crewIncidents.length
       };
     });
 
-    crewPerformance.sort((a, b) => (b.total_installations + b.total_poles) - (a.total_installations + a.total_poles));
+    crewPerformance.sort((a, b) => 
+      (b.total_installations + b.total_poles + b.total_incidents) - 
+      (a.total_installations + a.total_poles + a.total_incidents)
+    );
 
     // List of all fixtures with crew name and installation status
     const allFixtures = await db.all(`

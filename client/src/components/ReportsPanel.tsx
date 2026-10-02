@@ -44,6 +44,7 @@ interface CrewPerformance {
   active_operator: string | null;
   total_installations: number;
   total_poles: number;
+  total_incidents?: number;
 }
 
 export const ReportsPanel: React.FC = () => {
@@ -984,7 +985,7 @@ export const ReportsPanel: React.FC = () => {
           {/* DESEMPEÑO Y RENDIMIENTO POR CUADRILLAS */}
           <div className="glass-panel" style={{ padding: '20px' }}>
             <h3 className="panel-header" style={{ margin: '0 0 16px 0', fontSize: '15px', color: 'var(--neon-green)' }}>
-              🏆 Desempeño y Rendimiento por Cuadrilla (Luminarias QR + Censo)
+              🏆 Desempeño y Rendimiento por Cuadrilla (Luminarias QR + Censo + Incidencias)
             </h3>
             <div className="reports-table-container">
               <table className="reports-table">
@@ -994,18 +995,21 @@ export const ReportsPanel: React.FC = () => {
                     <th>Responsable en Turno (Admin)</th>
                     <th>Luminarias QR Instaladas</th>
                     <th>Puntos de Iluminación Censados</th>
+                    <th>Incidencias / Cortos Atendidos</th>
                     <th>Avance Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {crewPerformance.map(cp => {
-                    const totalWork = cp.total_installations + cp.total_poles;
+                    const incidentsCount = cp.total_incidents || 0;
+                    const totalWork = cp.total_installations + cp.total_poles + incidentsCount;
                     return (
                       <tr key={cp.id}>
                         <td style={{ fontWeight: 'bold', color: '#fff' }}>{cp.crew_name}</td>
                         <td style={{ color: 'var(--neon-green)', fontWeight: 600 }}>{cp.active_operator || 'Sin asignar en Admin'}</td>
                         <td style={{ color: 'var(--neon-blue)', fontWeight: 'bold' }}>{cp.total_installations}</td>
                         <td style={{ color: 'var(--neon-purple)', fontWeight: 'bold' }}>{cp.total_poles}</td>
+                        <td style={{ color: 'var(--neon-amber)', fontWeight: 'bold' }}>{incidentsCount}</td>
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ fontWeight: 'bold', color: 'var(--neon-amber)' }}>{totalWork} ops</span>
@@ -1019,7 +1023,7 @@ export const ReportsPanel: React.FC = () => {
                   })}
                   {crewPerformance.length === 0 && (
                     <tr>
-                      <td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No hay datos de avance registrados aún.</td>
+                      <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No hay datos de avance registrados aún.</td>
                     </tr>
                   )}
                 </tbody>
