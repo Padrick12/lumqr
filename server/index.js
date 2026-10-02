@@ -862,14 +862,17 @@ app.get('/api/reports', async (req, res) => {
       else combinedZones['Urbana']++;
     });
 
+    // Fetch all crews
+    const crews = (await db.all('SELECT id, name as crew_name, active_operator FROM crews')) || [];
+
     // Fetch all incidents
-    const allIncidents = await db.all('SELECT * FROM incidents');
+    const allIncidents = (await db.all('SELECT * FROM incidents')) || [];
 
     // Compute crew performance with deduplication (Installations + Poles + Incidents)
     const crewPerformance = crews.map(c => {
-      const crewInsts = latestInstallations.filter(i => i.crew_id === c.id);
-      const crewPoles = standalonePoles.filter(p => p.crew_id === c.id);
-      const crewIncidents = allIncidents.filter(inc => inc.crew_id === c.id);
+      const crewInsts = latestInstallations.filter(i => Number(i.crew_id) === Number(c.id));
+      const crewPoles = standalonePoles.filter(p => Number(p.crew_id) === Number(c.id));
+      const crewIncidents = allIncidents.filter(inc => Number(inc.crew_id) === Number(c.id));
 
       return {
         id: c.id,
@@ -905,16 +908,10 @@ app.get('/api/reports', async (req, res) => {
         i.lng
       FROM fixtures f
       LEFT JOIN crews c ON f.crew_id = c.id
-      JOIN batches b ON f.batch_id = b.id
-      LEFT JOIN (
-        SELECT inst.*
-        FROM installations inst
-        JOIN (
-          SELECT fixture_code, MAX(id) as max_id
-          FROM installations
-          GROUP BY fixture_code
-        ) latest ON inst.id = latest.max_id
-      ) i ON f.code = i.fixture_code
+      LEFT JOIN batches b ON f.batch_id = b.id
+      LEFT JOIN installations i ON i.id = (
+        SELECT MAX(id) FROM installations WHERE fixture_code = f.code
+      )
       LEFT JOIN crews ic ON i.crew_id = ic.id
       ORDER BY f.code ASC
     `);

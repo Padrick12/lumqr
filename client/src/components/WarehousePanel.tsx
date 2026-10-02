@@ -93,8 +93,8 @@ export const WarehousePanel: React.FC<WarehousePanelProps> = ({ onDataChange }) 
       const res = await fetch(`${API_BASE_URL}/api/reports`);
       if (res.ok) {
         const data = await res.json();
-        const filtered = data.fixtures.filter((f: any) => {
-          return f.batch_id === batchId;
+        const filtered = (data.fixtures || []).filter((f: any) => {
+          return Number(f.batch_id) === Number(batchId);
         });
         setFixturesForQr(filtered);
         
