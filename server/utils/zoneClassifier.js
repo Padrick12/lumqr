@@ -37,7 +37,7 @@ function getSectorName(lat, lng) {
 
 function isRuralSector(sectorName) {
   if (!sectorName) return false;
-  if (/Vicente Su[aá]rez|Vallecillos|Villa de Guadalupe|Villa Ju[áa]rez|Francisco Villa|Graseros|Picard[íi]as|Nazareno/i.test(sectorName)) return true;
+  if (/San Nicol[áa]s|Vicente Su[aá]rez|Vallecillos|Villa de Guadalupe|Villa Ju[áa]rez|Francisco Villa|Graseros|Picard[íi]as|Nazareno/i.test(sectorName)) return true;
   const isUrbanColonia = /Colonia|Ampliaci|Villa Jard[íi]n|Zona Centro|Fraccionamiento|Jardines|Magisterial|Samaniego|Rosales|Altas|Sarabia|Brisas|Sacramento|Rueda|Fierro|Quintas|Cerrada|Residencial|Valle|Laureles|Sauces|Reina|Jerusalem|Ed[ée]n|Cambio|Constituci[óo]n|Mayagoitia|Parque|Lomita/i.test(sectorName);
   return !isUrbanColonia;
 }
