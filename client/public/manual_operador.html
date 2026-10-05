@@ -103,117 +103,127 @@
     }
 
     .page {
-      padding: 12mm 15mm;
+      width: 210mm;
+      height: 297mm;
+      max-height: 297mm;
+      padding: 8mm 15mm 6mm 15mm;
       background: #ffffff;
       position: relative;
-      min-height: 297mm;
+      box-sizing: border-box;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-    }
-
-    .page-break {
-      page-break-before: always;
-      break-before: page;
+      overflow: hidden;
+      page-break-after: always;
+      page-break-inside: avoid;
+      break-after: page;
+      break-inside: avoid;
     }
 
     /* ENCABEZADO Y PIE DE PÁGINA */
     .header-image {
       width: 100%;
-      max-height: 22mm;
+      max-height: 20mm;
       object-fit: contain;
-      margin-bottom: 12px;
+      margin-bottom: 6px;
+      flex-shrink: 0;
     }
 
     .footer-image {
       width: 100%;
-      max-height: 18mm;
+      max-height: 16mm;
       object-fit: contain;
-      margin-top: 12px;
+      margin-top: 4px;
+      flex-shrink: 0;
     }
 
     .page-content {
       flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      overflow: hidden;
     }
 
     /* PORTADA */
     .cover-page {
+      flex: 1;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       text-align: center;
-      min-height: 270mm;
-      padding: 10mm 5mm;
+      padding: 4mm 2mm;
+      overflow: hidden;
     }
     .cover-top {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 15px;
+      gap: 8px;
     }
     .cover-badge {
       background: #0f172a;
       color: #38bdf8;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 800;
       letter-spacing: 1.5px;
       text-transform: uppercase;
-      padding: 6px 18px;
+      padding: 4px 16px;
       border-radius: 20px;
       border: 1px solid #38bdf8;
       display: inline-block;
     }
     .cover-title {
-      font-size: 28px;
+      font-size: 24px;
       font-weight: 900;
       color: #0f172a;
       line-height: 1.2;
       text-transform: uppercase;
-      margin-top: 10px;
+      margin-top: 4px;
     }
     .cover-subtitle {
-      font-size: 15px;
+      font-size: 13px;
       color: #475569;
       font-weight: 500;
-      max-width: 580px;
-      margin: 10px auto 0;
-      line-height: 1.4;
+      max-width: 540px;
+      margin: 4px auto 0;
+      line-height: 1.35;
     }
     .cover-system-card {
       background: linear-gradient(135deg, #0f172a, #1e293b);
       color: white;
-      padding: 20px 24px;
-      border-radius: 16px;
-      margin: 25px auto;
-      max-width: 540px;
+      padding: 16px 20px;
+      border-radius: 14px;
+      margin: 10px auto;
+      max-width: 520px;
       text-align: left;
       border: 2px solid #0284c7;
       box-shadow: 0 10px 25px rgba(2, 132, 199, 0.2);
     }
     .cover-system-card h3 {
-      font-size: 18px;
+      font-size: 16px;
       color: #38bdf8;
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     .cover-system-card p {
-      font-size: 12px;
+      font-size: 11.5px;
       color: #cbd5e1;
-      margin-bottom: 12px;
-      line-height: 1.4;
+      margin-bottom: 10px;
+      line-height: 1.35;
     }
     .cover-features-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      font-size: 11px;
+      gap: 6px;
+      font-size: 10.5px;
       color: #f1f5f9;
     }
     .cover-features-grid div {
       background: rgba(255,255,255,0.06);
-      padding: 6px 10px;
+      padding: 5px 8px;
       border-radius: 6px;
       display: flex;
       align-items: center;
@@ -223,40 +233,41 @@
 
     .cover-meta {
       background: #f1f5f9;
-      border-radius: 12px;
-      padding: 14px 20px;
-      max-width: 540px;
-      margin: 0 auto;
+      border-radius: 10px;
+      padding: 10px 16px;
+      max-width: 520px;
+      margin: 4px auto 0;
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
+      gap: 8px;
       text-align: left;
-      font-size: 11px;
+      font-size: 10.5px;
       border: 1px solid #cbd5e1;
     }
     .cover-meta div strong {
       color: #0f172a;
       display: block;
-      font-size: 12px;
+      font-size: 11px;
     }
 
     /* ESTILOS DE TÍTULOS Y SECCIONES */
     .section-header {
       display: flex;
       align-items: center;
-      gap: 10px;
-      border-bottom: 2.5px solid #0284c7;
-      padding-bottom: 6px;
-      margin-bottom: 14px;
-      margin-top: 10px;
+      gap: 8px;
+      border-bottom: 2px solid #0284c7;
+      padding-bottom: 4px;
+      margin-bottom: 10px;
+      margin-top: 6px;
+      flex-shrink: 0;
     }
     .section-num {
       background: #0284c7;
       color: white;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 900;
-      width: 28px;
-      height: 28px;
+      width: 24px;
+      height: 24px;
       border-radius: 6px;
       display: flex;
       align-items: center;
@@ -264,7 +275,7 @@
       flex-shrink: 0;
     }
     .section-title {
-      font-size: 16px;
+      font-size: 14.5px;
       font-weight: 800;
       color: #0f172a;
       text-transform: uppercase;
@@ -486,30 +497,41 @@
     }
 
     @media print {
-      body {
+      html, body {
         background: #ffffff !important;
         margin: 0 !important;
         padding: 0 !important;
+        width: 210mm !important;
+        height: auto !important;
       }
       .top-action-bar {
         display: none !important;
       }
       .document-container {
-        max-width: 100% !important;
+        max-width: 210mm !important;
+        width: 210mm !important;
         margin: 0 !important;
+        padding: 0 !important;
         box-shadow: none !important;
       }
       .page {
-        min-height: 297mm !important;
+        width: 210mm !important;
         height: 297mm !important;
-        padding: 10mm 14mm !important;
-        page-break-after: always;
-        break-after: page;
-        box-sizing: border-box;
+        max-height: 297mm !important;
+        padding: 8mm 14mm 6mm 14mm !important;
+        box-sizing: border-box !important;
+        page-break-after: always !important;
+        page-break-inside: avoid !important;
+        break-after: page !important;
+        break-inside: avoid !important;
+        overflow: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
       }
       .page:last-child {
-        page-break-after: auto;
-        break-after: auto;
+        page-break-after: auto !important;
+        break-after: auto !important;
       }
       .no-print {
         display: none !important;
