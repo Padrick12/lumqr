@@ -138,19 +138,36 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
   };
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '12px',
-      background: 'rgba(255, 255, 255, 0.03)',
-      backdropFilter: 'blur(10px)',
-      border: '1px solid rgba(255, 255, 255, 0.05)',
-      borderRadius: '12px',
-      padding: '12px 16px',
-      minWidth: '220px',
-      boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
-    }}>
+    <div className="offline-indicator-wrapper">
       <style>{`
+        .offline-indicator-wrapper {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          background: rgba(255, 255, 255, 0.04);
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 10px;
+          padding: 6px 12px;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+          flex-shrink: 1;
+          min-width: 0;
+        }
+
+        @media (max-width: 768px) {
+          .offline-indicator-wrapper {
+            padding: 4px 8px;
+            gap: 4px;
+            border-radius: 8px;
+          }
+          .offline-status-text {
+            display: none;
+          }
+          .offline-sync-text {
+            display: none;
+          }
+        }
+
         /* Toggle Switch CSS */
         .toggle-switch {
           position: relative;
@@ -193,19 +210,19 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
         }
       `}</style>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} title={effectiveOnline ? 'En Línea' : 'Sin Conexión (Offline)'}>
           {effectiveOnline ? (
             <>
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--neon-green)', boxShadow: '0 0 8px var(--neon-green)' }}></div>
-              <Wifi size={16} color="var(--neon-green)" />
-              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)' }}>En Línea</span>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--neon-green)', boxShadow: '0 0 8px var(--neon-green)', flexShrink: 0 }}></div>
+              <Wifi size={15} color="var(--neon-green)" style={{ flexShrink: 0 }} />
+              <span className="offline-status-text" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap' }}>En Línea</span>
             </>
           ) : (
             <>
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--neon-rose)', boxShadow: '0 0 8px var(--neon-rose)', animation: 'pulse 2s infinite' }}></div>
-              <CloudOff size={16} color="var(--neon-rose)" />
-              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)' }}>Sin Conexión (Offline)</span>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--neon-rose)', boxShadow: '0 0 8px var(--neon-rose)', animation: 'pulse 2s infinite', flexShrink: 0 }}></div>
+              <CloudOff size={15} color="var(--neon-rose)" style={{ flexShrink: 0 }} />
+              <span className="offline-status-text" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--neon-rose)', whiteSpace: 'nowrap' }}>Offline</span>
             </>
           )}
         </div>
@@ -216,10 +233,10 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
             disabled={isSyncing}
             title="Forzar Re-sincronización de Registros Locales"
             style={{
-              background: 'rgba(5, 243, 162, 0.1)',
+              background: 'rgba(5, 243, 162, 0.12)',
               border: '1px solid rgba(5, 243, 162, 0.3)',
               color: 'var(--neon-green)',
-              padding: '4px 10px',
+              padding: '3px 6px',
               borderRadius: '6px',
               fontSize: '11px',
               fontWeight: 700,
@@ -231,7 +248,7 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
             }}
           >
             <RefreshCw size={12} style={isSyncing ? { animation: 'spin 1s linear infinite' } : {}} />
-            <span>{isSyncing ? 'Sincronizando...' : 'Re-Sincronizar'}</span>
+            <span className="offline-sync-text">{isSyncing ? 'Syncing...' : 'Sincronizar'}</span>
           </button>
         )}
       </div>

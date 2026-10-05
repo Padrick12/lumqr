@@ -85,6 +85,7 @@ function App() {
           onSyncComplete={triggerRefresh}
           crewId={userData?.id || 0}
           crewName={userData?.name || ''}
+          onLogout={handleLogout}
         />
       </OperatorLayout>
     );

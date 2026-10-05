@@ -1,6 +1,6 @@
 import { API_BASE_URL } from '../config';
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Search, Calendar, History, ShieldCheck, AlertCircle, Save, WifiOff, UserCheck, MessageCircle, Image as ImageIcon, Navigation, RefreshCw } from 'lucide-react';
+import { Camera, Search, Calendar, History, ShieldCheck, AlertCircle, Save, WifiOff, UserCheck, MessageCircle, Image as ImageIcon, Navigation, RefreshCw, LogOut } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { addToQueue, addToPolesQueue, addToIncidentsQueue, addPendingWhatsApp, getPendingWhatsAppList, removePendingWhatsApp, type PendingWhatsAppMsg } from '../utils/offlineStore';
 import { formatFixtureCode } from '../utils/codeFormatter';
@@ -34,15 +34,18 @@ interface OperatorPanelProps {
   onSyncComplete: () => void;
   crewId: number;
   crewName: string;
+  onLogout?: () => void;
 }
 
 export const OperatorPanel: React.FC<OperatorPanelProps> = ({
   isSimulatedOffline,
   onSyncComplete,
   crewId,
-  crewName
+  crewName,
+  onLogout
 }) => {
   const [panelMode, setPanelMode] = useState<'qr' | 'census' | 'incident'>('qr');
+  const [showPanelLogoutModal, setShowPanelLogoutModal] = useState<boolean>(false);
   
   // GPS Accuracy State
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
@@ -1323,26 +1326,54 @@ ${typeLine}${internalFolioLine}
               {isAdminAssigned && <span style={{ fontSize: '9px', color: 'var(--neon-green)', background: 'rgba(5,243,162,0.15)', padding: '2px 5px', borderRadius: '4px' }}>🟢 Oficial</span>}
             </label>
             
-            <div 
-              style={{ 
-                background: 'rgba(5, 243, 162, 0.08)', 
-                border: '1px solid rgba(5, 243, 162, 0.4)', 
-                borderRadius: '8px',
-                color: 'var(--neon-green)', 
-                width: '100%', 
-                fontSize: '13px', 
-                fontWeight: 700, 
-                padding: '8px 10px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                userSelect: 'none',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>👤 {operatorName.trim() || 'Sin asignar'}</span>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <div 
+                style={{ 
+                  flex: 1,
+                  background: 'rgba(5, 243, 162, 0.08)', 
+                  border: '1px solid rgba(5, 243, 162, 0.4)', 
+                  borderRadius: '8px',
+                  color: 'var(--neon-green)', 
+                  width: '100%', 
+                  fontSize: '13px', 
+                  fontWeight: 700, 
+                  padding: '8px 10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  userSelect: 'none',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>👤 {operatorName.trim() || 'Sin asignar'}</span>
+              </div>
+              {onLogout && (
+                <button
+                  type="button"
+                  onClick={() => setShowPanelLogoutModal(true)}
+                  style={{
+                    background: 'rgba(244, 63, 94, 0.2)',
+                    border: '1.5px solid rgba(244, 63, 94, 0.6)',
+                    color: '#ff4d6d',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    fontWeight: 800,
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
+                  }}
+                  title="Cerrar sesión de esta cuadrilla y acceder a otro perfil"
+                >
+                  <LogOut size={13} />
+                  <span>Salir</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -2183,6 +2214,110 @@ ${typeLine}${internalFolioLine}
                 </div>
               ))
             )}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* TARJETA INFERIOR PARA CERRAR SESIÓN / CAMBIAR PERFIL */}
+    {onLogout && (
+      <div style={{ marginTop: '28px', marginBottom: '16px', padding: '16px', borderRadius: '12px', background: 'rgba(15, 23, 42, 0.7)', border: '1px solid rgba(244, 63, 94, 0.25)', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center', textAlign: 'center' }}>
+        <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>
+          Sesión iniciada: <strong style={{ color: '#fff' }}>{displayCrewName}</strong> ({operatorName.trim() || 'Sin asignar'})
+        </p>
+        <button
+          type="button"
+          onClick={() => setShowPanelLogoutModal(true)}
+          style={{
+            background: 'rgba(244, 63, 94, 0.18)',
+            border: '1.5px solid rgba(244, 63, 94, 0.7)',
+            color: '#ff4d6d',
+            fontWeight: 800,
+            fontSize: '13px',
+            padding: '10px 20px',
+            borderRadius: '10px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            boxShadow: '0 4px 15px rgba(244, 63, 94, 0.25)'
+          }}
+        >
+          <LogOut size={16} />
+          <span>Cerrar Sesión de Cuadrilla / Cambiar Perfil</span>
+        </button>
+      </div>
+    )}
+
+    {/* CONFIRMACIÓN DE CIERRE DE SESIÓN EN OPERATOR PANEL */}
+    {showPanelLogoutModal && onLogout && (
+      <div style={{
+        position: 'fixed',
+        top: 0, left: 0, right: 0, bottom: 0,
+        background: 'rgba(0, 0, 0, 0.85)',
+        backdropFilter: 'blur(8px)',
+        zIndex: 99999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px'
+      }}>
+        <div style={{
+          background: '#0f172a',
+          border: '1px solid var(--neon-rose)',
+          boxShadow: '0 10px 40px rgba(244, 63, 94, 0.35)',
+          borderRadius: '16px',
+          padding: '24px',
+          maxWidth: '380px',
+          width: '100%',
+          textAlign: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+          animation: 'fadeIn 0.2s ease'
+        }}>
+          <div style={{ fontSize: '18px', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+            ⚠️ Cerrar Sesión de Cuadrilla
+          </div>
+          <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>
+            ¿Deseas salir de la sesión actual de <strong>{displayCrewName}</strong> para ingresar con otra cuadrilla o perfil?
+          </p>
+          <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+            <button 
+              type="button" 
+              onClick={() => setShowPanelLogoutModal(false)}
+              style={{
+                flex: 1,
+                padding: '12px',
+                borderRadius: '10px',
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                color: '#fff',
+                fontWeight: 700,
+                fontSize: '13px',
+                cursor: 'pointer'
+              }}
+            >
+              Cancelar
+            </button>
+            <button 
+              type="button" 
+              onClick={() => { setShowPanelLogoutModal(false); onLogout(); }}
+              style={{
+                flex: 1,
+                padding: '12px',
+                borderRadius: '10px',
+                background: 'var(--neon-rose)',
+                border: 'none',
+                color: '#fff',
+                fontWeight: 800,
+                fontSize: '13px',
+                cursor: 'pointer',
+                boxShadow: '0 0 15px rgba(244, 63, 94, 0.4)'
+              }}
+            >
+              Sí, Salir
+            </button>
           </div>
         </div>
       </div>

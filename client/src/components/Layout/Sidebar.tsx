@@ -1,14 +1,15 @@
 import React from 'react';
-import { Map, Truck, Users, BarChart3, HelpCircle, BookOpen } from 'lucide-react';
+import { Map, Truck, Users, BarChart3, HelpCircle, BookOpen, LogOut } from 'lucide-react';
 import './layout.css';
 
 interface SidebarProps {
   userData?: { id: number; name: string } | null;
   activeTab: string;
   setActiveTab: (tab: 'map' | 'operator' | 'warehouse' | 'admin' | 'reports') => void;
+  onLogout?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userData }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userData, onLogout }) => {
 
   return (
     <aside className="app-sidebar">
@@ -70,6 +71,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userD
           <BookOpen size={20} />
           <span>Guía del Operador (PDF)</span>
         </a>
+
+        {onLogout && (
+          <button 
+            type="button"
+            onClick={onLogout}
+            className="nav-item"
+            style={{ color: '#ff4d6d', borderTop: '1px solid rgba(244, 63, 94, 0.2)', marginTop: '6px', paddingTop: '10px' }}
+            title="Cerrar Sesión de Administrador / Salir"
+          >
+            <LogOut size={20} />
+            <span>Cerrar Sesión</span>
+          </button>
+        )}
       </nav>
 
       <div className="sidebar-footer">
@@ -82,4 +96,5 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userD
     </aside>
   );
 };
+
 

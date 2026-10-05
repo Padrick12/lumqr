@@ -51,7 +51,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
 
   return (
     <div className="app-layout">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userData={userData} />
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userData={userData} onLogout={onLogout} />
       
       <main className="app-main">
         <header className="top-bar">
