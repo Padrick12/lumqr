@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LogOut } from 'lucide-react';
+import { LogOut, BookOpen } from 'lucide-react';
 import './OperatorLayout.css';
 
 interface OperatorLayoutProps {
@@ -28,6 +28,17 @@ export const OperatorLayout: React.FC<OperatorLayoutProps> = ({
 
         <div className="operator-actions">
           {offlineIndicator}
+          <a 
+            href="/manual_operador.html" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="logout-btn" 
+            style={{ background: 'rgba(2, 132, 199, 0.15)', borderColor: 'rgba(2, 132, 199, 0.4)', color: '#38bdf8', textDecoration: 'none' }}
+            title="Abrir Guía y Manual del Operador en Campo (PDF)"
+          >
+            <BookOpen size={16} />
+            <span style={{ fontSize: '11px', fontWeight: 700 }}>Guía PDF</span>
+          </a>
           <button onClick={() => setShowLogoutModal(true)} className="logout-btn" title="Cerrar Sesión / Salir">
             <LogOut size={16} />
             <span style={{ fontSize: '11px', fontWeight: 700 }}>Salir</span>

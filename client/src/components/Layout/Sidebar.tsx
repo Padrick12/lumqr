@@ -1,5 +1,5 @@
 import React from 'react';
-import { Map, Truck, Users, BarChart3, HelpCircle } from 'lucide-react';
+import { Map, Truck, Users, BarChart3, HelpCircle, BookOpen } from 'lucide-react';
 import './layout.css';
 
 interface SidebarProps {
@@ -58,6 +58,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userD
           <BarChart3 size={20} />
           <span>Reportes & Auditoría</span>
         </button>
+
+        <a 
+          href="/manual_operador.html" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="nav-item"
+          style={{ color: '#38bdf8', textDecoration: 'none', borderTop: '1px solid rgba(255, 255, 255, 0.08)', marginTop: '8px', paddingTop: '10px' }}
+          title="Abrir Guía y Manual del Operador en Campo (PDF)"
+        >
+          <BookOpen size={20} />
+          <span>Guía del Operador (PDF)</span>
+        </a>
       </nav>
 
       <div className="sidebar-footer">
