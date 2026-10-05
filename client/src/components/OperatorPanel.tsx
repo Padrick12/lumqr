@@ -647,6 +647,15 @@ ${typeLine}${internalFolioLine}
       return;
     }
 
+    // VALIDACIÓN OBLIGATORIA DE EVIDENCIA FOTOGRÁFICA
+    if (!photoBefore && !photoAfter) {
+      setPoleSubmitMsg({
+        text: '⚠️ Evidencia fotográfica obligatoria: Debe capturar al menos 1 fotografía del poste o luminaria para guardar el censo.',
+        isError: true
+      });
+      return;
+    }
+
     setIsSubmittingPole(true);
     setLoadingPole(true);
     setPoleSubmitMsg({ text: 'Obteniendo coordenadas GPS de alta precisión...', isError: false });
@@ -849,6 +858,15 @@ ${typeLine}${internalFolioLine}
     if (!incidentNotes || incidentNotes.trim().length < 5) {
       setIncidentSubmitMsg({
         text: '⚠️ Descripción obligatoria: Por favor detalle el trabajo realizado en "Observaciones" (mínimo 5 caracteres).',
+        isError: true
+      });
+      return;
+    }
+
+    // VALIDACIÓN OBLIGATORIA DE EVIDENCIA FOTOGRÁFICA
+    if (!photoBefore && !photoAfter) {
+      setIncidentSubmitMsg({
+        text: '⚠️ Evidencia fotográfica obligatoria: Debe capturar al menos 1 fotografía del trabajo o reparación realizada para guardar la incidencia.',
         isError: true
       });
       return;
@@ -1126,6 +1144,15 @@ ${typeLine}${internalFolioLine}
     if (newStatus === 'Robo' && installNotes.trim().length < 5) {
       setSubmitMsg({
         text: '⚠️ Justificación obligatoria: Por favor detalle la causa del reporte de Robo en "Notas de Campo" (ej. Cable cortado, falta de brazo).',
+        isError: true
+      });
+      return;
+    }
+
+    // VALIDACIÓN OBLIGATORIA DE AMBAS FOTOS (FOTO 1: PERNO Y FOTO 2: LÁMPARA ENCENDIDA)
+    if (!photoBefore || !photoAfter) {
+      setSubmitMsg({
+        text: '⚠️ Evidencias obligatorias: Debe capturar la Foto 1 (Perno / Conexión) y la Foto 2 (Lámpara Encendida) para poder registrar la instalación.',
         isError: true
       });
       return;
