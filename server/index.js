@@ -349,48 +349,173 @@ app.delete('/api/batches/:id', async (req, res) => {
 });
 
 // 3. Batch Distribution to Crews (Asignación Estratégica)
-// Assign a quantity of unassigned fixtures in a batch to a crew
+// Assign fixtures in a batch to a crew (by quantity, range, list of codes, or all unassigned)
 app.post('/api/batches/assign', async (req, res) => {
-  const { crew_id, batch_id, quantity } = req.body;
-  if (!crew_id || !batch_id || !quantity || quantity <= 0) {
-    return res.status(400).json({ error: 'Faltan parámetros de asignación válidos.' });
+  const { crew_id, batch_id, quantity, mode, start_num, end_num, codes: specificCodes } = req.body;
+  if (!crew_id) {
+    return res.status(400).json({ error: 'Debe seleccionar una cuadrilla destino.' });
   }
 
   try {
     await db.run('BEGIN TRANSACTION;');
 
-    // 1. Get first 'quantity' of unassigned fixtures from this batch
-    const unassigned = await db.all(
-      'SELECT code FROM fixtures WHERE batch_id = ? AND crew_id IS NULL ORDER BY code ASC LIMIT ?',
-      [batch_id, quantity]
-    );
+    let targetCodes = [];
 
-    if (unassigned.length < quantity) {
-      await db.run('ROLLBACK;');
-      return res.status(400).json({
-        error: `Inventario insuficiente. Solo quedan ${unassigned.length} luminarias libres en este lote.`
-      });
+    if (mode === 'all' || quantity === 'all') {
+      // Assign all unassigned in batch
+      if (!batch_id) {
+        await db.run('ROLLBACK;');
+        return res.status(400).json({ error: 'Debe seleccionar un lote.' });
+      }
+      const unassigned = await db.all(
+        'SELECT code FROM fixtures WHERE batch_id = ? AND crew_id IS NULL ORDER BY code ASC',
+        [batch_id]
+      );
+      if (unassigned.length === 0) {
+        await db.run('ROLLBACK;');
+        return res.status(400).json({ error: 'No hay luminarias libres en este lote para asignar.' });
+      }
+      targetCodes = unassigned.map(f => f.code);
+    } else if (mode === 'range' || (start_num !== undefined && end_num !== undefined && start_num !== '' && end_num !== '')) {
+      if (!batch_id) {
+        await db.run('ROLLBACK;');
+        return res.status(400).json({ error: 'Debe seleccionar un lote.' });
+      }
+      const batch = await db.get('SELECT code_prefix FROM batches WHERE id = ?', [batch_id]);
+      if (!batch) {
+        await db.run('ROLLBACK;');
+        return res.status(404).json({ error: 'Lote no encontrado.' });
+      }
+      const start = parseInt(start_num, 10);
+      const end = parseInt(end_num, 10);
+      if (isNaN(start) || isNaN(end) || start > end) {
+        await db.run('ROLLBACK;');
+        return res.status(400).json({ error: 'Rango numérico inválido (el inicio debe ser menor o igual al fin).' });
+      }
+
+      // Find all fixtures in batch
+      const allInBatch = await db.all('SELECT code FROM fixtures WHERE batch_id = ? ORDER BY code ASC', [batch_id]);
+      targetCodes = allInBatch
+        .map(f => f.code)
+        .filter(c => {
+          const numPart = parseInt(c.split('-').pop(), 10);
+          return !isNaN(numPart) && numPart >= start && numPart <= end;
+        });
+
+      if (targetCodes.length === 0) {
+        await db.run('ROLLBACK;');
+        return res.status(400).json({ error: `No se encontraron luminarias en el lote ${batch.code_prefix} dentro del rango #${start} al #${end}.` });
+      }
+    } else if (mode === 'codes' || (Array.isArray(specificCodes) && specificCodes.length > 0)) {
+      const cleanCodes = (Array.isArray(specificCodes) ? specificCodes : [])
+        .map(c => typeof c === 'string' ? c.trim().toUpperCase() : '')
+        .filter(Boolean);
+
+      if (cleanCodes.length === 0) {
+        await db.run('ROLLBACK;');
+        return res.status(400).json({ error: 'Debe ingresar al menos un código válido.' });
+      }
+      const placeholders = cleanCodes.map(() => '?').join(',');
+      const existing = await db.all(`SELECT code FROM fixtures WHERE code IN (${placeholders})`, cleanCodes);
+      targetCodes = existing.map(f => f.code);
+
+      if (targetCodes.length === 0) {
+        await db.run('ROLLBACK;');
+        return res.status(400).json({ error: 'Ninguno de los códigos ingresados existe en el inventario.' });
+      }
+    } else {
+      // Quantity mode (default)
+      const qty = parseInt(quantity, 10);
+      if (!batch_id || isNaN(qty) || qty <= 0) {
+        await db.run('ROLLBACK;');
+        return res.status(400).json({ error: 'Faltan parámetros de asignación válidos (lote y cantidad).' });
+      }
+
+      const unassigned = await db.all(
+        'SELECT code FROM fixtures WHERE batch_id = ? AND crew_id IS NULL ORDER BY code ASC LIMIT ?',
+        [batch_id, qty]
+      );
+
+      if (unassigned.length < qty) {
+        await db.run('ROLLBACK;');
+        return res.status(400).json({
+          error: `Inventario insuficiente. Solo quedan ${unassigned.length} luminarias libres en este lote.`
+        });
+      }
+
+      targetCodes = unassigned.map(f => f.code);
     }
 
-    const codes = unassigned.map(f => f.code);
-    const startCode = codes[0];
-    const endCode = codes[codes.length - 1];
-
-    // 2. Update crew_id for these fixtures
-    const placeHolders = codes.map(() => '?').join(',');
+    const placeHolders = targetCodes.map(() => '?').join(',');
     await db.run(
       `UPDATE fixtures SET crew_id = ? WHERE code IN (${placeHolders})`,
-      [crew_id, ...codes]
+      [crew_id, ...targetCodes]
     );
 
     await db.run('COMMIT;');
+
+    const startCode = targetCodes[0];
+    const endCode = targetCodes[targetCodes.length - 1];
+
     res.json({
       message: 'Luminarias asignadas con éxito.',
       crew_id,
       batch_id,
-      assigned_count: codes.length,
-      range: { startCode, endCode }
+      assigned_count: targetCodes.length,
+      range: { startCode, endCode },
+      codes: targetCodes
     });
+  } catch (error) {
+    await db.run('ROLLBACK;');
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update crew assignment for an individual fixture
+app.put('/api/fixtures/:code/crew', async (req, res) => {
+  const { code } = req.params;
+  const { crew_id } = req.body;
+  try {
+    const fixture = await db.get('SELECT * FROM fixtures WHERE code = ?', [code]);
+    if (!fixture) {
+      return res.status(404).json({ error: 'Luminaria no encontrada.' });
+    }
+    const targetCrewId = crew_id ? Number(crew_id) : null;
+    await db.run('UPDATE fixtures SET crew_id = ? WHERE code = ?', [targetCrewId, code]);
+    
+    let crewName = null;
+    if (targetCrewId) {
+      const crew = await db.get('SELECT name FROM crews WHERE id = ?', [targetCrewId]);
+      crewName = crew?.name || null;
+    }
+
+    res.json({ 
+      message: targetCrewId ? `Custodia transferida a ${crewName}` : 'Luminaria devuelta a Almacén Central',
+      code,
+      crew_id: targetCrewId,
+      crew_name: crewName
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Bulk update crew assignment for multiple fixtures
+app.post('/api/fixtures/bulk-crew', async (req, res) => {
+  const { codes, crew_id } = req.body;
+  if (!Array.isArray(codes) || codes.length === 0) {
+    return res.status(400).json({ error: 'Lista de códigos vacía.' });
+  }
+  try {
+    await db.run('BEGIN TRANSACTION;');
+    const targetCrewId = crew_id ? Number(crew_id) : null;
+    const placeholders = codes.map(() => '?').join(',');
+    await db.run(
+      `UPDATE fixtures SET crew_id = ? WHERE code IN (${placeholders})`,
+      [targetCrewId, ...codes]
+    );
+    await db.run('COMMIT;');
+    res.json({ message: 'Luminarias actualizadas correctamente.', count: codes.length });
   } catch (error) {
     await db.run('ROLLBACK;');
     res.status(500).json({ error: error.message });
@@ -419,18 +544,14 @@ app.post('/api/installations', async (req, res) => {
       return res.status(404).json({ error: `La luminaria con código ${code} no está registrada en el inventario.` });
     }
 
-    if (!fixture.crew_id) {
-      await db.run('ROLLBACK;');
-      return res.status(403).json({ error: `⛔ LUMINARIA NO DISPONIBLE: El código ${code} aún no ha sido asignado a ninguna cuadrilla en Almacén.` });
-    }
-
-    if (crew_id && fixture.crew_id !== Number(crew_id)) {
+    // Anti-theft protection: If assigned to a DIFFERENT crew, block it
+    if (crew_id && fixture.crew_id && fixture.crew_id !== Number(crew_id)) {
       const assignedCrew = await db.get('SELECT name FROM crews WHERE id = ?', [fixture.crew_id]);
       await db.run('ROLLBACK;');
       return res.status(403).json({ error: `⛔ ACCESO DENEGADO: La luminaria ${code} está asignada a la cuadrilla "${assignedCrew?.name || 'otra cuadrilla'}". Su perfil no puede registrarla.` });
     }
 
-    // Determine final crew_id
+    // Determine final crew_id (if unassigned in warehouse, auto-assign to the installing crew)
     const finalCrewId = crew_id || fixture.crew_id;
 
     // Insert installation log
@@ -491,9 +612,13 @@ app.post('/api/installations/sync', async (req, res) => {
         throw new Error(`Código ${item.code} no existe en inventario.`);
       }
 
+      if (item.crew_id && fixture.crew_id && fixture.crew_id !== Number(item.crew_id)) {
+        throw new Error(`Código ${item.code} está asignado a otra cuadrilla.`);
+      }
+
       const finalCrewId = item.crew_id || fixture.crew_id;
       if (!finalCrewId) {
-        throw new Error(`Código ${item.code} aún no ha sido asignado a ninguna cuadrilla en Almacén.`);
+        throw new Error(`Código ${item.code} requiere una cuadrilla responsable para su registro.`);
       }
 
       const dateStr = item.installed_at || new Date().toISOString().slice(0, 19).replace('T', ' ');

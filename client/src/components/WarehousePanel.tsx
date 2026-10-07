@@ -1,6 +1,10 @@
 import { API_BASE_URL } from '../config';
 import React, { useState, useEffect } from 'react';
-import { Truck, CheckCircle2, QrCode, Printer, Download, Search, AlertCircle, Archive, Sparkles } from 'lucide-react';
+import { 
+  Truck, CheckCircle2, QrCode, Printer, Download, Search, 
+  AlertCircle, Archive, Sparkles, Layers, Hash, List, 
+  CheckSquare, Square, ArrowRight
+} from 'lucide-react';
 import { generateLabelDataURL } from '../utils/qr';
 import { formatFixtureCode } from '../utils/codeFormatter';
 import JSZip from 'jszip';
@@ -39,15 +43,32 @@ interface WarehousePanelProps {
   onDataChange: () => void;
 }
 
+type AssignMode = 'all' | 'range' | 'quantity' | 'codes';
+
 export const WarehousePanel: React.FC<WarehousePanelProps> = ({ onDataChange }) => {
   const [crews, setCrews] = useState<Crew[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
   
+  // Assignment form state
   const [selectedBatchId, setSelectedBatchId] = useState<number | ''>('');
   const [selectedCrewId, setSelectedCrewId] = useState<number | ''>('');
-  const [quantityToAssign, setQuantityToAssign] = useState<number>(10);
+  const [assignMode, setAssignMode] = useState<AssignMode>('all');
+  const [quantityToAssign, setQuantityToAssign] = useState<number | ''>(10);
+  const [startNum, setStartNum] = useState<string>('');
+  const [endNum, setEndNum] = useState<string>('');
+  const [customCodesInput, setCustomCodesInput] = useState<string>('');
   const [assignMsg, setAssignMsg] = useState({ text: '', isError: false });
+  const [isSubmittingAssign, setIsSubmittingAssign] = useState(false);
 
+  // Multi-select state
+  const [selectedCardCodes, setSelectedCardCodes] = useState<string[]>([]);
+  const [bulkCrewId, setBulkCrewId] = useState<number | ''>('');
+  const [isBulkAssigning, setIsBulkAssigning] = useState(false);
+
+  // Single card quick action state
+  const [updatingCode, setUpdatingCode] = useState<string | null>(null);
+
+  // Inventory & QR view state
   const [qrBatchId, setQrBatchId] = useState<number | ''>('');
   const [fixturesForQr, setFixturesForQr] = useState<Fixture[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -99,7 +120,7 @@ export const WarehousePanel: React.FC<WarehousePanelProps> = ({ onDataChange }) 
         setFixturesForQr(filtered);
         
         const urls: Record<string, string> = {};
-        for (const item of filtered.slice(0, 100)) { 
+        for (const item of filtered.slice(0, 150)) { 
           urls[item.code] = await generateLabelDataURL(item.code);
         }
         setQrImages(urls);
@@ -114,43 +135,171 @@ export const WarehousePanel: React.FC<WarehousePanelProps> = ({ onDataChange }) 
   useEffect(() => {
     if (qrBatchId) {
       fetchFixturesForQr(Number(qrBatchId));
+      setSelectedCardCodes([]);
     }
   }, [qrBatchId, batches]);
 
+  // Handle Strategic Assignment Form Submission
   const handleAssignSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedBatchId || !selectedCrewId || quantityToAssign <= 0) {
-      setAssignMsg({ text: 'Por favor complete todos los campos.', isError: true });
+    if (!selectedCrewId) {
+      setAssignMsg({ text: 'Por favor seleccione la cuadrilla destino.', isError: true });
       return;
     }
 
+    let payload: any = {
+      crew_id: Number(selectedCrewId),
+      batch_id: selectedBatchId ? Number(selectedBatchId) : undefined,
+      mode: assignMode
+    };
+
+    if (assignMode === 'all') {
+      if (!selectedBatchId) {
+        setAssignMsg({ text: 'Por favor seleccione el lote de origen.', isError: true });
+        return;
+      }
+      payload.quantity = 'all';
+    } else if (assignMode === 'range') {
+      if (!selectedBatchId || !startNum || !endNum) {
+        setAssignMsg({ text: 'Por favor ingrese el número inicial y final del rango.', isError: true });
+        return;
+      }
+      payload.start_num = parseInt(startNum, 10);
+      payload.end_num = parseInt(endNum, 10);
+    } else if (assignMode === 'quantity') {
+      if (!selectedBatchId || !quantityToAssign || Number(quantityToAssign) <= 0) {
+        setAssignMsg({ text: 'Por favor ingrese una cantidad válida mayor a 0.', isError: true });
+        return;
+      }
+      payload.quantity = Number(quantityToAssign);
+    } else if (assignMode === 'codes') {
+      const rawCodes = customCodesInput
+        .split(/[\n,; \t]+/)
+        .map(c => formatFixtureCode(c.trim()))
+        .filter(Boolean);
+
+      if (rawCodes.length === 0) {
+        setAssignMsg({ text: 'Por favor ingrese al menos un código válido.', isError: true });
+        return;
+      }
+      payload.codes = rawCodes;
+    }
+
+    setIsSubmittingAssign(true);
     try {
       const res = await fetch(`${API_BASE_URL}/api/batches/assign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          crew_id: Number(selectedCrewId),
-          batch_id: Number(selectedBatchId),
-          quantity: quantityToAssign
-        })
+        body: JSON.stringify(payload)
       });
 
       const data = await res.json();
       if (!res.ok) {
         setAssignMsg({ text: data.error || 'Error al asignar luminarias.', isError: true });
       } else {
+        const rangeText = data.range?.startCode && data.range?.endCode 
+          ? ` (Rango: ${data.range.startCode} al ${data.range.endCode})` 
+          : '';
         setAssignMsg({ 
-          text: `¡Asignación exitosa! ${data.assigned_count} luminarias asociadas. Rango: ${data.range.startCode} - ${data.range.endCode}`, 
+          text: `✅ ¡Asignación exitosa! ${data.assigned_count} luminarias asignadas a la cuadrilla.${rangeText}`, 
           isError: false 
         });
-        setQuantityToAssign(10);
+        setCustomCodesInput('');
+        setStartNum('');
+        setEndNum('');
         onDataChange();
         if (qrBatchId) fetchFixturesForQr(Number(qrBatchId));
       }
     } catch (err) {
       setAssignMsg({ text: 'Error al conectar con el servidor.', isError: true });
+    } finally {
+      setIsSubmittingAssign(false);
     }
-    setTimeout(() => setAssignMsg({ text: '', isError: false }), 6000);
+    setTimeout(() => setAssignMsg({ text: '', isError: false }), 7000);
+  };
+
+  // Handle single card crew custody change
+  const handleSingleCardCrewChange = async (code: string, newCrewId: number | '') => {
+    setUpdatingCode(code);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/fixtures/${code}/crew`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ crew_id: newCrewId ? Number(newCrewId) : null })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // Update local state instantly
+        setFixturesForQr(prev => prev.map(f => {
+          if (f.code === code) {
+            return {
+              ...f,
+              crew_id: data.crew_id,
+              crew_name: data.crew_name
+            };
+          }
+          return f;
+        }));
+        onDataChange();
+      }
+    } catch (err) {
+      console.error('Error updating fixture crew:', err);
+    } finally {
+      setUpdatingCode(null);
+    }
+  };
+
+  // Handle bulk assign of selected cards
+  const handleBulkCardAssign = async (targetCrewId: number | '') => {
+    if (selectedCardCodes.length === 0) return;
+    setIsBulkAssigning(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/fixtures/bulk-crew`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          codes: selectedCardCodes,
+          crew_id: targetCrewId ? Number(targetCrewId) : null
+        })
+      });
+
+      if (res.ok) {
+        const crewName = targetCrewId ? crews.find(c => c.id === Number(targetCrewId))?.name || null : null;
+        setFixturesForQr(prev => prev.map(f => {
+          if (selectedCardCodes.includes(f.code)) {
+            return {
+              ...f,
+              crew_id: targetCrewId ? Number(targetCrewId) : null,
+              crew_name: crewName
+            };
+          }
+          return f;
+        }));
+        setSelectedCardCodes([]);
+        onDataChange();
+      }
+    } catch (err) {
+      console.error('Error bulk assigning fixtures:', err);
+    } finally {
+      setIsBulkAssigning(false);
+    }
+  };
+
+  // Toggle single card selection
+  const toggleSelectCard = (code: string) => {
+    setSelectedCardCodes(prev => 
+      prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]
+    );
+  };
+
+  // Select/Deselect all visible cards
+  const toggleSelectAllVisible = () => {
+    const uninstalledVisible = filteredFixtures.filter(f => !f.installation_id).map(f => f.code);
+    if (uninstalledVisible.every(c => selectedCardCodes.includes(c))) {
+      setSelectedCardCodes(prev => prev.filter(c => !uninstalledVisible.includes(c)));
+    } else {
+      setSelectedCardCodes(prev => Array.from(new Set([...prev, ...uninstalledVisible])));
+    }
   };
 
   // Metrics for the batch
@@ -274,11 +423,35 @@ export const WarehousePanel: React.FC<WarehousePanelProps> = ({ onDataChange }) 
     }
   };
 
+  const selectedBatchObj = batches.find(b => b.id === selectedBatchId);
+
   return (
     <div className="panel-container" style={{ gridTemplateColumns: '1fr' }}>
       <style>{`
         @media (min-width: 1024px) {
-          .warehouse-grid { grid-template-columns: 1fr 2fr; }
+          .warehouse-grid { grid-template-columns: 380px 1fr; }
+        }
+        .assign-tab-btn {
+          flex: 1;
+          padding: 8px 6px;
+          font-size: 11px;
+          font-weight: 700;
+          border-radius: 8px;
+          border: 1px solid var(--border-color);
+          background: rgba(0,0,0,0.3);
+          color: var(--text-muted);
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          transition: all 0.2s ease;
+        }
+        .assign-tab-btn.active {
+          background: rgba(56, 189, 248, 0.15);
+          border-color: var(--neon-blue);
+          color: #fff;
+          box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
         }
       `}</style>
       <div className="panel-container warehouse-grid">
@@ -290,27 +463,13 @@ export const WarehousePanel: React.FC<WarehousePanelProps> = ({ onDataChange }) 
               <span>Asignación de Custodia</span>
             </h2>
 
-            <form onSubmit={handleAssignSubmit} className="form-group">
+            <form onSubmit={handleAssignSubmit} className="form-group" style={{ gap: '14px' }}>
               <div className="form-group">
-                <label>Seleccionar Lote de Origen</label>
-                <select 
-                  value={selectedBatchId} 
-                  onChange={(e) => setSelectedBatchId(Number(e.target.value))}
-                >
-                  <option value="" disabled>-- Seleccione un Lote --</option>
-                  {batches.map(b => (
-                    <option key={b.id} value={b.id}>
-                      {b.code_prefix} (Lote #{b.id} - {b.total_quantity} pzas)
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label>Cuadrilla Destino (Responsable)</label>
+                <label>1. Cuadrilla Destino (Responsable)</label>
                 <select 
                   value={selectedCrewId} 
                   onChange={(e) => setSelectedCrewId(Number(e.target.value))}
+                  required
                 >
                   <option value="" disabled>-- Seleccione una Cuadrilla --</option>
                   {crews.map(c => (
@@ -319,39 +478,177 @@ export const WarehousePanel: React.FC<WarehousePanelProps> = ({ onDataChange }) 
                 </select>
               </div>
 
+              {/* TABS DE MODALIDAD DE ASIGNACIÓN */}
               <div className="form-group">
-                <label>Cantidad de Lámparas a Asignar</label>
-                <input 
-                  type="number" 
-                  min={1} 
-                  max={10000}
-                  placeholder="Ej. 10, 50, 100, 500..."
-                  value={quantityToAssign}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === '') {
-                      setQuantityToAssign('' as any);
-                    } else {
-                      const parsed = parseInt(val, 10);
-                      setQuantityToAssign(isNaN(parsed) ? '' as any : parsed);
-                    }
-                  }}
-                />
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                  Se seleccionarán automáticamente las primeras piezas libres del lote seleccionado.
-                </span>
+                <label>2. Método de Asignación</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
+                  <button 
+                    type="button" 
+                    className={`assign-tab-btn ${assignMode === 'all' ? 'active' : ''}`}
+                    onClick={() => setAssignMode('all')}
+                  >
+                    <Layers size={13} />
+                    <span>Lote Completo</span>
+                  </button>
+                  <button 
+                    type="button" 
+                    className={`assign-tab-btn ${assignMode === 'range' ? 'active' : ''}`}
+                    onClick={() => setAssignMode('range')}
+                  >
+                    <Hash size={13} />
+                    <span>Por Rango</span>
+                  </button>
+                  <button 
+                    type="button" 
+                    className={`assign-tab-btn ${assignMode === 'quantity' ? 'active' : ''}`}
+                    onClick={() => setAssignMode('quantity')}
+                  >
+                    <Sparkles size={13} />
+                    <span>Por Cantidad</span>
+                  </button>
+                  <button 
+                    type="button" 
+                    className={`assign-tab-btn ${assignMode === 'codes' ? 'active' : ''}`}
+                    onClick={() => setAssignMode('codes')}
+                  >
+                    <List size={13} />
+                    <span>Por Lista</span>
+                  </button>
+                </div>
               </div>
 
+              {/* SELECTOR DE LOTE (Para modos all, range, quantity) */}
+              {assignMode !== 'codes' && (
+                <div className="form-group">
+                  <label>3. Seleccionar Lote de Origen</label>
+                  <select 
+                    value={selectedBatchId} 
+                    onChange={(e) => {
+                      const bId = Number(e.target.value);
+                      setSelectedBatchId(bId);
+                      setQrBatchId(bId);
+                    }}
+                    required
+                  >
+                    <option value="" disabled>-- Seleccione un Lote --</option>
+                    {batches.map(b => (
+                      <option key={b.id} value={b.id}>
+                        {b.code_prefix} (Lote #{b.id} - {b.total_quantity} pzas)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* MODO 1: LOTE COMPLETO */}
+              {assignMode === 'all' && (
+                <div style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '10px', padding: '12px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--neon-blue)', marginBottom: '4px' }}>
+                    📦 Asignar Todo el Lote en 1 Clic
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                    Todas las luminarias sin asignar del lote <strong>{selectedBatchObj?.code_prefix || ''}</strong> se vincularán de inmediato a la cuadrilla seleccionada.
+                  </div>
+                </div>
+              )}
+
+              {/* MODO 2: POR RANGO */}
+              {assignMode === 'range' && (
+                <div className="form-group" style={{ background: 'rgba(139, 92, 246, 0.08)', border: '1px solid rgba(139, 92, 246, 0.25)', borderRadius: '10px', padding: '12px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--neon-purple)', marginBottom: '8px' }}>
+                    🔢 Rango Numérico de Luminarias
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <div>
+                      <label style={{ fontSize: '11px' }}>Desde el Número (#)</label>
+                      <input 
+                        type="number" 
+                        min={1} 
+                        placeholder="Ej. 1" 
+                        value={startNum} 
+                        onChange={(e) => setStartNum(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11px' }}>Hasta el Número (#)</label>
+                      <input 
+                        type="number" 
+                        min={1} 
+                        placeholder="Ej. 50" 
+                        value={endNum} 
+                        onChange={(e) => setEndNum(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                  {startNum && endNum && selectedBatchObj && (
+                    <div style={{ fontSize: '11px', color: '#c084fc', marginTop: '8px', fontFamily: 'monospace' }}>
+                      Rango: {selectedBatchObj.code_prefix}-{String(startNum).padStart(4, '0')} al {selectedBatchObj.code_prefix}-{String(endNum).padStart(4, '0')}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* MODO 3: POR CANTIDAD */}
+              {assignMode === 'quantity' && (
+                <div className="form-group">
+                  <label>Cantidad de Piezas a Asignar</label>
+                  <input 
+                    type="number" 
+                    min={1} 
+                    max={10000}
+                    placeholder="Ej. 10, 50, 100..."
+                    value={quantityToAssign}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '') setQuantityToAssign('');
+                      else {
+                        const parsed = parseInt(val, 10);
+                        setQuantityToAssign(isNaN(parsed) ? '' : parsed);
+                      }
+                    }}
+                    required
+                  />
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                    Se asignarán las primeras piezas libres disponibles del lote.
+                  </span>
+                </div>
+              )}
+
+              {/* MODO 4: POR LISTA DE CÓDIGOS */}
+              {assignMode === 'codes' && (
+                <div className="form-group">
+                  <label>Pegar o Escanear Códigos Específicos</label>
+                  <textarea 
+                    rows={4}
+                    placeholder="Ej. LUM-LERDO-0017, LUM-LERDO-0021, LUM-LERDO-0022 o separados por salto de línea"
+                    value={customCodesInput}
+                    onChange={(e) => setCustomCodesInput(e.target.value)}
+                    style={{ width: '100%', fontSize: '12px', fontFamily: 'monospace', resize: 'vertical' }}
+                    required
+                  />
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                    Puede pegar códigos separados por coma, espacio o salto de línea.
+                  </span>
+                </div>
+              )}
+
               {assignMsg.text && (
-                <div style={{ padding: '12px', background: assignMsg.isError ? 'rgba(244, 63, 94, 0.1)' : 'rgba(5, 243, 162, 0.1)', color: assignMsg.isError ? 'var(--neon-rose)' : 'var(--neon-green)', borderRadius: '8px', fontSize: '13px', display: 'flex', gap: '8px' }}>
+                <div style={{ padding: '12px', background: assignMsg.isError ? 'rgba(244, 63, 94, 0.12)' : 'rgba(5, 243, 162, 0.12)', color: assignMsg.isError ? 'var(--neon-rose)' : 'var(--neon-green)', borderRadius: '8px', fontSize: '13px', display: 'flex', gap: '8px', border: `1px solid ${assignMsg.isError ? 'rgba(244, 63, 94, 0.3)' : 'rgba(5, 243, 162, 0.3)'}` }}>
                   <AlertCircle size={16} />
                   <span>{assignMsg.text}</span>
                 </div>
               )}
 
-              <button type="submit" className="gradient-border-btn" style={{ justifyContent: 'center' }}>
+              <button 
+                type="submit" 
+                disabled={isSubmittingAssign}
+                className="gradient-border-btn" 
+                style={{ justifyContent: 'center', opacity: isSubmittingAssign ? 0.7 : 1 }}
+              >
                 <CheckCircle2 size={18} />
-                <span>Transferir Custodia a Cuadrilla</span>
+                <span>{isSubmittingAssign ? 'Asignando...' : 'Transferir Custodia a Cuadrilla'}</span>
               </button>
             </form>
           </div>
@@ -359,29 +656,38 @@ export const WarehousePanel: React.FC<WarehousePanelProps> = ({ onDataChange }) 
 
         {/* DETALLE DEL LOTE Y EXPORTACIÓN QR */}
         <div className="panel-section">
-          <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '20px', height: '100%' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '16px', height: '100%' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
               <h2 className="panel-header" style={{ margin: 0 }}>
                 <QrCode color="var(--neon-green)" />
-                <span>Etiquetas QR y Control de Inventario</span>
+                <span>Control de Inventario y Códigos QR</span>
               </h2>
               
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button 
+                  onClick={toggleSelectAllVisible}
+                  className="secondary-btn"
+                  style={{ fontSize: '11px', padding: '6px 10px' }}
+                >
+                  <CheckSquare size={14} />
+                  <span>{selectedCardCodes.length > 0 ? 'Deseleccionar' : 'Seleccionar Todo'}</span>
+                </button>
                 <button 
                   onClick={handleDownloadZip}
                   disabled={filteredFixtures.length === 0 || loadingQrs}
                   className="secondary-btn"
-                  style={{ color: 'var(--neon-blue)', borderColor: 'var(--neon-blue)' }}
+                  style={{ color: 'var(--neon-blue)', borderColor: 'var(--neon-blue)', fontSize: '11px', padding: '6px 10px' }}
                 >
-                  <Archive size={16} />
-                  <span>Descargar Todos (ZIP)</span>
+                  <Archive size={14} />
+                  <span>Descargar ZIP</span>
                 </button>
                 <button 
                   onClick={handlePrintCodes}
                   disabled={filteredFixtures.length === 0 || loadingQrs}
                   className="secondary-btn"
+                  style={{ fontSize: '11px', padding: '6px 10px' }}
                 >
-                  <Printer size={16} />
+                  <Printer size={14} />
                   <span>Imprimir / PDF</span>
                 </button>
               </div>
@@ -406,6 +712,47 @@ export const WarehousePanel: React.FC<WarehousePanelProps> = ({ onDataChange }) 
                 <div style={{ fontSize: '20px', fontWeight: 800, color: '#f1f5f9', marginTop: '2px' }}>{inWarehouseInBatch}</div>
               </div>
             </div>
+
+            {/* BARRA DE ASIGNACIÓN MASIVA PARA ELEMENTOS SELECCIONADOS */}
+            {selectedCardCodes.length > 0 && (
+              <div style={{ background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(139, 92, 246, 0.2))', border: '1.5px solid var(--neon-blue)', borderRadius: '12px', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <CheckSquare color="var(--neon-blue)" size={18} />
+                  <span style={{ fontSize: '13px', fontWeight: 800, color: '#fff' }}>
+                    {selectedCardCodes.length} luminarias seleccionadas
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <select 
+                    value={bulkCrewId} 
+                    onChange={(e) => setBulkCrewId(e.target.value ? Number(e.target.value) : '')}
+                    style={{ fontSize: '12px', padding: '6px 10px', minWidth: '170px' }}
+                  >
+                    <option value="">-- Asignar a... / Liberar --</option>
+                    <option value="0">🏢 Devolver a Almacén Central</option>
+                    {crews.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                  <button 
+                    onClick={() => handleBulkCardAssign(bulkCrewId === 0 ? '' : bulkCrewId)}
+                    disabled={isBulkAssigning}
+                    className="gradient-border-btn"
+                    style={{ padding: '6px 14px', fontSize: '12px' }}
+                  >
+                    <ArrowRight size={14} />
+                    <span>{isBulkAssigning ? 'Aplicando...' : 'Aplicar Custodia'}</span>
+                  </button>
+                  <button 
+                    onClick={() => setSelectedCardCodes([])}
+                    className="secondary-btn"
+                    style={{ padding: '6px 10px', fontSize: '11px' }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* CREW OPERATIONAL BALANCE BANNER */}
             {isSpecificCrew && (
@@ -433,8 +780,8 @@ export const WarehousePanel: React.FC<WarehousePanelProps> = ({ onDataChange }) 
             )}
 
             {/* FILTERS ROW */}
-            <div className="form-row" style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
-              <div className="form-group" style={{ gap: '8px' }}>
+            <div className="form-row" style={{ background: 'rgba(0,0,0,0.2)', padding: '14px', borderRadius: '12px', border: '1px solid var(--border-color)', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px' }}>
+              <div className="form-group" style={{ gap: '6px' }}>
                 <label style={{ fontSize: '11px' }}>Ver Lote</label>
                 <select 
                   value={qrBatchId} 
@@ -446,22 +793,22 @@ export const WarehousePanel: React.FC<WarehousePanelProps> = ({ onDataChange }) 
                 </select>
               </div>
 
-              <div className="form-group" style={{ gap: '8px' }}>
+              <div className="form-group" style={{ gap: '6px' }}>
                 <label style={{ fontSize: '11px' }}>Filtrar por Responsable</label>
                 <select 
                   value={selectedCrewFilter} 
                   onChange={(e) => setSelectedCrewFilter(e.target.value)}
                 >
                   <option value="todos">Todos los Responsables</option>
-                  <option value="libres">En Almacén (Sin Asignar)</option>
-                  <option value="asignadas">Todas las Cuadrillas</option>
+                  <option value="libres">🏢 En Almacén (Sin Asignar)</option>
+                  <option value="asignadas">🚚 Asignadas a Cuadrillas</option>
                   {crews.map(c => (
                     <option key={c.id} value={c.name}>{c.name}</option>
                   ))}
                 </select>
               </div>
 
-              <div className="form-group" style={{ gap: '8px' }}>
+              <div className="form-group" style={{ gap: '6px' }}>
                 <label style={{ fontSize: '11px' }}>Estado de Instalación</label>
                 <select 
                   value={installationStatusFilter} 
@@ -474,7 +821,7 @@ export const WarehousePanel: React.FC<WarehousePanelProps> = ({ onDataChange }) 
                 </select>
               </div>
 
-              <div className="form-group" style={{ gap: '8px' }}>
+              <div className="form-group" style={{ gap: '6px' }}>
                 <label style={{ fontSize: '11px' }}>Buscar Código / Folio / Operador</label>
                 <div className="input-with-icon">
                   <Search size={14} className="input-icon" />
@@ -490,56 +837,89 @@ export const WarehousePanel: React.FC<WarehousePanelProps> = ({ onDataChange }) 
             </div>
 
             {/* QR CARDS GRID */}
-            <div style={{ flexGrow: 1, overflowY: 'auto', maxHeight: '520px', paddingRight: '8px' }}>
+            <div style={{ flexGrow: 1, overflowY: 'auto', maxHeight: '560px', paddingRight: '6px' }}>
               {loadingQrs ? (
                 <div className="empty-state">Generando códigos QR...</div>
               ) : filteredFixtures.length === 0 ? (
                 <div className="empty-state">No se encontraron luminarias con los filtros aplicados.</div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(175px, 1fr))', gap: '14px' }}>
                   {filteredFixtures.map(f => {
                     const isInstalled = Boolean(f.installation_id);
                     const isAssigned = Boolean(f.crew_name) && !isInstalled;
+                    const isSelected = selectedCardCodes.includes(f.code);
+                    const isUpdatingThis = updatingCode === f.code;
 
                     return (
                       <div 
                         key={f.code} 
                         style={{ 
+                          position: 'relative',
                           background: isInstalled 
                             ? 'linear-gradient(180deg, rgba(5, 243, 162, 0.08) 0%, rgba(13, 20, 38, 0.85) 100%)' 
                             : isAssigned 
                             ? 'linear-gradient(180deg, rgba(139, 92, 246, 0.08) 0%, rgba(13, 20, 38, 0.85) 100%)' 
                             : 'rgba(255,255,255,0.03)', 
-                          border: isInstalled 
+                          border: isSelected
+                            ? '2px solid var(--neon-blue)'
+                            : isInstalled 
                             ? '1.5px solid rgba(5, 243, 162, 0.6)' 
                             : isAssigned 
                             ? '1px solid rgba(139, 92, 246, 0.5)' 
                             : '1px solid var(--border-color)', 
                           borderRadius: '12px', 
-                          padding: '14px 10px', 
+                          padding: '12px 10px', 
                           display: 'flex', 
                           flexDirection: 'column', 
                           alignItems: 'center', 
                           textAlign: 'center', 
                           transition: 'var(--transition)',
-                          boxShadow: isInstalled ? '0 0 15px rgba(5, 243, 162, 0.1)' : 'none'
+                          boxShadow: isSelected ? '0 0 15px rgba(56, 189, 248, 0.3)' : (isInstalled ? '0 0 15px rgba(5, 243, 162, 0.1)' : 'none')
                         }}
                       >
+                        {/* SELECT CHECKBOX */}
+                        {!isInstalled && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleSelectCard(f.code);
+                            }}
+                            style={{
+                              position: 'absolute',
+                              top: '8px',
+                              left: '8px',
+                              background: isSelected ? 'var(--neon-blue)' : 'rgba(0,0,0,0.5)',
+                              border: `1px solid ${isSelected ? 'var(--neon-blue)' : 'var(--border-color)'}`,
+                              borderRadius: '4px',
+                              padding: '2px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: isSelected ? '#000' : 'var(--text-muted)'
+                            }}
+                            title="Seleccionar para acción en lote"
+                          >
+                            {isSelected ? <CheckSquare size={13} /> : <Square size={13} />}
+                          </button>
+                        )}
+
                         {qrImages[f.code] ? (
                           <img 
                             src={qrImages[f.code]} 
                             alt={f.code} 
-                            style={{ width: '105px', height: '105px', background: '#fff', padding: '4px', borderRadius: '8px', marginBottom: '10px' }}
+                            style={{ width: '100px', height: '100px', background: '#fff', padding: '4px', borderRadius: '8px', marginBottom: '8px' }}
                           />
                         ) : (
-                          <div style={{ width: '105px', height: '105px', background: 'rgba(255,255,255,0.1)', borderRadius: '8px', marginBottom: '10px' }} />
+                          <div style={{ width: '100px', height: '100px', background: 'rgba(255,255,255,0.1)', borderRadius: '8px', marginBottom: '8px' }} />
                         )}
                         
                         <span style={{ fontSize: '13px', fontWeight: 800, fontFamily: 'monospace', color: '#fff', letterSpacing: '0.5px' }}>
                           {f.code}
                         </span>
 
-                        {/* STATUS BADGES */}
+                        {/* STATUS BADGES & QUICK ASSIGN SELECTOR */}
                         {isInstalled ? (
                           <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '3px', width: '100%' }}>
                             <span style={{ fontSize: '10px', padding: '3px 6px', borderRadius: '6px', background: 'rgba(5, 243, 162, 0.2)', color: '#05f3a2', fontWeight: 800, border: '1px solid rgba(5, 243, 162, 0.4)' }}>
@@ -559,26 +939,39 @@ export const WarehousePanel: React.FC<WarehousePanelProps> = ({ onDataChange }) 
                               </span>
                             )}
                           </div>
-                        ) : isAssigned ? (
-                          <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '3px', width: '100%' }}>
-                            <span style={{ fontSize: '10px', padding: '3px 6px', borderRadius: '6px', background: 'rgba(139, 92, 246, 0.2)', color: 'var(--neon-purple)', fontWeight: 700, border: '1px solid rgba(139, 92, 246, 0.4)' }}>
-                              🚚 EN CAMIÓN
-                            </span>
-                            <span style={{ fontSize: '9px', color: '#c084fc', fontWeight: 600 }}>
-                              {f.crew_name}
-                            </span>
-                            <span style={{ fontSize: '8px', color: 'var(--neon-amber)', fontWeight: 600 }}>
-                              ⏳ Pendiente de instalar
-                            </span>
-                          </div>
                         ) : (
-                          <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '3px', width: '100%' }}>
-                            <span style={{ fontSize: '10px', padding: '3px 6px', borderRadius: '6px', background: 'rgba(148, 163, 184, 0.15)', color: '#94a3b8', fontWeight: 600 }}>
-                              🏢 En Almacén
-                            </span>
-                            <span style={{ fontSize: '8px', color: 'var(--text-muted)' }}>
-                              Sin asignar a cuadrilla
-                            </span>
+                          <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
+                            {isAssigned ? (
+                              <span style={{ fontSize: '10px', padding: '3px 6px', borderRadius: '6px', background: 'rgba(139, 92, 246, 0.2)', color: 'var(--neon-purple)', fontWeight: 700, border: '1px solid rgba(139, 92, 246, 0.4)' }}>
+                                🚚 EN CAMIÓN: {f.crew_name}
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: '10px', padding: '3px 6px', borderRadius: '6px', background: 'rgba(148, 163, 184, 0.15)', color: '#94a3b8', fontWeight: 600 }}>
+                                🏢 EN ALMACÉN (LIBRE)
+                              </span>
+                            )}
+
+                            {/* QUICK REASSIGNMENT DROPDOWN ON CARD */}
+                            <select
+                              value={f.crew_id || ''}
+                              onChange={(e) => handleSingleCardCrewChange(f.code, e.target.value ? Number(e.target.value) : '')}
+                              disabled={isUpdatingThis}
+                              style={{ 
+                                fontSize: '10px', 
+                                padding: '4px 6px', 
+                                background: isAssigned ? 'rgba(139, 92, 246, 0.15)' : 'rgba(0,0,0,0.4)',
+                                borderColor: isAssigned ? 'var(--neon-purple)' : 'var(--border-color)',
+                                color: '#fff',
+                                borderRadius: '6px',
+                                cursor: 'pointer'
+                              }}
+                              title="Cambiar custodia directamente"
+                            >
+                              <option value="">🏢 En Almacén</option>
+                              {crews.map(c => (
+                                <option key={c.id} value={c.id}>🚚 {c.name}</option>
+                              ))}
+                            </select>
                           </div>
                         )}
                         
@@ -586,7 +979,7 @@ export const WarehousePanel: React.FC<WarehousePanelProps> = ({ onDataChange }) 
                           <a 
                             href={qrImages[f.code]} 
                             download={`${f.code}.png`}
-                            style={{ fontSize: '10px', color: 'var(--text-muted)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '10px', padding: '4px 8px', borderRadius: '6px', background: 'rgba(255,255,255,0.04)' }}
+                            style={{ fontSize: '10px', color: 'var(--text-muted)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '8px', padding: '3px 8px', borderRadius: '6px', background: 'rgba(255,255,255,0.04)' }}
                           >
                             <Download size={11} /> Descargar
                           </a>

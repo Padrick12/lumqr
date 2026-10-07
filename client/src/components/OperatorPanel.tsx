@@ -1073,23 +1073,22 @@ ${typeLine}${internalFolioLine}
       } catch (e) {}
 
       const match = assignedList.find((item: any) => item.code === code);
+      const assignedWattage = match ? String(match.default_wattage || match.batch_wattage || 100) : '100';
 
-      if (!match) {
-        setSearchError(`⛔ ACCESO DENEGADO / NO DISPONIBLE (MODO OFFLINE): El código ${code} no consta como asignado a su cuadrilla en la memoria local del teléfono. Debe asignarse previamente en Almacén mientras esté en línea.`);
-        setLoadingSearch(false);
-        return;
-      }
-
-      const assignedWattage = String(match.default_wattage || match.batch_wattage || 100);
       setFixtureDetails({
-        code: match.code,
-        status: match.status || 'Nueva',
+        code: code,
+        status: (match && match.status) ? match.status : 'Nueva',
         crew_id: crewId,
         crew_name: crewName,
         arrival_date: new Date().toISOString().split('T')[0]
       });
       setQrWattage(assignedWattage);
-      setSearchError('Modo Offline: Custodia verificada en memoria del teléfono. Puede registrar la instalación.');
+
+      if (match) {
+        setSearchError('Modo Offline: Custodia verificada en memoria del teléfono. Puede registrar la instalación.');
+      } else {
+        setSearchError('Modo Offline: Registrando luminaria. Al recuperar conexión se vinculará a su cuadrilla.');
+      }
       setLoadingSearch(false);
       return;
     }
@@ -1101,12 +1100,12 @@ ${typeLine}${internalFolioLine}
       if (!res.ok) {
         setSearchError(data.error || 'Código no encontrado en el sistema.');
       } else {
-        if (!data.fixture || !data.fixture.crew_id) {
-          setSearchError(`⛔ LUMINARIA NO DISPONIBLE: El código ${code} aún no ha sido asignado a ninguna cuadrilla en Almacén.`);
+        if (!data.fixture) {
+          setSearchError(`⛔ Luminaria ${code} no encontrada en inventario.`);
           return;
         }
 
-        if (data.fixture.crew_id !== crewId) {
+        if (data.fixture.crew_id && Number(data.fixture.crew_id) !== Number(crewId)) {
           setSearchError(`⛔ ACCESO DENEGADO: La luminaria ${code} está asignada a la cuadrilla "${data.fixture.crew_name || 'otra cuadrilla'}". Su perfil no puede registrarla.`);
           return;
         }
@@ -1121,8 +1120,12 @@ ${typeLine}${internalFolioLine}
           crew_name: crewName,
           arrival_date: data.fixture.arrival_date
         });
-        setHistoryLog(data.history);
-        setNewStatus(data.history.length > 0 ? 'Reparada' : 'Nueva');
+        setHistoryLog(data.history || []);
+        setNewStatus((data.history && data.history.length > 0) ? 'Reparada' : 'Nueva');
+
+        if (!data.fixture.crew_id) {
+          setSearchError('ℹ️ Luminaria en Almacén: Custodia libre. Se asignará automáticamente a su cuadrilla al registrar la instalación.');
+        }
       }
     } catch (err) {
       setSearchError('Error de red al consultar el código.');
