@@ -826,8 +826,8 @@ app.get('/api/installations', async (req, res) => {
         GROUP BY fixture_code
       ) latest ON i.id = latest.max_id
       JOIN fixtures f ON i.fixture_code = f.code
-      JOIN crews c ON i.crew_id = c.id
-      JOIN batches b ON f.batch_id = b.id
+      LEFT JOIN crews c ON i.crew_id = c.id
+      LEFT JOIN batches b ON f.batch_id = b.id
       ORDER BY i.installed_at DESC
     `;
     const installations = await db.all(query);
